@@ -6,3 +6,6 @@
 .merlin
 
 .vscode
+
+# Dune
+_build
