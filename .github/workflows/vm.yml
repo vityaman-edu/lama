@@ -42,6 +42,14 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.mode }}-${{ hashFiles('flake.lock', 'flake.nix') }}-
 
+      - name: Cache Opam
+        uses: actions/cache@v6
+        with:
+          path: ~/.opam
+          key: opam-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix') }}-${{ hashFiles('Lama.opam', 'dune-project', 'vm/scripts/shell.sh', '*.opam.locked') }}
+          restore-keys: |
+            opam-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix') }}-
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:
@@ -57,7 +65,6 @@ jobs:
         run: nix develop --command env CXX=clang++ ./vm/scripts/build.sh ${{ matrix.mode }}
 
       - name: Show CCache Statistics
-        if: always()
         run: nix develop --command ccache --show-stats
 
       - name: Test
