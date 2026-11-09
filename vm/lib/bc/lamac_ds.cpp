@@ -410,4 +410,4 @@ void lamac_ds_listener::operator()(const eof &instruction) {
   (void)instruction;
 }
 
-}
+} // namespace lamavm::bc

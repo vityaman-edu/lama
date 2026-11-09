@@ -92,4 +92,4 @@ private:
   std::size_t code_offset = 0;
 };
 
-}
+} // namespace lamavm::bc

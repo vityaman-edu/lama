@@ -23,7 +23,9 @@ Keep everything clean, clear, elegant, minimal.
 
 Do not look at `virtual_machine` sources.
 
-Do not leave comments in source code.
+Do not leave comments in source code (except namespace comments).
+
+Do not disable Clang Tidy rules unless user asked.
 
 ## Code Style
 

@@ -272,4 +272,4 @@ public:
   }
 };
 
-}
+} // namespace lamavm::bc

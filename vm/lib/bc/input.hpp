@@ -475,11 +475,11 @@ private:
   bool is_failed = false;
 };
 
-}
+} // namespace detail
 
 template <std::derived_from<base_listener> Listener>
 auto read_file(std::istream &in, Listener &listener) -> std::expected<void, std::monostate> {
   return detail::reader<Listener>(in, listener).read();
 }
 
-}
+} // namespace lamavm::bc

@@ -181,5 +181,5 @@ TEST(LamacDump, MinExternalReferenceDoesNotOverflow) {
   }
 }
 
-}
-}
+} // namespace
+} // namespace lamavm::bc

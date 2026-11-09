@@ -19,7 +19,7 @@ public:
   }
 };
 
-}
+} // namespace
 
 auto main(int argc, char **argv) -> int {
   const auto args = std::span(argv, static_cast<std::size_t>(argc));

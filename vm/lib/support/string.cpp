@@ -41,4 +41,4 @@ auto quote(std::string_view value) -> std::string {
   return result;
 }
 
-}
+} // namespace lamavm::support

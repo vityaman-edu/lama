@@ -7,4 +7,4 @@ namespace lamavm::support {
 
 [[nodiscard]] auto quote(std::string_view value) -> std::string;
 
-}
+} // namespace lamavm::support

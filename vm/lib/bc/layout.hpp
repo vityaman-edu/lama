@@ -488,4 +488,4 @@ struct [[gnu::packed]] eof {
   bc::opcode opcode = code;
 };
 
-}
+} // namespace lamavm::bc

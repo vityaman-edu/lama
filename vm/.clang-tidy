@@ -3,8 +3,6 @@ Checks: >-
   -llvmlibc-*,
   -llvm-prefer-static-over-anonymous-namespace,
   -llvm-header-guard,
-  -llvm-namespace-comment,
-  -google-readability-namespace-comments,
   -altera-struct-pack-align,
   -altera-unroll-loops,
   -bugprone-easily-swappable-parameters,
