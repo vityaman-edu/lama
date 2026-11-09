@@ -21,6 +21,7 @@
               llvmPackages_23.clang-tools
               llvmPackages_23.clang
               cppcheck
+              python3
 
               git
 

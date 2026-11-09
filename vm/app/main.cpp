@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <exception>
 #include <iostream>
+#include <span>
 #include <string_view>
 
 namespace {
@@ -20,7 +21,13 @@ public:
 
 }
 
-auto main() -> int {
+auto main(int argc, char **argv) -> int {
+  const auto args = std::span(argv, static_cast<std::size_t>(argc));
+  if (args.size() != 1 && (args.size() != 2 || std::string_view(args.back()) != "-ds")) {
+    std::cerr << "Usage: lamavm [-ds]\n";
+    return 2;
+  }
+
   try {
     listener output(std::cout);
     if (const auto e = lamavm::bc::read_file(std::cin, output); !e) {
