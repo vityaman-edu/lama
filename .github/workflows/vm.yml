@@ -2,9 +2,11 @@ name: Lama VM
 
 on:
   push:
-    branches: [vm]
+    branches:
+      - vm
   pull_request:
-    branches: [vm]
+    branches:
+      - vm
   workflow_dispatch:
 
 permissions:
@@ -14,6 +16,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        mode:
+          - release
+          - asan
+          - fuzz
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -23,8 +34,11 @@ jobs:
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download
+        run: nix develop --command echo downloading...
+
       - name: Build
-        run: nix develop --command ./vm/scripts/build.sh
+        run: nix develop --command env CXX=clang++ ./vm/scripts/build.sh ${{ matrix.mode }}
 
       - name: Test
-        run: nix develop --command ./vm/scripts/test.sh
+        run: nix develop --command ./vm/scripts/test.sh ${{ matrix.mode }}

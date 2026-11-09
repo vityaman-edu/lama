@@ -15,7 +15,14 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
+              cmake
+              ninja
+              llvmPackages_23.clang-tools
+              llvmPackages_23.clang
+              cppcheck
+
               git
+
               gnumake
               m4
               (writeShellScriptBin "gm4" ''exec ${m4}/bin/m4 "$@"'')

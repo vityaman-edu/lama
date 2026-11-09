@@ -15,6 +15,12 @@ flake.lock
 flake.nix
 ```
 
+Can't edit markdown files unless they are under `ai/` directory.
+
+Force Spec Driven Development. Write code only when it is applied.
+
+Keep everything clean, clear, elegant, minimal.
+
 ## Code Style
 
 Separate if-statement, for-statement and other blocks with an additonal NL.

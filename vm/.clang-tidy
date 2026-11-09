@@ -1,0 +1,29 @@
+Checks: >-
+  *,
+  -llvmlibc-*,
+  -llvm-prefer-static-over-anonymous-namespace,
+  -llvm-header-guard,
+  -portability-avoid-pragma-once,
+  -fuchsia-trailing-return
+WarningsAsErrors: '*'
+CheckOptions:
+  readability-identifier-length.IgnoredParameterNames: '^[abcxi]$'
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-identifier-naming.ClassCase: lower_case
+  readability-identifier-naming.StructCase: lower_case
+  readability-identifier-naming.UnionCase: lower_case
+  readability-identifier-naming.EnumCase: lower_case
+  readability-identifier-naming.EnumConstantCase: lower_case
+  readability-identifier-naming.TypeAliasCase: lower_case
+  readability-identifier-naming.TypedefCase: lower_case
+  readability-identifier-naming.ConceptCase: lower_case
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.MethodCase: lower_case
+  readability-identifier-naming.VariableCase: lower_case
+  readability-identifier-naming.ParameterCase: lower_case
+  readability-identifier-naming.MemberCase: lower_case
+  readability-identifier-naming.ConstantCase: lower_case
+  readability-identifier-naming.TemplateParameterCase: lower_case
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+  readability-identifier-naming.TypeTemplateParameterCase: CamelCase
+  readability-identifier-naming.TemplateTemplateParameterCase: CamelCase
