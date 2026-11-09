@@ -1,1 +1,0 @@
-lamavm_add_library(liblamavm_arithmetic)

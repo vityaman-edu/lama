@@ -3,11 +3,18 @@ Checks: >-
   -llvmlibc-*,
   -llvm-prefer-static-over-anonymous-namespace,
   -llvm-header-guard,
+  -llvm-namespace-comment,
+  -google-readability-namespace-comments,
+  -altera-struct-pack-align,
+  -altera-unroll-loops,
+  -bugprone-easily-swappable-parameters,
   -portability-avoid-pragma-once,
-  -fuchsia-trailing-return
+  -readability-identifier-length,
+  -fuchsia-trailing-return,
+  -fuchsia-default-arguments-calls,
+  -fuchsia-overloaded-operator
 WarningsAsErrors: '*'
 CheckOptions:
-  readability-identifier-length.IgnoredParameterNames: '^[abcxi]$'
   readability-identifier-naming.NamespaceCase: lower_case
   readability-identifier-naming.ClassCase: lower_case
   readability-identifier-naming.StructCase: lower_case

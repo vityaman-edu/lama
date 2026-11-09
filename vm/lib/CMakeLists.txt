@@ -1,6 +1,10 @@
-add_subdirectory(arithmetic)
-add_subdirectory(formatting)
+add_subdirectory(support)
+add_subdirectory(bc)
 
 add_library(liblamavm STATIC)
 set_target_properties(liblamavm PROPERTIES OUTPUT_NAME lamavm)
-target_link_libraries(liblamavm PUBLIC liblamavm_arithmetic liblamavm_formatting)
+target_link_libraries(liblamavm PUBLIC
+  liblamavm_bc
+  liblamavm_bc_core
+  liblamavm_support
+)

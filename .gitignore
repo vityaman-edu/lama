@@ -7,9 +7,14 @@
 
 .vscode
 
+# MacOS
+.DS_Store
+
 # Dune
 _build
 
 # LaMa
 *.bc
 *.sm
+*.i
+*.s

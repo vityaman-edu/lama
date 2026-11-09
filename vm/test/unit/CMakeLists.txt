@@ -1,2 +1,1 @@
-add_subdirectory(arithmetic)
-add_subdirectory(formatting)
+add_subdirectory(bc)

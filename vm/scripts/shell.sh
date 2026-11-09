@@ -19,10 +19,7 @@ opam install . --deps-only --assume-depexts --yes || exit 1
 export LAMA_REPO="$PWD"
 
 lamac() {
-  "$LAMA_REPO/_build/default/src/Driver.exe" \
-    -runtime "$LAMA_REPO/runtime" \
-    -I "$LAMA_REPO/_build/default/stdlib/x64" \
-    "$@"
+  "$LAMA_REPO/vm/scripts/lamac.sh" "$@"
 }
 
 lamavm0() {

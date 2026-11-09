@@ -21,6 +21,10 @@ Force Spec Driven Development. Write code only when it is applied.
 
 Keep everything clean, clear, elegant, minimal.
 
+Do not look at `virtual_machine` sources.
+
+Do not leave comments in source code.
+
 ## Code Style
 
 Separate if-statement, for-statement and other blocks with an additonal NL.

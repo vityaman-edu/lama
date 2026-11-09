@@ -1,0 +1,3 @@
+add_subdirectory(core)
+
+lamavm_add_library(liblamavm_bc_core liblamavm_support)
