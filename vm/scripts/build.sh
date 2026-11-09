@@ -29,6 +29,8 @@ cmake \
   -S "$vm_dir" \
   -B "$vm_dir/build/$mode" \
   -DCMAKE_BUILD_TYPE="$build_type" \
+  -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
   -DLAMAVM_SANITIZER="$sanitizer" \
   -DLAMAVM_FUZZ_DURATION="${LAMAVM_FUZZ_DURATION:-10s}" \
   -DFUZZTEST_FUZZING_MODE="$fuzzing"

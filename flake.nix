@@ -17,6 +17,7 @@
             packages = with pkgs; [
               cmake
               ninja
+              ccache
               llvmPackages_23.clang-tools
               llvmPackages_23.clang
               cppcheck
