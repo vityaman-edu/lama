@@ -9,3 +9,7 @@
 
 # Dune
 _build
+
+# LaMa
+*.bc
+*.sm

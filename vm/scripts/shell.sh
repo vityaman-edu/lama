@@ -15,3 +15,18 @@ export CAML_LD_LIBRARY_PATH
 
 # Nix supplies system dependencies; conf-* packages still check them.
 opam install . --deps-only --assume-depexts --yes || exit 1
+
+export LAMA_REPO="$PWD"
+
+lamac() {
+  "$LAMA_REPO/_build/default/src/Driver.exe" \
+    -runtime "$LAMA_REPO/runtime" \
+    -I "$LAMA_REPO/_build/default/stdlib/x64" \
+    "$@"
+}
+
+lamavm0() {
+  "$LAMA_REPO/_build/default/virtual_machine/lama.exe" \
+    -I "$LAMA_REPO/_build/default/stdlib/x64" \
+    "$@"
+}
