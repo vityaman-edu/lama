@@ -47,8 +47,6 @@ jobs:
         with:
           path: ~/.opam
           key: opam-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix') }}-${{ hashFiles('Lama.opam', 'dune-project', 'vm/scripts/shell.sh', '*.opam.locked') }}
-          restore-keys: |
-            opam-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix') }}-
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31
