@@ -1,4 +1,3 @@
 lamavm_add_library(liblamavm_core liblamavm_support)
 
 add_subdirectory(disassembly)
-add_subdirectory(interpreter)

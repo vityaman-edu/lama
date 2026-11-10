@@ -5,7 +5,7 @@
 #include "bc/file_listener_nop.hpp"
 #include "bc/file_listener_seq.hpp"
 #include "bc/file_reader.hpp"
-#include "bc/interpreter/boot.hpp"
+#include "interpreter/boot.hpp"
 
 #include <exception>
 #include <iostream>
@@ -38,7 +38,7 @@ auto main(int argc, char **argv) -> int try {
 
   lamavm::bc::file_listener_seq seq(
     std::move(listener),
-    std::make_unique<lamavm::bc::interpreter::boot>());
+    std::make_unique<lamavm::interpreter::boot>());
 
   if (const auto e = lamavm::bc::read_file(std::cin, seq); !e) {
     for (const auto &message : e.error()) {

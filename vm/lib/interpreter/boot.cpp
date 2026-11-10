@@ -11,17 +11,17 @@
 #include <string_view>
 #include <vector>
 
-namespace lamavm::bc::interpreter {
+namespace lamavm::interpreter {
 
-void boot::operator()(const header &op) {
+void boot::operator()(const bc::header &op) {
   (void)op;
 }
 
-void boot::operator()(const import &op) {
+void boot::operator()(const bc::import &op) {
   (void)op;
 }
 
-void boot::operator()(const public_symbol &op) {
+void boot::operator()(const bc::public_symbol &op) {
   (void)op;
 }
 
@@ -31,8 +31,8 @@ void boot::operator()(std::string_view strings) {
 
 auto boot::operator()(std::span<const std::byte> code)
   -> std::expected<void, std::vector<std::string>> {
-  code_listener_nop listener;
-  return read_ops(code, listener);
+  bc::code_listener_nop listener;
+  return bc::read_ops(code, listener);
 }
 
-} // namespace lamavm::bc::interpreter
+} // namespace lamavm::interpreter

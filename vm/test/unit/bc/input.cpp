@@ -5,9 +5,9 @@
 #include "bc/file_listener.hpp"
 #include "bc/file_listener_seq.hpp"
 #include "bc/file_reader.hpp"
-#include "bc/interpreter/boot.hpp"
 #include "bc/layout.hpp"
 #include "core/exception.hpp"
+#include "interpreter/boot.hpp"
 
 #include <gtest/gtest.h>
 

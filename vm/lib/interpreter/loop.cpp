@@ -5,297 +5,297 @@
 
 #include <span>
 
-namespace lamavm::bc::interpreter {
+namespace lamavm::interpreter {
 
-void loop::operator()(const add &op) {
+void loop::operator()(const bc::add &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const sub &op) {
+void loop::operator()(const bc::sub &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const mul &op) {
+void loop::operator()(const bc::mul &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const div &op) {
+void loop::operator()(const bc::div &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const mod &op) {
+void loop::operator()(const bc::mod &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const lt &op) {
+void loop::operator()(const bc::lt &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const le &op) {
+void loop::operator()(const bc::le &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const gt &op) {
+void loop::operator()(const bc::gt &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const ge &op) {
+void loop::operator()(const bc::ge &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const eq &op) {
+void loop::operator()(const bc::eq &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const ne &op) {
+void loop::operator()(const bc::ne &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const logical_and &op) {
+void loop::operator()(const bc::logical_and &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const logical_or &op) {
+void loop::operator()(const bc::logical_or &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const constant &op) {
+void loop::operator()(const bc::constant &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const string &op) {
+void loop::operator()(const bc::string &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const sexp &op) {
+void loop::operator()(const bc::sexp &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const sti &op) {
+void loop::operator()(const bc::sti &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const sta &op) {
+void loop::operator()(const bc::sta &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const jmp &op) {
+void loop::operator()(const bc::jmp &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const end &op) {
+void loop::operator()(const bc::end &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const ret &op) {
+void loop::operator()(const bc::ret &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const drop &op) {
+void loop::operator()(const bc::drop &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const dup &op) {
+void loop::operator()(const bc::dup &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const swap &op) {
+void loop::operator()(const bc::swap &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const elem &op) {
+void loop::operator()(const bc::elem &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const ld_glo &op) {
+void loop::operator()(const bc::ld_glo &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const ld_loc &op) {
+void loop::operator()(const bc::ld_loc &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const ld_arg &op) {
+void loop::operator()(const bc::ld_arg &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const ld_clo &op) {
+void loop::operator()(const bc::ld_clo &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const lda_glo &op) {
+void loop::operator()(const bc::lda_glo &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const lda_loc &op) {
+void loop::operator()(const bc::lda_loc &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const lda_arg &op) {
+void loop::operator()(const bc::lda_arg &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const lda_clo &op) {
+void loop::operator()(const bc::lda_clo &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const st_glo &op) {
+void loop::operator()(const bc::st_glo &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const st_loc &op) {
+void loop::operator()(const bc::st_loc &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const st_arg &op) {
+void loop::operator()(const bc::st_arg &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const st_clo &op) {
+void loop::operator()(const bc::st_clo &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const cjmp_z &op) {
+void loop::operator()(const bc::cjmp_z &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const cjmp_nz &op) {
+void loop::operator()(const bc::cjmp_nz &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const begin &op) {
+void loop::operator()(const bc::begin &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const begin_closure &op) {
+void loop::operator()(const bc::begin_closure &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const closure &op, std::span<const closure::capture> captures) {
+void loop::operator()(const bc::closure &op, std::span<const bc::closure::capture> captures) {
   (void)op;
   (void)captures;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const callc &op) {
+void loop::operator()(const bc::callc &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const call &op) {
+void loop::operator()(const bc::call &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const tag &op) {
+void loop::operator()(const bc::tag &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const array &op) {
+void loop::operator()(const bc::array &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const fail &op) {
+void loop::operator()(const bc::fail &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const fail_keep &op) {
+void loop::operator()(const bc::fail_keep &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const line &op) {
+void loop::operator()(const bc::line &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const patt_str_cmp &op) {
+void loop::operator()(const bc::patt_str_cmp &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const patt_string &op) {
+void loop::operator()(const bc::patt_string &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const patt_array &op) {
+void loop::operator()(const bc::patt_array &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const patt_sexp &op) {
+void loop::operator()(const bc::patt_sexp &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const patt_boxed &op) {
+void loop::operator()(const bc::patt_boxed &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const patt_unboxed &op) {
+void loop::operator()(const bc::patt_unboxed &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const patt_closure &op) {
+void loop::operator()(const bc::patt_closure &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const barray &op) {
+void loop::operator()(const bc::barray &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-void loop::operator()(const eof &op) {
+void loop::operator()(const bc::eof &op) {
   (void)op;
   throw lamavm::exception("unsupported instruction");
 }
 
-} // namespace lamavm::bc::interpreter
+} // namespace lamavm::interpreter
