@@ -4,10 +4,12 @@
 
 #include <expected>
 #include <iosfwd>
-#include <variant>
+#include <string>
+#include <vector>
 
 namespace lamavm::bc {
 
-auto read_file(std::istream &in, file_listener &listener) -> std::expected<void, std::monostate>;
+auto read_file(std::istream &in, file_listener &listener)
+  -> std::expected<void, std::vector<std::string>>;
 
 } // namespace lamavm::bc

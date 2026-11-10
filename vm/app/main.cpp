@@ -1,10 +1,12 @@
 #include "args.hpp"
 #include "bc/disassembly/legacy.hpp"
 #include "bc/disassembly/modern.hpp"
+#include "bc/file_listener.hpp"
 #include "bc/file_reader.hpp"
 
 #include <exception>
 #include <iostream>
+#include <memory>
 
 auto main(int argc, char **argv) -> int try {
   const auto arguments = lamavm::args::parse(argc, argv);
@@ -17,25 +19,28 @@ auto main(int argc, char **argv) -> int try {
     return 0;
   }
 
+  std::unique_ptr<lamavm::bc::file_listener> listener;
   switch (arguments->disassembly) {
   case lamavm::disassembly_kind::none:
     break;
-  case lamavm::disassembly_kind::legacy: {
-    lamavm::bc::disassembly::legacy listener(std::cout, std::cerr);
-    if (const auto e = lamavm::bc::read_file(std::cin, listener); !e) {
-      return 1;
-    }
-
+  case lamavm::disassembly_kind::legacy:
+    listener = std::make_unique<lamavm::bc::disassembly::legacy>(std::cout);
+    break;
+  case lamavm::disassembly_kind::modern:
+    listener = std::make_unique<lamavm::bc::disassembly::modern>(std::cout);
     break;
   }
-  case lamavm::disassembly_kind::modern: {
-    lamavm::bc::disassembly::modern listener(std::cout, std::cerr);
-    if (const auto e = lamavm::bc::read_file(std::cin, listener); !e) {
-      return 1;
+
+  if (!listener) {
+    return 0;
+  }
+
+  if (const auto e = lamavm::bc::read_file(std::cin, *listener); !e) {
+    for (const auto &message : e.error()) {
+      std::cerr << message << '\n';
     }
 
-    break;
-  }
+    return 1;
   }
 
   return 0;

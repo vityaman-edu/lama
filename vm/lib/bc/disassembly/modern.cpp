@@ -16,7 +16,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace lamavm::bc::disassembly {
@@ -27,9 +26,9 @@ void print_field(std::ostream &out, std::string_view name, std::string_view valu
   out << std::format("  {:<{}}\t{}\n", name, width, value);
 }
 
-template <typename Instruction>
-auto hex_bytes(const Instruction &instruction) -> std::string {
-  const auto bytes = std::as_bytes(std::span(&instruction, 1));
+template <typename Op>
+auto hex_bytes(const Op &op) -> std::string {
+  const auto bytes = std::as_bytes(std::span(&op, 1));
   std::string result;
   result.reserve((bytes.size() * 3) - 1);
   for (const auto byte : bytes) {
@@ -45,9 +44,8 @@ auto hex_bytes(const Instruction &instruction) -> std::string {
 
 } // namespace
 
-modern::modern(std::ostream &output, std::ostream &error_output)
-  : out(&output)
-  , err(&error_output) {
+modern::modern(std::ostream &output)
+  : out(&output) {
 }
 
 auto modern::string_at(std::int32_t offset) const -> std::string {
@@ -124,37 +122,28 @@ void modern::print_code_header() {
   is_code_header_pending = false;
 }
 
-template <typename Instruction, typename... Args>
-void modern::emit(
-  const Instruction &instruction,
-  std::format_string<Args...> symbolic,
-  Args &&...args) {
-  emit(
-    sizeof(instruction),
-    hex_bytes(instruction),
-    std::format(symbolic, std::forward<Args>(args)...));
+template <typename Op, typename... Args>
+void modern::emit(const Op &op, std::format_string<Args...> symbolic, Args &&...args) {
+  emit(sizeof(op), hex_bytes(op), std::format(symbolic, std::forward<Args>(args)...));
 }
 
-void modern::operator()(const header &instruction) {
+void modern::operator()(const header &op) {
   strings.clear();
   rows.clear();
   code_offset = 0;
   import_index = 0;
   symbol_index = 0;
-  import_width = std::to_string(instruction.imports_count).size() + 1;
-  symbol_width = std::to_string(instruction.public_symbols_count).size() + 1;
+  import_width = std::to_string(op.imports_count).size() + 1;
+  symbol_width = std::to_string(op.public_symbols_count).size() + 1;
   is_code_header_pending = true;
 
   *out << "header:\n";
-  print_field(
-    *out,
-    "magic:",
-    support::quote(std::string_view(instruction.magic.data(), instruction.magic.size())));
-  print_field(*out, "version:", std::to_string(instruction.version));
-  print_field(*out, "string_table_size:", std::to_string(instruction.string_table_size));
-  print_field(*out, "globals_count:", std::to_string(instruction.globals_count));
-  print_field(*out, "imports_count:", std::to_string(instruction.imports_count));
-  print_field(*out, "public_symbols_count:", std::to_string(instruction.public_symbols_count));
+  print_field(*out, "magic:", support::quote(std::string_view(op.magic.data(), op.magic.size())));
+  print_field(*out, "version:", std::to_string(op.version));
+  print_field(*out, "string_table_size:", std::to_string(op.string_table_size));
+  print_field(*out, "globals_count:", std::to_string(op.globals_count));
+  print_field(*out, "imports_count:", std::to_string(op.imports_count));
+  print_field(*out, "public_symbols_count:", std::to_string(op.public_symbols_count));
 }
 
 void modern::operator()(std::string_view table) {
@@ -200,257 +189,241 @@ void modern::operator()(const public_symbol &entry) {
   ++symbol_index;
 }
 
-void modern::operator()(const add &instruction) {
-  emit(instruction, "ADD");
+void modern::operator()(const add &op) {
+  emit(op, "ADD");
 }
 
-void modern::operator()(const sub &instruction) {
-  emit(instruction, "SUB");
+void modern::operator()(const sub &op) {
+  emit(op, "SUB");
 }
 
-void modern::operator()(const mul &instruction) {
-  emit(instruction, "MUL");
+void modern::operator()(const mul &op) {
+  emit(op, "MUL");
 }
 
-void modern::operator()(const div &instruction) {
-  emit(instruction, "DIV");
+void modern::operator()(const div &op) {
+  emit(op, "DIV");
 }
 
-void modern::operator()(const mod &instruction) {
-  emit(instruction, "MOD");
+void modern::operator()(const mod &op) {
+  emit(op, "MOD");
 }
 
-void modern::operator()(const lt &instruction) {
-  emit(instruction, "LT");
+void modern::operator()(const lt &op) {
+  emit(op, "LT");
 }
 
-void modern::operator()(const le &instruction) {
-  emit(instruction, "LE");
+void modern::operator()(const le &op) {
+  emit(op, "LE");
 }
 
-void modern::operator()(const gt &instruction) {
-  emit(instruction, "GT");
+void modern::operator()(const gt &op) {
+  emit(op, "GT");
 }
 
-void modern::operator()(const ge &instruction) {
-  emit(instruction, "GE");
+void modern::operator()(const ge &op) {
+  emit(op, "GE");
 }
 
-void modern::operator()(const eq &instruction) {
-  emit(instruction, "EQ");
+void modern::operator()(const eq &op) {
+  emit(op, "EQ");
 }
 
-void modern::operator()(const ne &instruction) {
-  emit(instruction, "NE");
+void modern::operator()(const ne &op) {
+  emit(op, "NE");
 }
 
-void modern::operator()(const logical_and &instruction) {
-  emit(instruction, "LOGICAL_AND");
+void modern::operator()(const logical_and &op) {
+  emit(op, "LOGICAL_AND");
 }
 
-void modern::operator()(const logical_or &instruction) {
-  emit(instruction, "LOGICAL_OR");
+void modern::operator()(const logical_or &op) {
+  emit(op, "LOGICAL_OR");
 }
 
-void modern::operator()(const sti &instruction) {
-  emit(instruction, "STI");
+void modern::operator()(const sti &op) {
+  emit(op, "STI");
 }
 
-void modern::operator()(const sta &instruction) {
-  emit(instruction, "STA");
+void modern::operator()(const sta &op) {
+  emit(op, "STA");
 }
 
-void modern::operator()(const end &instruction) {
-  emit(instruction, "END");
+void modern::operator()(const end &op) {
+  emit(op, "END");
 }
 
-void modern::operator()(const ret &instruction) {
-  emit(instruction, "RET");
+void modern::operator()(const ret &op) {
+  emit(op, "RET");
 }
 
-void modern::operator()(const drop &instruction) {
-  emit(instruction, "DROP");
+void modern::operator()(const drop &op) {
+  emit(op, "DROP");
 }
 
-void modern::operator()(const dup &instruction) {
-  emit(instruction, "DUP");
+void modern::operator()(const dup &op) {
+  emit(op, "DUP");
 }
 
-void modern::operator()(const swap &instruction) {
-  emit(instruction, "SWAP");
+void modern::operator()(const swap &op) {
+  emit(op, "SWAP");
 }
 
-void modern::operator()(const elem &instruction) {
-  emit(instruction, "ELEM");
+void modern::operator()(const elem &op) {
+  emit(op, "ELEM");
 }
 
-void modern::operator()(const patt_str_cmp &instruction) {
-  emit(instruction, "PATT_STR_CMP");
+void modern::operator()(const patt_str_cmp &op) {
+  emit(op, "PATT_STR_CMP");
 }
 
-void modern::operator()(const patt_string &instruction) {
-  emit(instruction, "PATT_STRING");
+void modern::operator()(const patt_string &op) {
+  emit(op, "PATT_STRING");
 }
 
-void modern::operator()(const patt_array &instruction) {
-  emit(instruction, "PATT_ARRAY");
+void modern::operator()(const patt_array &op) {
+  emit(op, "PATT_ARRAY");
 }
 
-void modern::operator()(const patt_sexp &instruction) {
-  emit(instruction, "PATT_SEXP");
+void modern::operator()(const patt_sexp &op) {
+  emit(op, "PATT_SEXP");
 }
 
-void modern::operator()(const patt_boxed &instruction) {
-  emit(instruction, "PATT_BOXED");
+void modern::operator()(const patt_boxed &op) {
+  emit(op, "PATT_BOXED");
 }
 
-void modern::operator()(const patt_unboxed &instruction) {
-  emit(instruction, "PATT_UNBOXED");
+void modern::operator()(const patt_unboxed &op) {
+  emit(op, "PATT_UNBOXED");
 }
 
-void modern::operator()(const patt_closure &instruction) {
-  emit(instruction, "PATT_CLOSURE");
+void modern::operator()(const patt_closure &op) {
+  emit(op, "PATT_CLOSURE");
 }
 
-void modern::operator()(const eof &instruction) {
-  emit(instruction, "EOF");
+void modern::operator()(const eof &op) {
+  emit(op, "EOF");
 }
 
-void modern::operator()(const constant &instruction) {
-  emit(instruction, "CONST {}", std::int32_t{instruction.value});
+void modern::operator()(const constant &op) {
+  emit(op, "CONST {}", std::int32_t{op.value});
 }
 
-void modern::operator()(const array &instruction) {
-  emit(instruction, "ARRAY {}", std::int32_t{instruction.n});
+void modern::operator()(const array &op) {
+  emit(op, "ARRAY {}", std::int32_t{op.n});
 }
 
-void modern::operator()(const barray &instruction) {
-  emit(instruction, "BARRAY {}", std::int32_t{instruction.n});
+void modern::operator()(const barray &op) {
+  emit(op, "BARRAY {}", std::int32_t{op.n});
 }
 
-void modern::operator()(const line &instruction) {
-  emit(instruction, "LINE {}", std::int32_t{instruction.line});
+void modern::operator()(const line &op) {
+  emit(op, "LINE {}", std::int32_t{op.line});
 }
 
-void modern::operator()(const callc &instruction) {
-  emit(instruction, "CALLC {}", std::int32_t{instruction.n_args});
+void modern::operator()(const callc &op) {
+  emit(op, "CALLC {}", std::int32_t{op.n_args});
 }
 
-void modern::operator()(const ld_glo &instruction) {
-  emit(instruction, "LD_GLO {}", target(instruction.operand));
+void modern::operator()(const ld_glo &op) {
+  emit(op, "LD_GLO {}", target(op.operand));
 }
 
-void modern::operator()(const ld_loc &instruction) {
-  emit(instruction, "LD_LOC {}", std::int32_t{instruction.operand});
+void modern::operator()(const ld_loc &op) {
+  emit(op, "LD_LOC {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const ld_arg &instruction) {
-  emit(instruction, "LD_ARG {}", std::int32_t{instruction.operand});
+void modern::operator()(const ld_arg &op) {
+  emit(op, "LD_ARG {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const ld_clo &instruction) {
-  emit(instruction, "LD_CLO {}", std::int32_t{instruction.operand});
+void modern::operator()(const ld_clo &op) {
+  emit(op, "LD_CLO {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const lda_glo &instruction) {
-  emit(instruction, "LDA_GLO {}", target(instruction.operand));
+void modern::operator()(const lda_glo &op) {
+  emit(op, "LDA_GLO {}", target(op.operand));
 }
 
-void modern::operator()(const lda_loc &instruction) {
-  emit(instruction, "LDA_LOC {}", std::int32_t{instruction.operand});
+void modern::operator()(const lda_loc &op) {
+  emit(op, "LDA_LOC {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const lda_arg &instruction) {
-  emit(instruction, "LDA_ARG {}", std::int32_t{instruction.operand});
+void modern::operator()(const lda_arg &op) {
+  emit(op, "LDA_ARG {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const lda_clo &instruction) {
-  emit(instruction, "LDA_CLO {}", std::int32_t{instruction.operand});
+void modern::operator()(const lda_clo &op) {
+  emit(op, "LDA_CLO {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const st_glo &instruction) {
-  emit(instruction, "ST_GLO {}", target(instruction.operand));
+void modern::operator()(const st_glo &op) {
+  emit(op, "ST_GLO {}", target(op.operand));
 }
 
-void modern::operator()(const st_loc &instruction) {
-  emit(instruction, "ST_LOC {}", std::int32_t{instruction.operand});
+void modern::operator()(const st_loc &op) {
+  emit(op, "ST_LOC {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const st_arg &instruction) {
-  emit(instruction, "ST_ARG {}", std::int32_t{instruction.operand});
+void modern::operator()(const st_arg &op) {
+  emit(op, "ST_ARG {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const st_clo &instruction) {
-  emit(instruction, "ST_CLO {}", std::int32_t{instruction.operand});
+void modern::operator()(const st_clo &op) {
+  emit(op, "ST_CLO {}", std::int32_t{op.operand});
 }
 
-void modern::operator()(const jmp &instruction) {
-  emit(instruction, "JMP {}", target(instruction.target));
+void modern::operator()(const jmp &op) {
+  emit(op, "JMP {}", target(op.target));
 }
 
-void modern::operator()(const cjmp_z &instruction) {
-  emit(instruction, "CJMP_Z {}", target(instruction.target));
+void modern::operator()(const cjmp_z &op) {
+  emit(op, "CJMP_Z {}", target(op.target));
 }
 
-void modern::operator()(const cjmp_nz &instruction) {
-  emit(instruction, "CJMP_NZ {}", target(instruction.target));
+void modern::operator()(const cjmp_nz &op) {
+  emit(op, "CJMP_NZ {}", target(op.target));
 }
 
-void modern::operator()(const begin &instruction) {
+void modern::operator()(const begin &op) {
+  emit(op, "BEGIN {}, {}", std::int32_t{op.n_args}, std::int32_t{op.n_locals});
+}
+
+void modern::operator()(const call &op) {
+  emit(op, "CALL {}, {}", target(op.target), std::int32_t{op.n_args});
+}
+
+void modern::operator()(const fail &op) {
+  emit(op, "FAIL {}, {}", std::int32_t{op.line}, std::int32_t{op.col});
+}
+
+void modern::operator()(const fail_keep &op) {
+  emit(op, "FAIL_KEEP {}, {}", std::int32_t{op.line}, std::int32_t{op.col});
+}
+
+void modern::operator()(const string &op) {
+  emit(op, "STRING {}", string_at(op.string_offset));
+}
+
+void modern::operator()(const sexp &op) {
+  emit(op, "SEXP {}, {}", string_at(op.tag_offset), std::int32_t{op.n_fields});
+}
+
+void modern::operator()(const tag &op) {
+  emit(op, "TAG {}, {}", string_at(op.tag_offset), std::int32_t{op.n_fields});
+}
+
+void modern::operator()(const begin_closure &op) {
   emit(
-    instruction,
-    "BEGIN {}, {}",
-    std::int32_t{instruction.n_args},
-    std::int32_t{instruction.n_locals});
-}
-
-void modern::operator()(const call &instruction) {
-  emit(instruction, "CALL {}, {}", target(instruction.target), std::int32_t{instruction.n_args});
-}
-
-void modern::operator()(const fail &instruction) {
-  emit(instruction, "FAIL {}, {}", std::int32_t{instruction.line}, std::int32_t{instruction.col});
-}
-
-void modern::operator()(const fail_keep &instruction) {
-  emit(
-    instruction,
-    "FAIL_KEEP {}, {}",
-    std::int32_t{instruction.line},
-    std::int32_t{instruction.col});
-}
-
-void modern::operator()(const string &instruction) {
-  emit(instruction, "STRING {}", string_at(instruction.string_offset));
-}
-
-void modern::operator()(const sexp &instruction) {
-  emit(
-    instruction,
-    "SEXP {}, {}",
-    string_at(instruction.tag_offset),
-    std::int32_t{instruction.n_fields});
-}
-
-void modern::operator()(const tag &instruction) {
-  emit(
-    instruction,
-    "TAG {}, {}",
-    string_at(instruction.tag_offset),
-    std::int32_t{instruction.n_fields});
-}
-
-void modern::operator()(const begin_closure &instruction) {
-  emit(
-    instruction,
+    op,
     "BEGIN_CLOSURE {}, {}, {}",
-    std::int32_t{instruction.n_args},
-    std::int32_t{instruction.n_locals},
-    std::int32_t{instruction.n_captured});
+    std::int32_t{op.n_args},
+    std::int32_t{op.n_locals},
+    std::int32_t{op.n_captured});
 }
 
-void modern::operator()(const closure &instruction, std::span<const closure::capture> captures) {
-  auto bytes = hex_bytes(instruction);
+void modern::operator()(const closure &op, std::span<const closure::capture> captures) {
+  auto bytes = hex_bytes(op);
   std::string captured;
   for (const auto &capture : captures) {
     bytes += ' ';
@@ -463,20 +436,17 @@ void modern::operator()(const closure &instruction, std::span<const closure::cap
   }
 
   emit(
-    sizeof(instruction) + captures.size_bytes(),
+    sizeof(op) + captures.size_bytes(),
     std::move(bytes),
-    std::format("CLOSURE {}, [{}]", target(instruction.target), captured));
+    std::format("CLOSURE {}, [{}]", target(op.target), captured));
 }
 
-void modern::operator()(std::size_t offset, std::string_view message) {
-  *err << "offset " << offset << ": " << message << '\n';
-}
-
-auto modern::operator()(std::span<const std::byte> bytes) -> std::expected<void, std::monostate> {
+auto modern::operator()(std::span<const std::byte> bytes)
+  -> std::expected<void, std::vector<std::string>> {
   rows.clear();
   code_offset = 0;
   print_code_header();
-  if (auto result = read_code(bytes, *this); !result) {
+  if (auto result = read_ops(bytes, *this); !result) {
     rows.clear();
     code_offset = 0;
     return result;

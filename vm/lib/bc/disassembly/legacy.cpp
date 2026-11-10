@@ -15,13 +15,12 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
+#include <vector>
 
 namespace lamavm::bc::disassembly {
 
-legacy::legacy(std::ostream &output, std::ostream &error_output)
-  : out(&output)
-  , err(&error_output) {
+legacy::legacy(std::ostream &output)
+  : out(&output) {
 }
 
 auto legacy::string_at(std::int32_t offset) const -> std::string_view {
@@ -64,13 +63,13 @@ auto legacy::designation(enum closure::capture::kind kind, std::int32_t index) c
   throw lamavm::exception("invalid capture kind");
 }
 
-void legacy::emit(std::size_t size, std::string_view instruction) {
-  *out << instruction << '\n';
+void legacy::emit(std::size_t size, std::string_view op) {
+  *out << op << '\n';
   code_offset += size;
 }
 
-void legacy::operator()(const header &instruction) {
-  (void)instruction;
+void legacy::operator()(const header &op) {
+  (void)op;
 
   strings.clear();
   code_offset = 0;
@@ -80,237 +79,225 @@ void legacy::operator()(std::string_view table) {
   strings = table;
 }
 
-void legacy::operator()(const import &instruction) {
-  *out << std::format("IMPORT ({})\n", support::quote(string_at(instruction.name_offset)));
+void legacy::operator()(const import &op) {
+  *out << std::format("IMPORT ({})\n", support::quote(string_at(op.name_offset)));
 }
 
-void legacy::operator()(const public_symbol &instruction) {
+void legacy::operator()(const public_symbol &op) {
   *out << std::format(
     "PUBLIC ({}, {})\n",
-    support::quote(string_at(instruction.name_offset)),
-    instruction.flag == public_symbol::flag::function ? "true" : "false");
+    support::quote(string_at(op.name_offset)),
+    op.flag == public_symbol::flag::function ? "true" : "false");
 }
 
-void legacy::operator()(const add &instruction) {
-  emit(sizeof(instruction), "BINOP (\"+\")");
+void legacy::operator()(const add &op) {
+  emit(sizeof(op), "BINOP (\"+\")");
 }
 
-void legacy::operator()(const sub &instruction) {
-  emit(sizeof(instruction), "BINOP (\"-\")");
+void legacy::operator()(const sub &op) {
+  emit(sizeof(op), "BINOP (\"-\")");
 }
 
-void legacy::operator()(const mul &instruction) {
-  emit(sizeof(instruction), "BINOP (\"*\")");
+void legacy::operator()(const mul &op) {
+  emit(sizeof(op), "BINOP (\"*\")");
 }
 
-void legacy::operator()(const div &instruction) {
-  emit(sizeof(instruction), "BINOP (\"/\")");
+void legacy::operator()(const div &op) {
+  emit(sizeof(op), "BINOP (\"/\")");
 }
 
-void legacy::operator()(const mod &instruction) {
-  emit(sizeof(instruction), "BINOP (\"%\")");
+void legacy::operator()(const mod &op) {
+  emit(sizeof(op), "BINOP (\"%\")");
 }
 
-void legacy::operator()(const lt &instruction) {
-  emit(sizeof(instruction), "BINOP (\"<\")");
+void legacy::operator()(const lt &op) {
+  emit(sizeof(op), "BINOP (\"<\")");
 }
 
-void legacy::operator()(const le &instruction) {
-  emit(sizeof(instruction), "BINOP (\"<=\")");
+void legacy::operator()(const le &op) {
+  emit(sizeof(op), "BINOP (\"<=\")");
 }
 
-void legacy::operator()(const gt &instruction) {
-  emit(sizeof(instruction), "BINOP (\">\")");
+void legacy::operator()(const gt &op) {
+  emit(sizeof(op), "BINOP (\">\")");
 }
 
-void legacy::operator()(const ge &instruction) {
-  emit(sizeof(instruction), "BINOP (\">=\")");
+void legacy::operator()(const ge &op) {
+  emit(sizeof(op), "BINOP (\">=\")");
 }
 
-void legacy::operator()(const eq &instruction) {
-  emit(sizeof(instruction), "BINOP (\"==\")");
+void legacy::operator()(const eq &op) {
+  emit(sizeof(op), "BINOP (\"==\")");
 }
 
-void legacy::operator()(const ne &instruction) {
-  emit(sizeof(instruction), "BINOP (\"!=\")");
+void legacy::operator()(const ne &op) {
+  emit(sizeof(op), "BINOP (\"!=\")");
 }
 
-void legacy::operator()(const logical_and &instruction) {
-  emit(sizeof(instruction), "BINOP (\"&&\")");
+void legacy::operator()(const logical_and &op) {
+  emit(sizeof(op), "BINOP (\"&&\")");
 }
 
-void legacy::operator()(const logical_or &instruction) {
-  emit(sizeof(instruction), "BINOP (\"!!\")");
+void legacy::operator()(const logical_or &op) {
+  emit(sizeof(op), "BINOP (\"!!\")");
 }
 
-void legacy::operator()(const sti &instruction) {
-  emit(sizeof(instruction), "STI");
+void legacy::operator()(const sti &op) {
+  emit(sizeof(op), "STI");
 }
 
-void legacy::operator()(const sta &instruction) {
-  emit(sizeof(instruction), "STA");
+void legacy::operator()(const sta &op) {
+  emit(sizeof(op), "STA");
 }
 
-void legacy::operator()(const end &instruction) {
-  emit(sizeof(instruction), "END");
+void legacy::operator()(const end &op) {
+  emit(sizeof(op), "END");
 }
 
-void legacy::operator()(const ret &instruction) {
-  emit(sizeof(instruction), "RET");
+void legacy::operator()(const ret &op) {
+  emit(sizeof(op), "RET");
 }
 
-void legacy::operator()(const drop &instruction) {
-  emit(sizeof(instruction), "DROP");
+void legacy::operator()(const drop &op) {
+  emit(sizeof(op), "DROP");
 }
 
-void legacy::operator()(const dup &instruction) {
-  emit(sizeof(instruction), "DUP");
+void legacy::operator()(const dup &op) {
+  emit(sizeof(op), "DUP");
 }
 
-void legacy::operator()(const swap &instruction) {
-  emit(sizeof(instruction), "SWAP");
+void legacy::operator()(const swap &op) {
+  emit(sizeof(op), "SWAP");
 }
 
-void legacy::operator()(const elem &instruction) {
-  emit(sizeof(instruction), "ELEM");
+void legacy::operator()(const elem &op) {
+  emit(sizeof(op), "ELEM");
 }
 
-void legacy::operator()(const constant &instruction) {
-  emit(sizeof(instruction), std::format("CONST ({})", std::int32_t{instruction.value}));
+void legacy::operator()(const constant &op) {
+  emit(sizeof(op), std::format("CONST ({})", std::int32_t{op.value}));
 }
 
-void legacy::operator()(const array &instruction) {
-  emit(sizeof(instruction), std::format("ARRAY ({})", std::int32_t{instruction.n}));
+void legacy::operator()(const array &op) {
+  emit(sizeof(op), std::format("ARRAY ({})", std::int32_t{op.n}));
 }
 
-void legacy::operator()(const line &instruction) {
-  emit(sizeof(instruction), std::format("LINE ({})", std::int32_t{instruction.line}));
+void legacy::operator()(const line &op) {
+  emit(sizeof(op), std::format("LINE ({})", std::int32_t{op.line}));
 }
 
-void legacy::operator()(const string &instruction) {
+void legacy::operator()(const string &op) {
+  emit(sizeof(op), std::format("STRING ({})", support::quote(string_at(op.string_offset))));
+}
+
+void legacy::operator()(const sexp &op) {
   emit(
-    sizeof(instruction),
-    std::format("STRING ({})", support::quote(string_at(instruction.string_offset))));
-}
-
-void legacy::operator()(const sexp &instruction) {
-  emit(
-    sizeof(instruction),
+    sizeof(op),
     std::format(
       "SEXP ({}, {})",
-      support::quote(string_at(instruction.tag_offset)),
-      std::int32_t{instruction.n_fields}));
+      support::quote(string_at(op.tag_offset)),
+      std::int32_t{op.n_fields}));
 }
 
-void legacy::operator()(const tag &instruction) {
+void legacy::operator()(const tag &op) {
   emit(
-    sizeof(instruction),
+    sizeof(op),
     std::format(
       "TAG ({}, {})",
-      support::quote(string_at(instruction.tag_offset)),
-      std::int32_t{instruction.n_fields}));
+      support::quote(string_at(op.tag_offset)),
+      std::int32_t{op.n_fields}));
 }
 
-void legacy::operator()(const jmp &instruction) {
-  emit(sizeof(instruction), std::format("JMP ({})", target(instruction.target)));
+void legacy::operator()(const jmp &op) {
+  emit(sizeof(op), std::format("JMP ({})", target(op.target)));
 }
 
-void legacy::operator()(const cjmp_z &instruction) {
-  emit(sizeof(instruction), std::format("CJMP (\"z\", {})", target(instruction.target)));
+void legacy::operator()(const cjmp_z &op) {
+  emit(sizeof(op), std::format("CJMP (\"z\", {})", target(op.target)));
 }
 
-void legacy::operator()(const cjmp_nz &instruction) {
-  emit(sizeof(instruction), std::format("CJMP (\"nz\", {})", target(instruction.target)));
+void legacy::operator()(const cjmp_nz &op) {
+  emit(sizeof(op), std::format("CJMP (\"nz\", {})", target(op.target)));
 }
 
-void legacy::operator()(const ld_glo &instruction) {
+void legacy::operator()(const ld_glo &op) {
+  emit(sizeof(op), std::format("LD ({})", designation(closure::capture::kind::global, op.operand)));
+}
+
+void legacy::operator()(const ld_loc &op) {
+  emit(sizeof(op), std::format("LD ({})", designation(closure::capture::kind::local, op.operand)));
+}
+
+void legacy::operator()(const ld_arg &op) {
   emit(
-    sizeof(instruction),
-    std::format("LD ({})", designation(closure::capture::kind::global, instruction.operand)));
+    sizeof(op),
+    std::format("LD ({})", designation(closure::capture::kind::argument, op.operand)));
 }
 
-void legacy::operator()(const ld_loc &instruction) {
+void legacy::operator()(const ld_clo &op) {
   emit(
-    sizeof(instruction),
-    std::format("LD ({})", designation(closure::capture::kind::local, instruction.operand)));
+    sizeof(op),
+    std::format("LD ({})", designation(closure::capture::kind::captured, op.operand)));
 }
 
-void legacy::operator()(const ld_arg &instruction) {
+void legacy::operator()(const lda_glo &op) {
   emit(
-    sizeof(instruction),
-    std::format("LD ({})", designation(closure::capture::kind::argument, instruction.operand)));
+    sizeof(op),
+    std::format("LDA ({})", designation(closure::capture::kind::global, op.operand)));
 }
 
-void legacy::operator()(const ld_clo &instruction) {
+void legacy::operator()(const lda_loc &op) {
+  emit(sizeof(op), std::format("LDA ({})", designation(closure::capture::kind::local, op.operand)));
+}
+
+void legacy::operator()(const lda_arg &op) {
   emit(
-    sizeof(instruction),
-    std::format("LD ({})", designation(closure::capture::kind::captured, instruction.operand)));
+    sizeof(op),
+    std::format("LDA ({})", designation(closure::capture::kind::argument, op.operand)));
 }
 
-void legacy::operator()(const lda_glo &instruction) {
+void legacy::operator()(const lda_clo &op) {
   emit(
-    sizeof(instruction),
-    std::format("LDA ({})", designation(closure::capture::kind::global, instruction.operand)));
+    sizeof(op),
+    std::format("LDA ({})", designation(closure::capture::kind::captured, op.operand)));
 }
 
-void legacy::operator()(const lda_loc &instruction) {
+void legacy::operator()(const st_glo &op) {
+  emit(sizeof(op), std::format("ST ({})", designation(closure::capture::kind::global, op.operand)));
+}
+
+void legacy::operator()(const st_loc &op) {
+  emit(sizeof(op), std::format("ST ({})", designation(closure::capture::kind::local, op.operand)));
+}
+
+void legacy::operator()(const st_arg &op) {
   emit(
-    sizeof(instruction),
-    std::format("LDA ({})", designation(closure::capture::kind::local, instruction.operand)));
+    sizeof(op),
+    std::format("ST ({})", designation(closure::capture::kind::argument, op.operand)));
 }
 
-void legacy::operator()(const lda_arg &instruction) {
+void legacy::operator()(const st_clo &op) {
   emit(
-    sizeof(instruction),
-    std::format("LDA ({})", designation(closure::capture::kind::argument, instruction.operand)));
+    sizeof(op),
+    std::format("ST ({})", designation(closure::capture::kind::captured, op.operand)));
 }
 
-void legacy::operator()(const lda_clo &instruction) {
-  emit(
-    sizeof(instruction),
-    std::format("LDA ({})", designation(closure::capture::kind::captured, instruction.operand)));
-}
-
-void legacy::operator()(const st_glo &instruction) {
-  emit(
-    sizeof(instruction),
-    std::format("ST ({})", designation(closure::capture::kind::global, instruction.operand)));
-}
-
-void legacy::operator()(const st_loc &instruction) {
-  emit(
-    sizeof(instruction),
-    std::format("ST ({})", designation(closure::capture::kind::local, instruction.operand)));
-}
-
-void legacy::operator()(const st_arg &instruction) {
-  emit(
-    sizeof(instruction),
-    std::format("ST ({})", designation(closure::capture::kind::argument, instruction.operand)));
-}
-
-void legacy::operator()(const st_clo &instruction) {
-  emit(
-    sizeof(instruction),
-    std::format("ST ({})", designation(closure::capture::kind::captured, instruction.operand)));
-}
-
-void legacy::operator()(const begin &instruction) {
+void legacy::operator()(const begin &op) {
   const auto label = support::quote(std::format("0x{:08x}", code_offset));
   *out << std::format("LABEL ({})\n", label);
   emit(
-    sizeof(instruction),
+    sizeof(op),
     std::format(
       "BEGIN ({}, {}, {}, [], [], [])",
       label,
-      std::int32_t{instruction.n_args},
-      std::int32_t{instruction.n_locals}));
+      std::int32_t{op.n_args},
+      std::int32_t{op.n_locals}));
 }
 
-void legacy::operator()(const begin_closure &instruction) {
+void legacy::operator()(const begin_closure &op) {
   const auto label = support::quote(std::format("0x{:08x}", code_offset));
   std::string captured;
-  for (std::int32_t i = 0; i < std::int32_t{instruction.n_captured}; ++i) {
+  for (std::int32_t i = 0; i < std::int32_t{op.n_captured}; ++i) {
     if (i != 0) {
       captured += "; ";
     }
@@ -320,16 +307,16 @@ void legacy::operator()(const begin_closure &instruction) {
 
   *out << std::format("LABEL ({})\n", label);
   emit(
-    sizeof(instruction),
+    sizeof(op),
     std::format(
       "BEGIN ({}, {}, {}, [{}], [], [])",
       label,
-      std::int32_t{instruction.n_args},
-      std::int32_t{instruction.n_locals},
+      std::int32_t{op.n_args},
+      std::int32_t{op.n_locals},
       captured));
 }
 
-void legacy::operator()(const closure &instruction, std::span<const closure::capture> captures) {
+void legacy::operator()(const closure &op, std::span<const closure::capture> captures) {
   std::string captured;
   for (const auto &capture : captures) {
     if (!captured.empty()) {
@@ -340,85 +327,69 @@ void legacy::operator()(const closure &instruction, std::span<const closure::cap
   }
 
   emit(
-    sizeof(instruction) + captures.size_bytes(),
-    std::format("CLOSURE ({}, [{}])", target(instruction.target), captured));
+    sizeof(op) + captures.size_bytes(),
+    std::format("CLOSURE ({}, [{}])", target(op.target), captured));
 }
 
-void legacy::operator()(const callc &instruction) {
-  emit(sizeof(instruction), std::format("CALLC ({}, false)", std::int32_t{instruction.n_args}));
+void legacy::operator()(const callc &op) {
+  emit(sizeof(op), std::format("CALLC ({}, false)", std::int32_t{op.n_args}));
 }
 
-void legacy::operator()(const call &instruction) {
+void legacy::operator()(const call &op) {
+  emit(sizeof(op), std::format("CALL ({}, {}, false)", target(op.target), std::int32_t{op.n_args}));
+}
+
+void legacy::operator()(const barray &op) {
+  emit(sizeof(op), std::format("CALL (\".array\", {}, false)", std::int32_t{op.n}));
+}
+
+void legacy::operator()(const fail &op) {
   emit(
-    sizeof(instruction),
-    std::format(
-      "CALL ({}, {}, false)",
-      target(instruction.target),
-      std::int32_t{instruction.n_args}));
+    sizeof(op),
+    std::format("FAIL (({}, {}), false)", std::int32_t{op.line}, std::int32_t{op.col}));
 }
 
-void legacy::operator()(const barray &instruction) {
+void legacy::operator()(const fail_keep &op) {
   emit(
-    sizeof(instruction),
-    std::format("CALL (\".array\", {}, false)", std::int32_t{instruction.n}));
+    sizeof(op),
+    std::format("FAIL (({}, {}), true)", std::int32_t{op.line}, std::int32_t{op.col}));
 }
 
-void legacy::operator()(const fail &instruction) {
-  emit(
-    sizeof(instruction),
-    std::format(
-      "FAIL (({}, {}), false)",
-      std::int32_t{instruction.line},
-      std::int32_t{instruction.col}));
+void legacy::operator()(const patt_str_cmp &op) {
+  emit(sizeof(op), "PATT (StrCmp)");
 }
 
-void legacy::operator()(const fail_keep &instruction) {
-  emit(
-    sizeof(instruction),
-    std::format(
-      "FAIL (({}, {}), true)",
-      std::int32_t{instruction.line},
-      std::int32_t{instruction.col}));
+void legacy::operator()(const patt_string &op) {
+  emit(sizeof(op), "PATT (String)");
 }
 
-void legacy::operator()(const patt_str_cmp &instruction) {
-  emit(sizeof(instruction), "PATT (StrCmp)");
+void legacy::operator()(const patt_array &op) {
+  emit(sizeof(op), "PATT (Array)");
 }
 
-void legacy::operator()(const patt_string &instruction) {
-  emit(sizeof(instruction), "PATT (String)");
+void legacy::operator()(const patt_sexp &op) {
+  emit(sizeof(op), "PATT (Sexp)");
 }
 
-void legacy::operator()(const patt_array &instruction) {
-  emit(sizeof(instruction), "PATT (Array)");
+void legacy::operator()(const patt_boxed &op) {
+  emit(sizeof(op), "PATT (Boxed)");
 }
 
-void legacy::operator()(const patt_sexp &instruction) {
-  emit(sizeof(instruction), "PATT (Sexp)");
+void legacy::operator()(const patt_unboxed &op) {
+  emit(sizeof(op), "PATT (UnBoxed)");
 }
 
-void legacy::operator()(const patt_boxed &instruction) {
-  emit(sizeof(instruction), "PATT (Boxed)");
+void legacy::operator()(const patt_closure &op) {
+  emit(sizeof(op), "PATT (Closure)");
 }
 
-void legacy::operator()(const patt_unboxed &instruction) {
-  emit(sizeof(instruction), "PATT (UnBoxed)");
+void legacy::operator()(const eof &op) {
+  (void)op;
 }
 
-void legacy::operator()(const patt_closure &instruction) {
-  emit(sizeof(instruction), "PATT (Closure)");
-}
-
-void legacy::operator()(const eof &instruction) {
-  (void)instruction;
-}
-
-void legacy::operator()(std::size_t offset, std::string_view message) {
-  *err << "offset " << offset << ": " << message << '\n';
-}
-
-auto legacy::operator()(std::span<const std::byte> bytes) -> std::expected<void, std::monostate> {
-  return read_code(bytes, *this);
+auto legacy::operator()(std::span<const std::byte> bytes)
+  -> std::expected<void, std::vector<std::string>> {
+  return read_ops(bytes, *this);
 }
 
 } // namespace lamavm::bc::disassembly

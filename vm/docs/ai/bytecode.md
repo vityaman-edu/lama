@@ -4,15 +4,20 @@
 
 The compiler's [src/SM.ml](../../../src/SM.ml) owns serialization and dump syntax.
 The VM's [layout.hpp](../../lib/bc/layout.hpp) defines packed version-1 wire
-structures and `opcode`. Headers contain declarations only; implementations,
-including default listener callbacks, live in `.cpp` translation units.
+structures and `opcode`. Headers contain declarations; implementations live in
+`.cpp` translation units, except the templated `read_op` wrapper and its decoder in
+[code_reader.detail.hpp](../../lib/bc/code_reader.detail.hpp).
 
 - `read_file(stream, file_listener&)` parses the header, string table, imports
-  and public symbols, then passes the remaining code bytes to a single
+  and public symbols, reads the remaining code bytes, then validates them with
+  `read_ops` and [code_listener_nop](../../lib/bc/code_listener_nop.hpp) before
+  passing the original bytes to a single
   `std::span<const std::byte>` callback. This callback returns
-  `std::expected<void, std::monostate>` so a decoder failure propagates to the
-  file caller. A file listener decides whether to decode or retain that code.
-- `read_code(span, code_listener&)` decodes instructions independently of file
+  `std::expected<void, std::vector<std::string>>` so a decoder failure propagates
+  to the file caller. Invalid code returns decoder diagnostics and does not reach
+  the code-span callback. A file listener decides whether to decode or retain the
+  validated code.
+- `read_ops(span, code_listener&)` decodes instructions independently of file
   metadata. It checks bounds and passes packed instruction views and closure-capture
   spans directly from the input buffer, without copying or allocating. Mutable byte
   spans can also be passed to this read-only interface.
@@ -20,13 +25,34 @@ including default listener callbacks, live in `.cpp` translation units.
   and [code_reader.hpp](../../lib/bc/code_reader.hpp), respectively.
 - `file_listener` and `code_listener` have separate headers and translation
   units. The former handles metadata and the code span; the latter has one
-  typed callback per instruction. Every callback is pure virtual, including the
-  diagnostic callback. Implementations provide all callbacks explicitly; test-only
-  no-op adapters live under `test/support`. Pure virtual destructors are defined
+  typed callback per instruction. Every callback is pure virtual. There is no
+  diagnostic callback. Implementations provide all callbacks explicitly.
+  `code_listener_nop` implements every code callback as a no-op and supports
+  deriving listeners that override selected callbacks. The test-only no-op file
+  listener lives under `test/support`. Pure virtual destructors are defined
   out of line, while construction and copy operations are implicit. The
   `cppcoreguidelines-special-member-functions` check is disabled in `.clang-tidy`
   to allow this interface design without explicit special-member boilerplate.
+- `read_op<Listener, bool unsafe = false>(code, listener)` is templated on the
+  concrete listener type and compile-time validation mode, without
+  type erasure or a required `code_listener` base. It decodes exactly one
+  instruction from the span prefix, including its closure captures, and returns `std::expected<void, std::string>`.
+  The listener advances its own offset. No offset argument or following EOF is
+  required. With validation enabled, empty spans fail. Diagnostic offsets are
+  relative to the span.
+  `read_ops` retains its `code_listener&` interface and shares the same decoder
+  to read through EOF. It returns
+  `std::expected<void, std::vector<std::string>>`. Decoding stops at the first
+  invalid instruction.
+- `read_op_unsafe(code, listener)` calls `read_op<Listener, true>`. Unsafe mode
+  removes decoder checks at compile time: code size, bounds, capture count/kinds
+  and unknown opcodes. It requires a complete, valid instruction prefix; invalid
+  input has undefined behavior. It returns the same expected status as `read_op`.
+  `read_ops` and file decoding keep validation enabled.
 - File diagnostics use file offsets; code diagnostics use code-section offsets.
+  Error strings include `offset N: scope: message`. `read_file` collects
+  recoverable metadata errors, stops on framing failures, and returns all collected
+  diagnostics in its error vector. It propagates code-span callback errors unchanged.
   Invalid metadata or instructions return an unexpected result. Listeners can
   throw, including printers rejecting invalid string references.
 - The bytecode module requires a little-endian host, enforced by a static
@@ -51,18 +77,21 @@ The `bc/disassembly` module exposes `disassembly::modern` in
 [modern.hpp](../../lib/bc/disassembly/modern.hpp) and `disassembly::legacy` in
 [legacy.hpp](../../lib/bc/disassembly/legacy.hpp). Both public classes derive
 directly from `file_listener` and `code_listener`; all implementations remain
-in their corresponding `.cpp` files. Construct a listener with output and
-diagnostic streams, then pass it to `read_file`, or forward retained metadata
+in their corresponding `.cpp` files. Construct a listener with an output stream,
+then pass it to `read_file`, or forward retained metadata
 and code callbacks before executing the same code bytes. Listeners also work
 with retained code: pass its span to the listener after supplying the metadata.
-Creating a printer does not consume input. The streams must outlive the listener.
+Creating a printer does not consume input. The stream must outlive the listener.
+The CLI selects a `std::unique_ptr<file_listener>` in the disassembly-kind
+switch, then reads and prints returned diagnostics to stderr in one common path.
 
 The printer writes one line per instruction, including EOF:
 `<decimal code offset>:\t<uppercase hex bytes separated by spaces>\t<symbolic>`.
 The three columns are separated by literal tab characters. In the file listener's
-code-span callback, `read_code` collects instruction rows into a vector. After
+code-span callback, `read_ops` collects instruction rows into a vector. After
 decoding succeeds, the listener computes column widths and formats those rows.
-There is no code-start callback or extra parsing pass. Padding before tabs keeps
+File reading validates code first; the code-span callback decodes it again
+to collect listing rows. There is no code-start callback. Padding before tabs keeps
 columns aligned even beyond a single tab stop.
 A full-file dump starts with `header`, `string_table`, `imports` and
 `public_symbols` sections, including empty tables. Header fields include magic,

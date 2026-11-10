@@ -1,5 +1,7 @@
 #include "file_reader.hpp"
 
+#include "code_listener_nop.hpp"
+#include "code_reader.hpp"
 #include "file_listener.hpp"
 #include "layout.hpp"
 
@@ -32,11 +34,11 @@ public:
     , listener(&output) {
   }
 
-  auto read() -> status {
+  auto read() -> std::expected<void, std::vector<std::string>> {
     auto h =
       scoped("header", [this] -> std::expected<header, std::monostate> { return read_header(); });
     if (!h) {
-      return std::unexpected(h.error());
+      return std::unexpected(std::move(errors));
     }
 
     const auto strings_size = static_cast<std::size_t>(h->string_table_size);
@@ -45,31 +47,37 @@ public:
         return read_strings(strings_size);
       });
     if (!strings) {
-      return std::unexpected(strings.error());
+      return std::unexpected(std::move(errors));
     }
 
     listener->operator()(std::string_view(*strings));
 
-    if (auto e = scoped("import", [this, &h] -> status { return read_imports(*h); }); !e) {
-      return std::unexpected(e.error());
+    if (const auto e = scoped("import", [this, &h] -> status { return read_imports(*h); }); !e) {
+      return std::unexpected(std::move(errors));
     }
 
-    if (auto e = scoped("symbol", [this, &h] -> status { return read_symbols(*h); }); !e) {
-      return std::unexpected(e.error());
+    if (const auto e = scoped("symbol", [this, &h] -> status { return read_symbols(*h); }); !e) {
+      return std::unexpected(std::move(errors));
     }
 
     auto code = scoped("code", [this] -> std::expected<std::vector<std::byte>, std::monostate> {
       return read_code_bytes();
     });
     if (!code) {
-      return std::unexpected(code.error());
+      return std::unexpected(std::move(errors));
     }
 
-    if (is_failed) {
-      return std::unexpected(std::monostate{});
+    if (!errors.empty()) {
+      return std::unexpected(std::move(errors));
     }
 
-    return listener->operator()(std::span<const std::byte>(*code));
+    const auto bytes = std::span<const std::byte>(*code);
+    code_listener_nop validator;
+    if (auto e = read_ops(bytes, validator); !e) {
+      return e;
+    }
+
+    return listener->operator()(bytes);
   }
 
 private:
@@ -81,8 +89,7 @@ private:
   }
 
   auto error(std::size_t offset, std::string_view message) -> std::unexpected<std::monostate> {
-    is_failed = true;
-    listener->operator()(offset, std::format("{}: {}", scope, message));
+    errors.push_back(std::format("offset {}: {}: {}", offset, scope, message));
     return std::unexpected(std::monostate{});
   }
 
@@ -281,12 +288,13 @@ private:
   file_listener *listener;
   std::string_view scope;
   std::size_t bytes_read = 0;
-  bool is_failed = false;
+  std::vector<std::string> errors;
 };
 
 } // namespace
 
-auto read_file(std::istream &in, file_listener &listener) -> std::expected<void, std::monostate> {
+auto read_file(std::istream &in, file_listener &listener)
+  -> std::expected<void, std::vector<std::string>> {
   return file_reader(in, listener).read();
 }
 

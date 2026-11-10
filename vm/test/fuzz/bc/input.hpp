@@ -5,6 +5,7 @@
 namespace lamavm::bc::test {
 
 void read_random_bytes(const std::string &bytes);
+void read_random_op(const std::string &bytes);
 void read_random_code(const std::string &bytes);
 
 } // namespace lamavm::bc::test
