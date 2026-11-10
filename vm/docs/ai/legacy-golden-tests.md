@@ -71,10 +71,10 @@ class LaMaVM:
     def interpret(self, bc: bytes, stdin: str) -> str: ...
 ```
 
-- `printbc` runs the selected built `lamavm -ds`, passes `bc` to binary stdin,
+- `printbc` runs the selected built `lamavm --ds`, passes `bc` to binary stdin,
   and returns decoded stdout. Decoder failure fails even with partial stdout.
 - The current executable dumps stdin without parsing arguments. Add explicit
-  `-ds` support, preserve no-argument dump mode, and reject unsupported arguments
+  `--ds` support, enable dump output only with that flag, and reject unsupported arguments
   with nonzero status. No filename argument is needed in this phase.
 - `interpret` raises `NotImplementedError`; implementing VM execution is deferred.
 

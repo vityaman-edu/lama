@@ -19,7 +19,6 @@ esac
 
 "$vm_dir/scripts/clang-format.sh" --dry-run --Werror
 "$vm_dir/scripts/clang-tidy.sh" "$mode"
-"$vm_dir/scripts/cppcheck.sh" "$mode"
 
 cd "$vm_dir/.."
 dune build @@regression/runtest

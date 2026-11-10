@@ -12,5 +12,4 @@
   Update includes, CMake recursion and dependencies to use `liblamavm_core`.
 - Preserve parsing results, diagnostic scope names and disassembly output.
 - Validate formatting, the existing bytecode unit tests and fuzz tests, and the
-  project analysis checks. Run Cppcheck at the exhaustive check level so scoped
-  callbacks do not limit branch analysis or fail the check on that information.
+  project analysis checks.

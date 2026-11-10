@@ -1,10 +1,10 @@
+#include "args.hpp"
 #include "bc/input.hpp"
 #include "bc/lamac_ds.hpp"
 
 #include <cstddef>
 #include <exception>
 #include <iostream>
-#include <span>
 #include <string_view>
 
 namespace {
@@ -21,22 +21,21 @@ public:
 
 } // namespace
 
-auto main(int argc, char **argv) -> int {
-  const auto args = std::span(argv, static_cast<std::size_t>(argc));
-  if (args.size() != 1 && (args.size() != 2 || std::string_view(args.back()) != "-ds")) {
-    std::cerr << "Usage: lamavm [-ds]\n";
-    return 2;
+auto main(int argc, char **argv) -> int try {
+  const auto arguments = lamavm::args::parse(argc, argv);
+  if (!arguments) {
+    return arguments.error();
   }
 
-  try {
+  if (arguments->ds) {
     listener output(std::cout);
     if (const auto e = lamavm::bc::read_file(std::cin, output); !e) {
       return 1;
     }
-
-    return 0;
-  } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
-    return 1;
   }
+
+  return 0;
+} catch (const std::exception &e) {
+  std::cerr << e.what() << '\n';
+  return 1;
 }

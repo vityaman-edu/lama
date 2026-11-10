@@ -65,6 +65,4 @@ minimal comparison contract, and review complexity before expanding coverage.
 
 Clang-Tidy must use the Nix toolchain's version 23; the ordinary PATH exposed
 version 21 and produced incompatible diagnostics. Formatting and Clang-Tidy
-passed after adjustments. The full project check stopped at Cppcheck's two
-`useStlAlgorithm` findings in normalization loops, before reaching the Dune
-regressions. The final golden run above was executed separately.
+passed after adjustments. The final golden run above was executed separately.

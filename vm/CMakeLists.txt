@@ -8,14 +8,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(LAMAVM_CXX_FLAGS -Wall -Wextra -Wpedantic)
 
 include(CTest)
+include(cmake/Cxxopts.cmake)
 include(cmake/Sanitizer.cmake)
 include(cmake/FuzzTest.cmake)
 include(cmake/Library.cmake)
 
 add_subdirectory(lib)
 
-add_executable(lamavm app/main.cpp)
-target_link_libraries(lamavm PRIVATE liblamavm)
+add_executable(lamavm app/main.cpp app/args.cpp)
+target_link_libraries(lamavm PRIVATE liblamavm cxxopts::cxxopts)
 target_compile_options(lamavm PRIVATE ${LAMAVM_CXX_FLAGS})
 
 include(cmake/Test.cmake)
