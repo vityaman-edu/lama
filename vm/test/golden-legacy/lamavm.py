@@ -3,14 +3,17 @@ from pathlib import Path
 
 
 class LaMaVM:
-    def __init__(self, executable: Path, timeout: float = 30):
+    def __init__(self, executable: Path, timeout: float = 30) -> None:
         self.executable = executable.resolve()
         self.timeout = timeout
 
     def printbc(self, bc: bytes) -> str:
         result = subprocess.run(
-            [str(self.executable), "-ds"], input=bc, capture_output=True,
-            check=True, timeout=self.timeout,
+            [str(self.executable), "-ds"],
+            input=bc,
+            capture_output=True,
+            check=True,
+            timeout=self.timeout,
         )
         return result.stdout.decode("utf-8")
 

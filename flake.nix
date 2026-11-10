@@ -22,6 +22,7 @@
               llvmPackages_23.clang
               cppcheck
               python3
+              ruff
 
               git
 

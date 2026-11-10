@@ -4,6 +4,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from types import TracebackType
 
 sys.dont_write_bytecode = True
 
@@ -11,26 +12,28 @@ from lamac import LaMaC
 from lamavm import LaMaVM
 from test_printbc import PrintBytecodeTest
 
+ErrorInfo = tuple[type[BaseException], BaseException, TracebackType | None]
+
 
 class Results(unittest.TextTestResult):
-    def addSuccess(self, test):
+    def addSuccess(self, test: unittest.TestCase) -> None:
         super().addSuccess(test)
         self.stream.writeln(f"{test.id()} GOOD")
 
-    def addFailure(self, test, error):
+    def addFailure(self, test: unittest.TestCase, error: ErrorInfo) -> None:
         super().addFailure(test, error)
         self.stream.writeln(f"{test.id()} FAIL")
 
-    def addError(self, test, error):
+    def addError(self, test: unittest.TestCase, error: ErrorInfo) -> None:
         super().addError(test, error)
         self.stream.writeln(f"{test.id()} FAIL")
 
-    def addSkip(self, test, reason):
+    def addSkip(self, test: unittest.TestCase, reason: str) -> None:
         super().addSkip(test, reason)
         self.stream.writeln(f"{test.id()} SKIP: {reason}")
 
 
-def positive_seconds(value):
+def positive_seconds(value: str) -> float:
     seconds = float(value)
     if not math.isfinite(seconds) or seconds <= 0:
         raise argparse.ArgumentTypeError("timeout must be positive finite seconds")
@@ -38,7 +41,7 @@ def positive_seconds(value):
     return seconds
 
 
-def main():
+def main() -> int:
     directory = Path(__file__).resolve().parent
     vm = directory.parents[1]
     parser = argparse.ArgumentParser(description="Compare legacy LaMaC and LaMaVM bytecode dumps")
@@ -58,9 +61,7 @@ def main():
 
     lamac = LaMaC(args.lamac, args.timeout)
     lamavm = LaMaVM(args.lamavm, args.timeout)
-    suite = unittest.TestSuite(
-        PrintBytecodeTest(path, corpus, lamac, lamavm) for path in sources
-    )
+    suite = unittest.TestSuite(PrintBytecodeTest(path, corpus, lamac, lamavm) for path in sources)
     result = unittest.TextTestRunner(stream=sys.stdout, verbosity=0, resultclass=Results).run(suite)
     failed = len(result.failures) + len(result.errors)
     skipped = len(result.skipped)

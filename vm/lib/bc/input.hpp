@@ -36,34 +36,32 @@ public:
   }
 
   auto read() -> status {
-    enter("header");
-    auto h = read_header();
-    exit();
+    auto h =
+      scoped("header", [this] -> std::expected<header, std::monostate> { return read_header(); });
     if (!h) {
       return std::unexpected(h.error());
     }
 
     const auto strings_size = static_cast<std::size_t>(h->string_table_size);
-    enter("string table");
-    auto strings = read_strings(strings_size);
-    exit();
+    auto strings =
+      scoped("string table", [this, strings_size] -> std::expected<std::string, std::monostate> {
+        return read_strings(strings_size);
+      });
     if (!strings) {
       return std::unexpected(strings.error());
     }
 
     listener->Listener::operator()(std::string_view(*strings));
 
-    if (auto e = read_imports(*h); !e) {
+    if (auto e = scoped("import", [this, &h] -> status { return read_imports(*h); }); !e) {
       return std::unexpected(e.error());
     }
 
-    if (auto e = read_symbols(*h); !e) {
+    if (auto e = scoped("symbol", [this, &h] -> status { return read_symbols(*h); }); !e) {
       return std::unexpected(e.error());
     }
 
-    enter("code");
-    auto code = read_code();
-    exit();
+    auto code = scoped("code", [this] -> status { return read_code(); });
     if (!code) {
       return code;
     }
@@ -76,12 +74,11 @@ public:
   }
 
 private:
-  void enter(std::string_view name) {
-    scope = name;
-  }
-
-  void exit() {
-    scope = {};
+  auto scoped(std::string_view name, auto f) {
+    const auto previous = std::exchange(scope, name);
+    auto result = f();
+    scope = previous;
+    return result;
   }
 
   auto error(std::size_t offset, std::string_view message) -> std::unexpected<std::monostate> {
@@ -141,8 +138,11 @@ private:
 
   auto read_strings(std::size_t size) -> std::expected<std::string, std::monostate> {
     constexpr std::size_t buffer_size = 4096;
+
     std::array<char, buffer_size> buffer{};
+
     std::string table;
+    table.reserve(std::min(size, buffer_size));
     while (table.size() < size) {
       const auto count = std::min(size - table.size(), buffer.size());
       if (auto e = consume(count, buffer.data()); !e) {
@@ -157,6 +157,7 @@ private:
 
   auto read_header() -> std::expected<header, std::monostate> {
     const auto start = bytes_read;
+
     auto result = read<header>();
     if (!result) {
       return std::unexpected(result.error());
@@ -184,13 +185,16 @@ private:
     }
 
     constexpr auto end = std::int64_t{std::numeric_limits<std::int32_t>::max()} + 1;
+
     using field = std::pair<std::string_view, std::int32_t>;
+
     const std::array fields{
       field{"string_table_size", std::int32_t{h.string_table_size}},
       field{"globals_count", std::int32_t{h.globals_count}},
       field{"imports_count", std::int32_t{h.imports_count}},
       field{"public_symbols_count", std::int32_t{h.public_symbols_count}},
     };
+
     auto offset = start + offsetof(header, string_table_size);
     for (const auto &[name, value] : fields) {
       if (auto e = expect(name, value, end, offset); !e) {
@@ -206,6 +210,7 @@ private:
 
   auto read_import(const header &h) -> status {
     const auto start = bytes_read;
+
     auto entry = read<import>();
     if (!entry) {
       return std::unexpected(entry.error());
@@ -221,20 +226,18 @@ private:
   }
 
   auto read_imports(const header &h) -> status {
-    enter("import");
     for (std::int32_t i = 0; i < h.imports_count; ++i) {
       if (auto e = read_import(h); !e) {
-        exit();
         return e;
       }
     }
 
-    exit();
     return {};
   }
 
   auto read_symbol(const header &h) -> status {
     const auto start = bytes_read;
+
     auto entry = read<public_symbol>();
     if (!entry) {
       return std::unexpected(entry.error());
@@ -256,21 +259,19 @@ private:
   }
 
   auto read_symbols(const header &h) -> status {
-    enter("symbol");
     for (std::int32_t i = 0; i < h.public_symbols_count; ++i) {
       if (auto e = read_symbol(h); !e) {
-        exit();
         return e;
       }
     }
 
-    exit();
     return {};
   }
 
   template <typename Instruction>
   auto read_instruction() -> status {
     static_assert((sizeof(Instruction) - 1) % sizeof(std::int32_t) == 0);
+
     std::array<char, sizeof(Instruction)> bytes{};
     bytes.front() = static_cast<char>(Instruction::code);
     if (auto e = consume(bytes.size() - 1, std::span(bytes).subspan(1).data()); !e) {
@@ -307,6 +308,7 @@ private:
     std::vector<closure::capture> captures;
     for (std::int32_t i = 0; i < count; ++i) {
       const auto start = bytes_read;
+
       auto capture = read<closure::capture>();
       if (!capture) {
         return std::unexpected(capture.error());

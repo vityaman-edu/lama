@@ -1,8 +1,8 @@
 #include "bc/input.hpp"
-#include "bc/core/exception.hpp"
 #include "bc/lamac_ds.hpp"
 #include "bc/layout.hpp"
 #include "bc/listener.hpp"
+#include "core/exception.hpp"
 
 #include <gtest/gtest.h>
 

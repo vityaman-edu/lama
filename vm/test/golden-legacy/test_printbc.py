@@ -2,19 +2,39 @@ import difflib
 import re
 import subprocess
 import unittest
+from pathlib import Path
+from typing import Any
 
+from lamac import LaMaC
+from lamavm import LaMaVM
 
 TOKEN = re.compile(r'\s+|"(?:[^"\\]|\\.)*"|-?[0-9]+|[A-Za-z_][A-Za-z_0-9]*|[()[\]{},;=]')
 FORMS = {
-    "IMPORT": ("s", 0), "PUBLIC": ("sb", 0), "EXTERN": ("sb", 0),
-    "LABEL": ("s", 0), "FLABEL": ("s", 0), "SLABEL": ("s", 0),
-    "BEGIN": ("siilll", None), "CLOSURE": ("sl", None), "CALL": ("sib", None),
-    "CALLC": ("ib", 5), "JMP": ("s", 5), "CJMP": ("ss", 5),
-    "LD": ("d", 5), "LDA": ("d", 5), "ST": ("d", 5),
-    "BINOP": ("s", 1), "PATT": ("k", 1), "CONST": ("i", 5),
-    "STRING": ("s", 5), "SEXP": ("si", 9), "TAG": ("si", 9),
-    "ARRAY": ("i", 5), "LINE": ("i", 5), "FAIL": ("pb", 9),
-    **{name: ("", 1) for name in ("STI", "STA", "ELEM", "END", "RET", "DROP", "DUP", "SWAP")},
+    "IMPORT": ("s", 0),
+    "PUBLIC": ("sb", 0),
+    "EXTERN": ("sb", 0),
+    "LABEL": ("s", 0),
+    "FLABEL": ("s", 0),
+    "SLABEL": ("s", 0),
+    "BEGIN": ("siilll", None),
+    "CLOSURE": ("sl", None),
+    "CALL": ("sib", None),
+    "CALLC": ("ib", 5),
+    "JMP": ("s", 5),
+    "CJMP": ("ss", 5),
+    "LD": ("d", 5),
+    "LDA": ("d", 5),
+    "ST": ("d", 5),
+    "BINOP": ("s", 1),
+    "PATT": ("k", 1),
+    "CONST": ("i", 5),
+    "STRING": ("s", 5),
+    "SEXP": ("si", 9),
+    "TAG": ("si", 9),
+    "ARRAY": ("i", 5),
+    "LINE": ("i", 5),
+    "FAIL": ("pb", 9),
+    **dict.fromkeys(("STI", "STA", "ELEM", "END", "RET", "DROP", "DUP", "SWAP"), ("", 1)),
 }
 KNOWN_FAILURES = {
     "test054.lama": (2, b"Indirect assignment is not supported yet"),
@@ -22,8 +42,8 @@ KNOWN_FAILURES = {
 }
 
 
-def unquote(token):
-    data = token[1:-1].encode("utf-8")
+def unquote(lexeme: str) -> bytes:
+    data = lexeme[1:-1].encode("utf-8")
     output = bytearray()
     index = 0
     escapes = {ord("n"): 10, ord("r"): 13, ord("t"): 9, ord("b"): 8, ord('"'): 34, ord("\\"): 92}
@@ -34,15 +54,15 @@ def unquote(token):
             escape = data[index]
             index += 1
             if 48 <= escape <= 57:
-                digits = bytes([escape]) + data[index:index + 2]
+                digits = bytes([escape]) + data[index : index + 2]
                 if len(digits) != 3 or not digits.isdigit() or int(digits) > 255:
-                    raise ValueError(f"Invalid decimal escape: {token}")
+                    raise ValueError(f"Invalid decimal escape: {lexeme}")
 
                 value = int(digits)
                 index += 2
             else:
                 if escape not in escapes:
-                    raise ValueError(f"Unknown string escape: {token}")
+                    raise ValueError(f"Unknown string escape: {lexeme}")
 
                 value = escapes[escape]
 
@@ -52,33 +72,33 @@ def unquote(token):
 
 
 class DumpParser:
-    def __init__(self, text):
+    def __init__(self, text: str) -> None:
         self.tokens = []
         self.position = 0
         offset = 0
         while offset < len(text):
             match = TOKEN.match(text, offset)
             if match is None:
-                raise ValueError(f"Unknown dump syntax at {text[offset:offset + 60]!r}")
+                raise ValueError(f"Unknown dump syntax at {text[offset : offset + 60]!r}")
 
-            token = match.group()
-            if not token.isspace():
-                self.tokens.append(token)
+            lexeme = match.group()
+            if not lexeme.isspace():
+                self.tokens.append(lexeme)
 
             offset = match.end()
 
-    def peek(self):
+    def peek(self) -> str | None:
         return self.tokens[self.position] if self.position < len(self.tokens) else None
 
-    def take(self, expected=None):
-        token = self.peek()
-        if token is None or (expected is not None and token != expected):
-            raise ValueError(f"Expected {expected or 'value'}, got {token!r}")
+    def take(self, expected: str | None = None) -> str:
+        lexeme = self.peek()
+        if lexeme is None or (expected is not None and lexeme != expected):
+            raise ValueError(f"Expected {expected or 'value'}, got {lexeme!r}")
 
         self.position += 1
-        return token
+        return lexeme
 
-    def sequence(self, closing, separator):
+    def sequence(self, closing: str, separator: str) -> list[Any]:
         values = []
         while self.peek() != closing:
             values.append(self.value())
@@ -90,24 +110,24 @@ class DumpParser:
         self.take(closing)
         return values
 
-    def value(self):
-        token = self.take()
-        if token.startswith('"'):
-            return unquote(token)
+    def value(self) -> Any:
+        lexeme = self.take()
+        if lexeme.startswith('"'):
+            return unquote(lexeme)
 
-        if re.fullmatch(r"-?[0-9]+", token):
-            return int(token)
+        if re.fullmatch(r"-?[0-9]+", lexeme):
+            return int(lexeme)
 
-        if token in ("true", "false"):
-            return token == "true"
+        if lexeme in ("true", "false"):
+            return lexeme == "true"
 
-        if token == "[":
+        if lexeme == "[":
             return self.sequence("]", ";")
 
-        if token == "(":
+        if lexeme == "(":
             return tuple(self.sequence(")", ","))
 
-        if token == "{":
+        if lexeme == "{":
             fields = {}
             while self.peek() != "}":
                 name = self.take()
@@ -121,60 +141,88 @@ class DumpParser:
             self.take("}")
             return fields
 
-        if re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", token):
+        if re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", lexeme):
             args = ()
             if self.peek() == "(":
                 self.take("(")
                 args = tuple(self.sequence(")", ","))
 
-            return token, args
+            return lexeme, args
 
-        raise ValueError(f"Unexpected token: {token!r}")
+        raise ValueError(f"Unexpected token: {lexeme!r}")
 
 
-def designation(value):
+def designation(value: Any) -> bool:
     if not isinstance(value, tuple) or len(value) != 2:
         return False
 
     kind, args = value
     return (
-        kind in ("Global", "Local", "Arg", "Access") and isinstance(args, tuple)
-        and len(args) == 1 and type(args[0]) is (bytes if kind == "Global" else int)
+        kind in ("Global", "Local", "Arg", "Access")
+        and isinstance(args, tuple)
+        and len(args) == 1
+        and type(args[0]) is (bytes if kind == "Global" else int)
     )
 
 
-def scope(value):
+def scope(value: Any) -> bool:
     return (
-        isinstance(value, dict) and set(value) == {"blab", "elab", "names", "subs"}
-        and isinstance(value["blab"], bytes) and isinstance(value["elab"], bytes)
-        and isinstance(value["names"], list) and isinstance(value["subs"], list)
-        and all(isinstance(pair, tuple) and len(pair) == 2 and isinstance(pair[0], bytes)
-                and type(pair[1]) is int for pair in value["names"])
+        isinstance(value, dict)
+        and set(value) == {"blab", "elab", "names", "subs"}
+        and isinstance(value["blab"], bytes)
+        and isinstance(value["elab"], bytes)
+        and isinstance(value["names"], list)
+        and isinstance(value["subs"], list)
+        and all(
+            isinstance(pair, tuple)
+            and len(pair) == 2
+            and isinstance(pair[0], bytes)
+            and type(pair[1]) is int
+            for pair in value["names"]
+        )
         and all(scope(child) for child in value["subs"])
     )
 
 
-def parse_dump(text):
+def parse_dump(text: str) -> list[tuple[str, tuple[Any, ...]]]:
     parser = DumpParser(text)
     instructions = []
     checks = {
-        "s": lambda v: type(v) is bytes, "i": lambda v: type(v) is int,
-        "b": lambda v: type(v) is bool, "l": lambda v: type(v) is list,
+        "s": lambda v: type(v) is bytes,
+        "i": lambda v: type(v) is int,
+        "b": lambda v: type(v) is bool,
+        "l": lambda v: type(v) is list,
         "d": designation,
         "p": lambda v: isinstance(v, tuple) and len(v) == 2 and all(type(n) is int for n in v),
-        "k": lambda v: v in [(name, ()) for name in (
-            "StrCmp", "String", "Array", "Sexp", "Boxed", "UnBoxed", "Closure",
-        )],
+        "k": lambda v: (
+            v
+            in [
+                (name, ())
+                for name in (
+                    "StrCmp",
+                    "String",
+                    "Array",
+                    "Sexp",
+                    "Boxed",
+                    "UnBoxed",
+                    "Closure",
+                )
+            ]
+        ),
     }
     while parser.peek() is not None:
         instruction = parser.value()
-        if not isinstance(instruction, tuple) or len(instruction) != 2 or instruction[0] not in FORMS:
+        if (
+            not isinstance(instruction, tuple)
+            or len(instruction) != 2
+            or instruction[0] not in FORMS
+        ):
             raise ValueError(f"Unknown instruction: {instruction!r}")
 
         name, args = instruction
         signature, _ = FORMS[name]
         if len(args) != len(signature) or not all(
-            checks[kind](value) for kind, value in zip(signature, args)
+            checks[kind](value) for kind, value in zip(signature, args, strict=True)
         ):
             raise ValueError(f"Malformed instruction: {instruction!r}")
 
@@ -189,7 +237,19 @@ def parse_dump(text):
             raise ValueError(f"Malformed CLOSURE captures: {args!r}")
 
         if name == "BINOP" and args[0] not in (
-            b"+", b"-", b"*", b"/", b"%", b"<", b"<=", b">", b">=", b"==", b"!=", b"&&", b"!!",
+            b"+",
+            b"-",
+            b"*",
+            b"/",
+            b"%",
+            b"<",
+            b"<=",
+            b">",
+            b">=",
+            b"==",
+            b"!=",
+            b"&&",
+            b"!!",
         ):
             raise ValueError(f"Unknown binary operator: {args[0]!r}")
 
@@ -204,7 +264,7 @@ def parse_dump(text):
     return instructions
 
 
-def instruction_size(name, args):
+def instruction_size(name: str, args: tuple[Any, ...]) -> int:
     if name == "BEGIN":
         return 13 if args[3] else 9
 
@@ -217,7 +277,7 @@ def instruction_size(name, args):
     return FORMS[name][1]
 
 
-def normalize(text, compiler):
+def normalize(text: str, *, compiler: bool) -> str:
     instructions = parse_dump(text)
     labels = {}
     offset = 0
@@ -231,7 +291,7 @@ def normalize(text, compiler):
     external_globals = set()
     globals_by_name = {}
 
-    def target(value, function=False):
+    def target(value: bytes, *, function: bool = False) -> tuple[str, int | bytes]:
         if compiler:
             if value in labels:
                 return "offset", labels[value]
@@ -246,12 +306,15 @@ def normalize(text, compiler):
 
         return "external", value
 
-    def capture(value):
+    def capture(value: tuple[str, tuple[int | bytes]]) -> tuple[str, int | tuple[str, int | bytes]]:
         kind, (index,) = value
         if kind == "Global":
             if compiler:
-                index = (("external", index) if index in external_globals else
-                         ("index", globals_by_name.setdefault(index, len(globals_by_name))))
+                index = (
+                    ("external", index)
+                    if index in external_globals
+                    else ("index", globals_by_name.setdefault(index, len(globals_by_name)))
+                )
             else:
                 match = re.fullmatch(rb"global_([0-9]+)", index)
                 index = ("index", int(match[1])) if match else ("external", index)
@@ -259,7 +322,8 @@ def normalize(text, compiler):
         return kind, index
 
     imports, publics, code = [], [], []
-    for name, args in instructions:
+    for name, original_args in instructions:
+        args = original_args
         if name == "IMPORT":
             imports.append((name, args))
             continue
@@ -282,50 +346,54 @@ def normalize(text, compiler):
         elif name in ("LD", "LDA", "ST"):
             args = (capture(args[0]),)
         elif name == "CLOSURE":
-            args = target(args[0], True), tuple(capture(value) for value in args[1])
+            args = target(args[0], function=True), tuple(capture(value) for value in args[1])
         elif name == "JMP":
             args = (target(args[0]),)
         elif name == "CJMP":
             args = args[0], target(args[1])
         elif name == "CALL":
-            function = ("builtin", b".array") if args[0] == b".array" else target(args[0], True)
+            function = (
+                ("builtin", b".array") if args[0] == b".array" else target(args[0], function=True)
+            )
             args = function, args[1]
         elif name == "CALLC":
             args = (args[0],)
         elif compiler and name in ("STRING", "SEXP", "TAG"):
             value = re.sub(
-                rb"\\([ntr])", lambda m: {b"n": b"\n", b"t": b"\t", b"r": b"\r"}[m[1]], args[0],
+                rb"\\([ntr])",
+                lambda m: {b"n": b"\n", b"t": b"\t", b"r": b"\r"}[m[1]],
+                args[0],
             )
-            args = (value,) + args[1:]
+            args = (value, *args[1:])
 
         code.append((name, args))
 
     return "".join(f"{name} {args!r}\n" for name, args in imports + publics + code)
 
 
-def normalize_lamac(text):
+def normalize_lamac(text: str) -> str:
     return normalize(text, compiler=True)
 
 
-def normalize_lamavm(text):
+def normalize_lamavm(text: str) -> str:
     return normalize(text, compiler=False)
 
 
 class PrintBytecodeTest(unittest.TestCase):
-    def __init__(self, source, corpus, lamac, lamavm):
+    def __init__(self, source: Path, corpus: Path, lamac: LaMaC, lamavm: LaMaVM) -> None:
         super().__init__()
         self.source = source
         self.name = source.relative_to(corpus).as_posix()
         self.lamac = lamac
         self.lamavm = lamavm
 
-    def id(self):
+    def id(self) -> str:
         return self.name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.id()
 
-    def runTest(self):
+    def runTest(self) -> None:
         try:
             try:
                 bc, reference = self.lamac.bytecode(self.source.read_text(encoding="utf-8"))
@@ -350,11 +418,17 @@ class PrintBytecodeTest(unittest.TestCase):
             expected_text = normalize_lamac(reference)
             actual_text = normalize_lamavm(actual)
         except ValueError as error:
-            self.fail(f"Normalization failed: {error}\nRaw lamac:\n{reference}\nRaw lamavm:\n{actual}")
+            self.fail(
+                f"Normalization failed: {error}\nRaw lamac:\n{reference}\nRaw lamavm:\n{actual}"
+            )
 
         if expected_text != actual_text:
-            diff = "".join(difflib.unified_diff(
-                expected_text.splitlines(keepends=True), actual_text.splitlines(keepends=True),
-                fromfile="lamac", tofile="lamavm",
-            ))
+            diff = "".join(
+                difflib.unified_diff(
+                    expected_text.splitlines(keepends=True),
+                    actual_text.splitlines(keepends=True),
+                    fromfile="lamac",
+                    tofile="lamavm",
+                )
+            )
             self.fail(f"\n{diff}\nRaw lamac:\n{reference}\nRaw lamavm:\n{actual}")

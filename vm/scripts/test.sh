@@ -15,6 +15,8 @@ case "$mode" in
   *) printf 'Usage: %s [release|asan|ubsan|msan|fuzz]\n' "$0" >&2; exit 2 ;;
 esac
 
+"$vm_dir/scripts/test-python.sh"
+
 "$vm_dir/scripts/clang-format.sh" --dry-run --Werror
 "$vm_dir/scripts/clang-tidy.sh" "$mode"
 "$vm_dir/scripts/cppcheck.sh" "$mode"

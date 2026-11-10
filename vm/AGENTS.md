@@ -15,7 +15,7 @@ flake.lock
 flake.nix
 ```
 
-Can't edit markdown files unless they are under `ai/` directory.
+Can't edit markdown files unless they are under `docs/ai/` directory.
 
 Force Spec Driven Development. Write code only when it is applied.
 

@@ -11,6 +11,7 @@
 #include <string_view>
 
 namespace lamavm::bc {
+
 class lamac_ds_listener : public base_listener {
 public:
   explicit lamac_ds_listener(std::ostream &output);

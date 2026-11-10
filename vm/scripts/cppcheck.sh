@@ -23,6 +23,7 @@ sed 's/-isystem /-I /g' "$build_dir/compile_commands.json" \
 
 exec cppcheck \
   --enable=all \
+  --check-level=exhaustive \
   --error-exitcode=1 \
   --std=c++23 \
   --language=c++ \

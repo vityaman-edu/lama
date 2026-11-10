@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 class LaMaC:
-    def __init__(self, executable: Path, timeout: float = 30):
+    def __init__(self, executable: Path, timeout: float = 30) -> None:
         self.executable = executable.resolve()
         self.timeout = timeout
 
@@ -14,8 +14,12 @@ class LaMaC:
             path.write_text(source, encoding="utf-8")
             command = [str(self.executable), "-b", "-ds", path.name]
             result = subprocess.run(
-                command, cwd=directory, input=b"", capture_output=True,
-                check=True, timeout=self.timeout,
+                command,
+                cwd=directory,
+                input=b"",
+                capture_output=True,
+                check=True,
+                timeout=self.timeout,
             )
 
             try:
@@ -33,8 +37,11 @@ class LaMaC:
             path = Path(directory) / "program.lama"
             path.write_text(source, encoding="utf-8")
             result = subprocess.run(
-                [str(self.executable), "-i", path.name], cwd=directory,
-                input=stdin.encode("utf-8"), capture_output=True,
-                check=True, timeout=self.timeout,
+                [str(self.executable), "-i", path.name],
+                cwd=directory,
+                input=stdin.encode("utf-8"),
+                capture_output=True,
+                check=True,
+                timeout=self.timeout,
             )
             return result.stdout.decode("utf-8")

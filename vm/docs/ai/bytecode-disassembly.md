@@ -38,7 +38,7 @@ instruction structures in `lib/bc/layout.hpp`.
 - The standard library has `std::quoted` and debug string formatting (`{:?}`).
   Neither provides the OCaml decimal byte escapes required by lamac's dump.
   Move that exact quoting operation into `lib/support/string.hpp` and `.cpp`.
-- Define `lamavm::exception` in `lib/bc/core/exception.hpp` and `.cpp`, derived
+- Define `lamavm::exception` in `lib/core/exception.hpp` and `.cpp`, derived
   from `std::runtime_error`, and use it at every explicit throw site. The
   executable's existing `std::exception` handler also catches this derived type.
 - The three BEGIN lists are captured-variable designations, argument names,
