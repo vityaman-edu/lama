@@ -4,31 +4,90 @@
 
 The compiler's [src/SM.ml](../../../src/SM.ml) owns serialization and dump syntax.
 The VM's [layout.hpp](../../lib/bc/layout.hpp) defines packed version-1 wire
-structures and `opcode`; [input.hpp](../../lib/bc/input.hpp) implements
-`bc::read_file(stream, listener)`.
+structures and `opcode`. Headers contain declarations only; implementations,
+including default listener callbacks, live in `.cpp` translation units.
 
-- The header, string table, imports and public symbols precede instructions.
-  The string table reaches the listener before any entries referencing it.
-- Operands are little-endian signed 32-bit values. A single `0xff` at an
-  instruction boundary emits EOF and ends parsing; operand bytes do not
-  terminate the stream.
+- `read_file(stream, file_listener&)` parses the header, string table, imports
+  and public symbols, then passes the remaining code bytes to a single
+  `std::span<const std::byte>` callback. This callback returns
+  `std::expected<void, std::monostate>` so a decoder failure propagates to the
+  file caller. A file listener decides whether to decode or retain that code.
+- `read_code(span, code_listener&)` decodes instructions independently of file
+  metadata. It checks bounds and passes packed instruction views and closure-capture
+  spans directly from the input buffer, without copying or allocating. Mutable byte
+  spans can also be passed to this read-only interface.
+  The entry points are declared in [file_reader.hpp](../../lib/bc/file_reader.hpp)
+  and [code_reader.hpp](../../lib/bc/code_reader.hpp), respectively.
+- `file_listener` and `code_listener` have separate headers and translation
+  units. The former handles metadata and the code span; the latter has one
+  typed callback per instruction. Every callback is pure virtual, including the
+  diagnostic callback. Implementations provide all callbacks explicitly; test-only
+  no-op adapters live under `test/support`. Pure virtual destructors are defined
+  out of line, while construction and copy operations are implicit. The
+  `cppcoreguidelines-special-member-functions` check is disabled in `.clang-tidy`
+  to allow this interface design without explicit special-member boilerplate.
+- File diagnostics use file offsets; code diagnostics use code-section offsets.
+  Invalid metadata or instructions return an unexpected result. Listeners can
+  throw, including printers rejecting invalid string references.
+- The bytecode module requires a little-endian host, enforced by a static
+  assertion. Packed wire views require byte alignment, also checked statically.
+  Operands are little-endian signed 32-bit values. A single `0xff` at an
+  instruction boundary emits EOF and ends code parsing. Operand bytes cannot
+  terminate parsing. Missing EOF is a code error, not a file framing error.
 - `CLOSURE` contains a target and capture count, followed by count pairs of an
   8-bit designation kind and signed 32-bit index. Negative counts and kinds
-  outside 0–3 are rejected. A complete instruction produces one typed callback.
-- The string-table view and closure-capture span are borrowed. Copy data needed
-  after parsing or after the capture callback, respectively.
-- Malformed input returns an unexpected result and reports a file offset and
-  diagnostic scope through the listener. Listeners can throw; the dump listener
-  uses `lamavm::exception` for invalid string references.
-- Untrusted sizes must not cause large allocations before data is consumed. Initial
-  string-table capacity is capped at the read buffer size.
-- Keep opcode dispatch exhaustive without a default branch. Unnamed opcode
-  values reach the unknown-opcode diagnostic after the switch.
+  outside 0–3 are rejected before the complete instruction callback.
+- The string-table view, code span, instruction references and closure-capture
+  spans are borrowed. Instruction and capture views point into the caller's code
+  buffer; keep that storage alive while using them. File callbacks borrow data
+  owned by the file reader and must copy data retained after parsing returns.
+- Read stream data in bounded chunks. Untrusted sizes must not cause large
+  allocations before the bytes are consumed. Keep opcode dispatch exhaustive,
+  without a default branch, and diagnose unknown opcode values after the switch.
 
 ## Disassembly
 
-[lamac_ds_listener](../../lib/bc/lamac_ds.cpp) writes LaMaC-style stack-machine
-text to an ostream.
+The `bc/disassembly` module exposes `disassembly::modern` in
+[modern.hpp](../../lib/bc/disassembly/modern.hpp) and `disassembly::legacy` in
+[legacy.hpp](../../lib/bc/disassembly/legacy.hpp). Both public classes derive
+directly from `file_listener` and `code_listener`; all implementations remain
+in their corresponding `.cpp` files. Construct a listener with output and
+diagnostic streams, then pass it to `read_file`, or forward retained metadata
+and code callbacks before executing the same code bytes. Listeners also work
+with retained code: pass its span to the listener after supplying the metadata.
+Creating a printer does not consume input. The streams must outlive the listener.
+
+The printer writes one line per instruction, including EOF:
+`<decimal code offset>:\t<uppercase hex bytes separated by spaces>\t<symbolic>`.
+The three columns are separated by literal tab characters. In the file listener's
+code-span callback, `read_code` collects instruction rows into a vector. After
+decoding succeeds, the listener computes column widths and formats those rows.
+There is no code-start callback or extra parsing pass. Padding before tabs keeps
+columns aligned even beyond a single tab stop.
+A full-file dump starts with `header`, `string_table`, `imports` and
+`public_symbols` sections, including empty tables. Header fields include magic,
+version, string-table byte size and all counts. String entries show their decimal
+byte offset and escaped value. Imports use `index:\t"name" (name_offset)`.
+Public symbols use `index:\tkind\t"name" (name_offset) at code_offset`, where
+kind is `function` or `global`. All section contents are indented two spaces;
+table columns use aligned tabs.
+A `code` section follows, with offsets
+starting at zero. Metadata callbacks write directly to the stream. Passing a
+code span to the modern listener collects and formats its code listing, including
+when printing retained code before execution.
+Bytes retain their little-endian file order;
+closure captures belong to the same line as their instruction. Mnemonics use
+uppercase opcode names (`CONST` for `constant`), with decimal operands separated
+by commas. String operands and negative external references resolve to escaped,
+quoted names. Closure captures use explicit global/local/arg/captured kinds.
+
+`--disassembly=modern` selects this format; `--disassembly=legacy` selects the
+LaMaC-compatible printer below. `--disassembly=none` is the default and does not
+read stdin. Invalid kinds are command-line errors (exit status 2). Error message
+prose uses lowercase text; external diagnostics and embedded values retain their
+original spelling.
+
+`disassembly::legacy` writes LaMaC-style stack-machine text to an ostream.
 
 Bytecode loses source labels, local/global names, scopes and tail-call flags.
 The printer uses code offsets and indices for unavailable identities. `BEGIN`
@@ -50,18 +109,20 @@ do not implement this format. Explicit VM throws use
 ## Command line
 
 [app/args.cpp](../../app/args.cpp) wraps cxxopts behind
-`args::parse(argc, argv) -> std::expected<args, int>`; cxxopts stays out of
-`main.cpp` and the public header. Its dependency pin lives in
+`args::parse(argc, argv) -> std::expected<args, std::string>`; the error string
+contains a diagnostic, and `main` prints it to stderr and returns status 2.
+Help prints usage and sets `args::is_help`; `main` exits without consuming stdin.
+cxxopts stays out of `main.cpp` and the public header. Its dependency pin lives in
 [cmake/Cxxopts.cmake](../../cmake/Cxxopts.cmake).
 
 | Invocation | Behavior | Exit status |
 | --- | --- | --- |
-| `lamavm --ds < program.bc` | Disassemble stdin; diagnostics go to stderr | 0 on success, 1 on bytecode failure |
+| `lamavm --disassembly=modern < program.bc` | Disassemble stdin; diagnostics go to stderr | 0 on success, 1 on bytecode failure |
 | `lamavm` | Return without reading stdin or printing output | 0 |
 | `lamavm -h` / `lamavm --help` | Print generated help to stdout without reading bytecode | 0 |
 | Unknown option or positional argument | Print a diagnostic | 2 |
 
-LaMaC uses `-ds`; LaMaVM uses `--ds`. `-ds`, `-d` and `-s` are not VM aliases.
+LaMaC uses `-ds`; LaMaVM uses `--disassembly=legacy` for compatible output.
 VM program execution is not implemented.
 
 ## LaMaC wrapper

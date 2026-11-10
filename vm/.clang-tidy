@@ -6,6 +6,7 @@ Checks: >-
   -altera-struct-pack-align,
   -altera-unroll-loops,
   -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-special-member-functions,
   -portability-avoid-pragma-once,
   -readability-identifier-length,
   -fuchsia-trailing-return,

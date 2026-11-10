@@ -25,7 +25,7 @@ step in `scripts/test.sh`; the runner does not build tools.
   the reference is the `.sm` file, not stdout.
 - [scripts/lamac.sh](../../scripts/lamac.sh) invokes the built driver with runtime
   and stdlib include paths. Calling `Driver.exe` directly needs those paths too.
-- [LaMaVM](../../test/golden/lamavm.py) passes bytecode to `lamavm --ds`
+- [LaMaVM](../../test/golden/lamavm.py) passes bytecode to `lamavm --disassembly=legacy`
   on binary stdin and returns decoded stdout. Nonzero exit status fails even
   when stdout contains a partial dump.
 - Adapters resolve executable paths before changing working directories and

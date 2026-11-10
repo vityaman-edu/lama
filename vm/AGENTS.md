@@ -48,3 +48,5 @@ if expr then
 if expr then
   stmt
 ```
+
+Name boolean variables with "is" or "are" prefix.

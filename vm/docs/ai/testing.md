@@ -35,11 +35,13 @@ and comparison semantics.
 
 [Unit tests](../../test/unit/bc/input.cpp) cover signed operands containing
 `0xff`, EOF, closure alignment, truncation, invalid opcodes/captures, diagnostic
-offsets, exact dump text, escaping and external-reference overflow.
+offsets, file metadata and raw-code delivery, decoder-failure propagation, exact
+dump text, aligned tab columns, escaping and external-reference overflow.
 
-The [fuzz property](../../test/fuzz/bc/input.hpp) passes arbitrary byte strings
-to `bc::read_file` with a no-op listener. Parsing may return an error but must
-not throw or crash. This property does not exercise dump-listener validation.
+The [fuzz properties](../../test/fuzz/bc/input.cpp) independently pass arbitrary
+byte strings to `bc::read_file` and `bc::read_code` with no-op listeners. Parsing
+may return an error but must not throw or crash. These properties do not exercise
+dump-listener validation.
 
 Tests use the helpers in [cmake/Test.cmake](../../cmake/Test.cmake), with CTest
 labels `unit` and `fuzz`. Ordinary modes run FuzzTest in unit-test mode.

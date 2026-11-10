@@ -1,37 +1,41 @@
 #include "args.hpp"
-#include "bc/input.hpp"
-#include "bc/lamac_ds.hpp"
+#include "bc/disassembly/legacy.hpp"
+#include "bc/disassembly/modern.hpp"
+#include "bc/file_reader.hpp"
 
-#include <cstddef>
 #include <exception>
 #include <iostream>
-#include <string_view>
-
-namespace {
-
-class listener final : public lamavm::bc::lamac_ds_listener {
-public:
-  using lamac_ds_listener::lamac_ds_listener;
-  using lamac_ds_listener::operator();
-
-  void operator()(std::size_t offset, std::string_view message) override {
-    std::cerr << "offset " << offset << ": " << message << '\n';
-  }
-};
-
-} // namespace
 
 auto main(int argc, char **argv) -> int try {
   const auto arguments = lamavm::args::parse(argc, argv);
   if (!arguments) {
-    return arguments.error();
+    std::cerr << arguments.error() << '\n';
+    return 2;
   }
 
-  if (arguments->ds) {
-    listener output(std::cout);
-    if (const auto e = lamavm::bc::read_file(std::cin, output); !e) {
+  if (arguments->is_help) {
+    return 0;
+  }
+
+  switch (arguments->disassembly) {
+  case lamavm::disassembly_kind::none:
+    break;
+  case lamavm::disassembly_kind::legacy: {
+    lamavm::bc::disassembly::legacy listener(std::cout, std::cerr);
+    if (const auto e = lamavm::bc::read_file(std::cin, listener); !e) {
       return 1;
     }
+
+    break;
+  }
+  case lamavm::disassembly_kind::modern: {
+    lamavm::bc::disassembly::modern listener(std::cout, std::cerr);
+    if (const auto e = lamavm::bc::read_file(std::cin, listener); !e) {
+      return 1;
+    }
+
+    break;
+  }
   }
 
   return 0;

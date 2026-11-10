@@ -1,25 +1,32 @@
 #pragma once
 
-#include "layout.hpp"
-#include "listener.hpp"
+#include "bc/code_listener.hpp"
+#include "bc/file_listener.hpp"
+#include "bc/layout.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <iosfwd>
 #include <span>
 #include <string>
 #include <string_view>
+#include <variant>
 
-namespace lamavm::bc {
+namespace lamavm::bc::disassembly {
 
-class lamac_ds_listener : public base_listener {
+class legacy : public file_listener, public code_listener {
 public:
-  explicit lamac_ds_listener(std::ostream &output);
+  legacy(std::ostream &output, std::ostream &error_output);
 
-  using base_listener::operator();
+  using file_listener::operator();
+  using code_listener::operator();
+
+  void operator()(std::size_t offset, std::string_view message) override;
 
   void operator()(const header &instruction) override;
   void operator()(std::string_view table) override;
+  auto operator()(std::span<const std::byte> bytes) -> std::expected<void, std::monostate> override;
   void operator()(const import &instruction) override;
   void operator()(const public_symbol &instruction) override;
   void operator()(const add &instruction) override;
@@ -89,8 +96,9 @@ private:
   void emit(std::size_t size, std::string_view instruction);
 
   std::ostream *out;
+  std::ostream *err;
   std::string strings;
   std::size_t code_offset = 0;
 };
 
-} // namespace lamavm::bc
+} // namespace lamavm::bc::disassembly

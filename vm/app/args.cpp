@@ -4,33 +4,46 @@
 
 #include <expected>
 #include <iostream>
+#include <string>
 
 namespace lamavm {
 
-auto args::parse(int argc, char **argv) -> std::expected<args, int> {
+auto args::parse(int argc, char **argv) -> std::expected<args, std::string> {
   try {
     args parsed;
-    bool help = false;
+    std::string disassembly;
     cxxopts::Options options("lamavm", "Disassemble LaMa bytecode from standard input");
-    options.add_options()                                       //
-      ("ds", "Disassemble bytecode", cxxopts::value(parsed.ds)) //
-      ("h,help", "Print usage", cxxopts::value(help));
+    options.add_options()(
+      "disassembly",
+      "Disassembly kind: none, legacy, modern",
+      cxxopts::value(disassembly)->default_value("none"))(
+      "h,help",
+      "Print usage",
+      cxxopts::value(parsed.is_help));
 
     const auto result = options.parse(argc, argv);
     if (!result.unmatched().empty()) {
-      std::cerr << "Unexpected argument: " << result.unmatched().front() << '\n';
-      return std::unexpected(2);
+      return std::unexpected("unexpected argument: " + result.unmatched().front());
     }
 
-    if (help) {
+    if (parsed.is_help) {
       std::cout << options.help() << '\n';
-      return std::unexpected(0);
+      return parsed;
+    }
+
+    if (disassembly == "none") {
+      parsed.disassembly = disassembly_kind::none;
+    } else if (disassembly == "legacy") {
+      parsed.disassembly = disassembly_kind::legacy;
+    } else if (disassembly == "modern") {
+      parsed.disassembly = disassembly_kind::modern;
+    } else {
+      return std::unexpected("invalid disassembly kind: " + disassembly);
     }
 
     return parsed;
   } catch (const cxxopts::exceptions::exception &e) {
-    std::cerr << e.what() << '\n';
-    return std::unexpected(2);
+    return std::unexpected(std::string(e.what()));
   }
 }
 

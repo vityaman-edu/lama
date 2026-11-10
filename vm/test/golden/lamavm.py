@@ -9,7 +9,7 @@ class LaMaVM:
 
     def printbc(self, bc: bytes) -> str:
         result = subprocess.run(
-            [str(self.executable), "--ds"],
+            [str(self.executable), "--disassembly=legacy"],
             input=bc,
             capture_output=True,
             check=True,

@@ -1,1 +1,1 @@
-lamavm_add_fuzz_test(input.cpp)
+lamavm_add_fuzz_test(input.cpp ../../support/listeners.cpp)
