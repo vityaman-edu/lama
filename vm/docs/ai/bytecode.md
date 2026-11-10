@@ -63,3 +63,20 @@ do not implement this format. Explicit VM throws use
 
 LaMaC uses `-ds`; LaMaVM uses `--ds`. `-ds`, `-d` and `-s` are not VM aliases.
 VM program execution is not implemented.
+
+## LaMaC wrapper
+
+[scripts/lamac.sh](../../scripts/lamac.sh) forwards ordinary invocations to
+LaMaC. With `--better`, it implies `-b -ds`, writes binary bytecode to stdout
+and the stack-machine symbol dump to stderr. Existing `-b` and `-ds` flags
+are accepted alongside `--better`.
+
+Compilation runs in a fresh directory under `${TMPDIR:-/tmp}`, removed on exit
+including compilation failures. Relative source, include and runtime paths
+retain their meaning from the caller's working directory. Compiler diagnostics
+go to stderr; failed compilations preserve the compiler's exit status and emit
+no bytecode. Generated files stay out of the caller's working directory.
+
+```sh
+./vm/scripts/lamac.sh --better program.lama > program.bc 2> program.sm
+```
