@@ -23,7 +23,7 @@ esac
 cd "$vm_dir/.."
 dune build @@regression/runtest
 
-python3 "$vm_dir/test/golden-legacy/main.py" \
+python3 "$vm_dir/test/golden/main.py" \
   --lamavm "$vm_dir/build/$mode/lamavm"
 
 "$vm_dir/scripts/googletest.sh" "$mode"

@@ -34,7 +34,7 @@ Bytecode loses source labels, local/global names, scopes and tail-call flags.
 The printer uses code offsets and indices for unavailable identities. `BEGIN`
 retains the three list positions for captures, argument names and lexical
 scopes; empty names/scopes and positional `Access` captures stand in for
-missing metadata. See the [comparison contract](legacy-golden-tests.md) for
+missing metadata. See the [comparison contract](golden-tests.md) for
 which differences can be normalized.
 
 String offsets are signed. Decode a negative external reference with

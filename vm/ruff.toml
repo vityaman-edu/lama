@@ -10,10 +10,10 @@ select = [
 ]
 
 [lint.per-file-ignores]
-"**/test/golden-legacy/main.py" = ["E402", "T201"]
-"**/test/golden-legacy/lamac.py" = ["S603"]
-"**/test/golden-legacy/lamavm.py" = ["S603"]
-"**/test/golden-legacy/test_printbc.py" = ["ANN401"]
+"**/test/golden/main.py" = ["E402", "T201"]
+"**/test/golden/lamac.py" = ["S603"]
+"**/test/golden/lamavm.py" = ["S603"]
+"**/test/golden/test_printbc.py" = ["ANN401"]
 
 [lint.pep8-naming]
 ignore-names = ["addSuccess", "addFailure", "addError", "addSkip", "runTest"]

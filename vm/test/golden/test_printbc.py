@@ -37,8 +37,8 @@ FORMS = {
     **dict.fromkeys(("STI", "STA", "ELEM", "END", "RET", "DROP", "DUP", "SWAP"), ("", 1)),
 }
 KNOWN_FAILURES = {
-    "test054.lama": (2, b"Indirect assignment is not supported yet"),
-    "test110.lama": (2, b"Indirect assignment is not supported yet"),
+    "regression/test054.lama": (2, b"Indirect assignment is not supported yet"),
+    "regression/test110.lama": (2, b"Indirect assignment is not supported yet"),
 }
 
 

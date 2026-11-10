@@ -44,7 +44,7 @@ def positive_seconds(value: str) -> float:
 def main() -> int:
     directory = Path(__file__).resolve().parent
     vm = directory.parents[1]
-    parser = argparse.ArgumentParser(description="Compare legacy LaMaC and LaMaVM bytecode dumps")
+    parser = argparse.ArgumentParser(description="Compare LaMaC and LaMaVM bytecode dumps")
     parser.add_argument("--lamac", type=Path, default=vm / "scripts/lamac.sh")
     parser.add_argument("--lamavm", type=Path, default=vm / "build/release/lamavm")
     parser.add_argument("--timeout", type=positive_seconds, default=30)
@@ -54,8 +54,13 @@ def main() -> int:
         if not executable.is_file() or not os.access(executable, os.X_OK):
             parser.error(f"executable is missing or not executable: {executable}")
 
-    corpus = directory / "data/regression"
-    sources = sorted(corpus.rglob("*.lama"))
+    corpus = directory / "corpus"
+    sources = sorted(
+        Path(root) / name
+        for root, _, names in os.walk(corpus, followlinks=True)
+        for name in names
+        if name.endswith(".lama")
+    )
     if not corpus.is_dir() or not sources:
         parser.error(f"missing or empty corpus: {corpus}")
 

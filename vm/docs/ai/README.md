@@ -6,7 +6,7 @@ repository root; source links point to the owning implementation.
 - [Bytecode and CLI](bytecode.md): decoding, listener lifetimes, dump conventions
   and command-line behavior.
 - [Testing](testing.md): build/check entry points, fuzzing and Python linting.
-- [Legacy golden tests](legacy-golden-tests.md): compiler comparison contract,
+- [Golden tests](golden-tests.md): compiler comparison contract,
   normalization and expected compiler failures.
 
 Follow [AGENTS.md](../../AGENTS.md) for contribution rules and

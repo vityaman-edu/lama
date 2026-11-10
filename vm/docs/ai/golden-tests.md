@@ -1,14 +1,14 @@
-# Legacy golden tests
+# Golden tests
 
 ## Runner and adapters
 
-[test/golden-legacy/main.py](../../test/golden-legacy/main.py) compares LaMaVM
+[test/golden/main.py](../../test/golden/main.py) compares LaMaVM
 disassembly against a freshly generated LaMaC stack-machine dump for each
-legacy source. It uses Python's standard-library `unittest`, independently of
+`.lama` source. It uses Python's standard-library `unittest`, independently of
 CMake/CTest. It does not execute corpus programs or read `.input` or Cram files.
 
 ```sh
-python3 vm/test/golden-legacy/main.py \
+python3 vm/test/golden/main.py \
   --lamac /absolute/path/to/vm/scripts/lamac.sh \
   --lamavm /absolute/path/to/vm/build/release/lamavm \
   --timeout 30
@@ -19,13 +19,13 @@ runner, so it works from any directory. Timeout is positive finite seconds per
 subprocess. Build prerequisites are handled by `scripts/build.sh` and the Dune
 step in `scripts/test.sh`; the runner does not build tools.
 
-- [LaMaC](../../test/golden-legacy/lamac.py) takes source text, writes
+- [LaMaC](../../test/golden/lamac.py) takes source text, writes
   `program.lama` in a temporary working directory and invokes
   `lamac.sh -b -ds program.lama`. It returns binary `.bc` and text `.sm` contents;
   the reference is the `.sm` file, not stdout.
 - [scripts/lamac.sh](../../scripts/lamac.sh) invokes the built driver with runtime
   and stdlib include paths. Calling `Driver.exe` directly needs those paths too.
-- [LaMaVM](../../test/golden-legacy/lamavm.py) passes bytecode to `lamavm --ds`
+- [LaMaVM](../../test/golden/lamavm.py) passes bytecode to `lamavm --ds`
   on binary stdin and returns decoded stdout. Nonzero exit status fails even
   when stdout contains a partial dump.
 - Adapters resolve executable paths before changing working directories and
@@ -37,7 +37,7 @@ step in `scripts/test.sh`; the runner does not build tools.
 
 ## Comparison contract
 
-[test_printbc.py](../../test/golden-legacy/test_printbc.py) parses and normalizes
+[test_printbc.py](../../test/golden/test_printbc.py) parses and normalizes
 each dump independently, then compares canonical text exactly. Expected values
 come only from the compiler dump. Keep normalization here rather than changing
 the production printer to satisfy tests. The owning source for serialization
@@ -72,13 +72,21 @@ a unified `lamac`/`lamavm` diff and both raw dumps.
 
 ## Corpus and expected failures
 
-The runner discovers and sorts `data/regression/**/*.lama` at runtime, with one
-named case per source. Its [data symlink](../../test/golden-legacy/data/regression)
-points to repository-root `regression/`; `regression/vm/` contains Cram tests.
-Missing executables, a broken link or an empty corpus are setup errors. Do not
-hardcode a source count or silently omit cases.
+The runner discovers and sorts only `.lama` files recursively under
+`test/golden/corpus/`, following directory symlinks, with one named case per
+source. The [regression symlink](../../test/golden/corpus/regression) points to
+repository-root `regression/`; local fixtures such as `examples/42.lama` use
+the same comparison. Case names are relative to `corpus/`, including the
+`regression/` prefix for legacy cases. Missing executables or a missing or
+empty corpus directory are setup errors. Do not hardcode a source count or
+silently omit cases.
 
-`KNOWN_FAILURES` in `test_printbc.py` lists `test054.lama` and `test110.lama`:
+Discovery ignores `.input` and `.t` files. Input handling and `.t` parsing
+(including legacy files starting with `$ --` and the custom format) are future
+work, outside this runner's current contract.
+
+`KNOWN_FAILURES` in `test_printbc.py` lists `regression/test054.lama` and
+`regression/test110.lama`:
 LaMaC rejects their indirect assignments with exit status 2 and
 `Indirect assignment is not supported yet`. Still compile these sources and
 skip only when both status and diagnostic match. Different failures, timeouts
@@ -86,4 +94,4 @@ and unexpected success fail and require investigation of the expectation.
 
 The runner continues after failures, prints per-case `GOOD`, `FAIL` or `SKIP`
 and a summary, and returns nonzero on setup/test failure. Documented skips are
-compatible with success. Keep VM-specific fixtures under `test/golden/data/`.
+compatible with success. Keep VM-specific fixtures under `test/golden/corpus/`.

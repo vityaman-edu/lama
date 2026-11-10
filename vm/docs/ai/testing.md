@@ -13,7 +13,7 @@ Build before running checks that need executables:
 Both scripts accept `release` (default), `asan`, `ubsan`, `msan` and `fuzz`.
 Outputs live in `vm/build/<mode>/`. The build script builds LaMaC, `lamavm`
 and `lamavm_tests`; the test script runs Python lint/format checks, C++
-formatting and Clang-Tidy, Dune regressions, legacy golden comparisons, unit
+formatting and Clang-Tidy, Dune regressions, golden comparisons, unit
 tests and fuzz tests. CI uses these same entry points.
 
 Focused checks:
@@ -24,11 +24,11 @@ Focused checks:
 ./vm/scripts/clang-tidy.sh release
 ./vm/scripts/googletest.sh release
 ./vm/scripts/fuzztest.sh release
-python3 vm/test/golden-legacy/main.py
+python3 vm/test/golden/main.py
 ```
 
 The golden runner defaults to the release executable; use `--lamavm` for
-another mode. See [legacy golden tests](legacy-golden-tests.md) for prerequisites
+another mode. See [golden tests](golden-tests.md) for prerequisites
 and comparison semantics.
 
 ## Bytecode coverage
