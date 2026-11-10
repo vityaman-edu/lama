@@ -9,14 +9,11 @@ structures and `opcode`. Headers contain declarations; implementations live in
 [code_reader.detail.hpp](../../lib/bc/code_reader.detail.hpp).
 
 - `read_file(stream, file_listener&)` parses the header, string table, imports
-  and public symbols, reads the remaining code bytes, then validates them with
-  `read_ops` and [code_listener_nop](../../lib/bc/code_listener_nop.hpp) before
-  passing the original bytes to a single
+  and public symbols, then passes the remaining code bytes to a single
   `std::span<const std::byte>` callback. This callback returns
   `std::expected<void, std::vector<std::string>>` so a decoder failure propagates
-  to the file caller. Invalid code returns decoder diagnostics and does not reach
-  the code-span callback. A file listener decides whether to decode or retain the
-  validated code.
+  to the file caller. A file listener decides whether to validate, decode or retain
+  the code.
 - `read_ops(span, code_listener&)` decodes instructions independently of file
   metadata. It checks bounds and passes packed instruction views and closure-capture
   spans directly from the input buffer, without copying or allocating. Mutable byte
@@ -28,9 +25,11 @@ structures and `opcode`. Headers contain declarations; implementations live in
   typed callback per instruction. Every callback is pure virtual. There is no
   diagnostic callback. Implementations provide all callbacks explicitly.
   `code_listener_nop` implements every code callback as a no-op and supports
-  deriving listeners that override selected callbacks. The test-only no-op file
-  listener lives under `test/support`. Pure virtual destructors are defined
-  out of line, while construction and copy operations are implicit. The
+  deriving listeners that override selected callbacks. `file_listener_nop` ignores
+  every file callback and returns success for code. `file_listener_seq` owns two
+  file listeners through unique pointers, forwards every callback to both in order,
+  and combines returned code diagnostics in that order. Pure virtual destructors
+  are defined out of line, while construction and copy operations are implicit. The
   `cppcoreguidelines-special-member-functions` check is disabled in `.clang-tidy`
   to allow this interface design without explicit special-member boilerplate.
 - `read_op<Listener, bool unsafe = false>(code, listener)` is templated on the
@@ -48,13 +47,13 @@ structures and `opcode`. Headers contain declarations; implementations live in
   removes decoder checks at compile time: code size, bounds, capture count/kinds
   and unknown opcodes. It requires a complete, valid instruction prefix; invalid
   input has undefined behavior. It returns the same expected status as `read_op`.
-  `read_ops` and file decoding keep validation enabled.
+  `read_ops` keeps validation enabled.
 - File diagnostics use file offsets; code diagnostics use code-section offsets.
   Error strings include `offset N: scope: message`. `read_file` collects
   recoverable metadata errors, stops on framing failures, and returns all collected
   diagnostics in its error vector. It propagates code-span callback errors unchanged.
-  Invalid metadata or instructions return an unexpected result. Listeners can
-  throw, including printers rejecting invalid string references.
+  Invalid metadata returns an unexpected result; listeners validate instructions.
+  Listeners can throw, including printers rejecting invalid string references.
 - The bytecode module requires a little-endian host, enforced by a static
   assertion. Packed wire views require byte alignment, also checked statically.
   Operands are little-endian signed 32-bit values. A single `0xff` at an
@@ -83,15 +82,17 @@ and code callbacks before executing the same code bytes. Listeners also work
 with retained code: pass its span to the listener after supplying the metadata.
 Creating a printer does not consume input. The stream must outlive the listener.
 The CLI selects a `std::unique_ptr<file_listener>` in the disassembly-kind
-switch, then reads and prints returned diagnostics to stderr in one common path.
+switch, using `file_listener_nop` for `none`, and composes it with
+`interpreter::boot` through `file_listener_seq`. It reads stdin and prints returned
+diagnostics to stderr in one common path.
 
 The printer writes one line per instruction, including EOF:
 `<decimal code offset>:\t<uppercase hex bytes separated by spaces>\t<symbolic>`.
 The three columns are separated by literal tab characters. In the file listener's
 code-span callback, `read_ops` collects instruction rows into a vector. After
 decoding succeeds, the listener computes column widths and formats those rows.
-File reading validates code first; the code-span callback decodes it again
-to collect listing rows. There is no code-start callback. Padding before tabs keeps
+The code-span callback validates while collecting listing rows.
+There is no code-start callback. Padding before tabs keeps
 columns aligned even beyond a single tab stop.
 A full-file dump starts with `header`, `string_table`, `imports` and
 `public_symbols` sections, including empty tables. Header fields include magic,
@@ -111,10 +112,10 @@ by commas. String operands and negative external references resolve to escaped,
 quoted names. Closure captures use explicit global/local/arg/captured kinds.
 
 `--disassembly=modern` selects this format; `--disassembly=legacy` selects the
-LaMaC-compatible printer below. `--disassembly=none` is the default and does not
-read stdin. Invalid kinds are command-line errors (exit status 2). Error message
-prose uses lowercase text; external diagnostics and embedded values retain their
-original spelling.
+LaMaC-compatible printer below. `--disassembly=none` is the default and validates
+stdin without printing output. Invalid kinds are command-line errors (exit status 2).
+Error message prose uses lowercase text; external diagnostics and embedded values
+retain their original spelling.
 
 `disassembly::legacy` writes LaMaC-style stack-machine text to an ostream.
 
@@ -147,12 +148,20 @@ cxxopts stays out of `main.cpp` and the public header. Its dependency pin lives 
 | Invocation | Behavior | Exit status |
 | --- | --- | --- |
 | `lamavm --disassembly=modern < program.bc` | Disassemble stdin; diagnostics go to stderr | 0 on success, 1 on bytecode failure |
-| `lamavm` | Return without reading stdin or printing output | 0 |
+| `lamavm` | Validate stdin without printing output | 0 on success, 1 on bytecode failure |
 | `lamavm -h` / `lamavm --help` | Print generated help to stdout without reading bytecode | 0 |
 | Unknown option or positional argument | Print a diagnostic | 2 |
 
 LaMaC uses `-ds`; LaMaVM uses `--disassembly=legacy` for compatible output.
 VM program execution is not implemented.
+
+## Interpreter scaffolding
+
+`interpreter::boot` is a file listener whose metadata callbacks do nothing. Its
+code callback calls `read_ops` with `code_listener_nop` and returns its validation
+result. `interpreter::loop` is a code listener; every instruction callback,
+including EOF and closures, throws `lamavm::exception` reporting an unsupported
+instruction. Boot does not execute the loop yet.
 
 ## LaMaC wrapper
 

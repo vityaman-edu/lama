@@ -3,7 +3,9 @@
 #include "bc/disassembly/legacy.hpp"
 #include "bc/disassembly/modern.hpp"
 #include "bc/file_listener.hpp"
+#include "bc/file_listener_seq.hpp"
 #include "bc/file_reader.hpp"
+#include "bc/interpreter/boot.hpp"
 #include "bc/layout.hpp"
 #include "core/exception.hpp"
 
@@ -14,6 +16,7 @@
 #include <expected>
 #include <format>
 #include <limits>
+#include <memory>
 #include <span>
 #include <sstream>
 #include <string>
@@ -144,7 +147,7 @@ private:
   file_events result;
 };
 
-TEST(BytecodeFile, MetadataPrecedesValidatedCodeSpan) {
+TEST(BytecodeFile, MetadataPrecedesCodeSpan) {
   const auto table = "external\0function\0"sv;
   std::string bytes = "LaMa";
   append_int(bytes, 1);
@@ -244,16 +247,15 @@ TEST(BytecodeFile, FramingFailurePreservesEarlierMetadataErrors) {
     }));
 }
 
-TEST(BytecodeFile, InvalidCodeNeverReachesFileListener) {
+TEST(BytecodeFile, CodeValidationIsDelegatedToFileListener) {
   std::istringstream input(make_file("\x10\x01\x00\x00\x00\x00\xff"sv));
   recording_file_listener listener;
   const auto result = read_file(input, listener);
-  ASSERT_FALSE(result);
-  EXPECT_EQ(result.error(), (std::vector<std::string>{"offset 5: code: unknown opcode 0x00"}));
-  EXPECT_EQ(listener.events().order, (std::vector<std::string_view>{"header", "strings"}));
+  ASSERT_TRUE(result);
+  EXPECT_EQ(listener.events().order, (std::vector<std::string_view>{"header", "strings", "code"}));
 }
 
-TEST(BytecodeFile, RejectsMalformedCodeWithoutDecoderInFileListener) {
+TEST(InterpreterBoot, RejectsMalformedCode) {
   for (const auto code : {
          ""sv,
          "\x10\x01\x00\x00\x00"sv,
@@ -263,12 +265,26 @@ TEST(BytecodeFile, RejectsMalformedCodeWithoutDecoderInFileListener) {
          "\x54\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\xff"sv,
        }) {
     std::istringstream input(make_file(code));
-    recording_file_listener listener;
+    interpreter::boot listener;
     const auto result = read_file(input, listener);
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().size(), 1);
-    EXPECT_EQ(listener.events().order, (std::vector<std::string_view>{"header", "strings"}));
   }
+}
+
+TEST(FileListenerSeq, CallsBothListenersAndCombinesCodeErrors) {
+  std::istringstream input(make_file("\x00\xff"sv));
+  file_listener_seq listener(
+    std::make_unique<interpreter::boot>(),
+    std::make_unique<interpreter::boot>());
+  const auto result = read_file(input, listener);
+  ASSERT_FALSE(result);
+  EXPECT_EQ(
+    result.error(),
+    (std::vector<std::string>{
+      "offset 0: code: unknown opcode 0x00",
+      "offset 0: code: unknown opcode 0x00",
+    }));
 }
 
 TEST(BytecodeOp, AcceptsConcreteListenerWithoutInheritance) {

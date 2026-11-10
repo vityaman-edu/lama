@@ -2,11 +2,15 @@
 #include "bc/disassembly/legacy.hpp"
 #include "bc/disassembly/modern.hpp"
 #include "bc/file_listener.hpp"
+#include "bc/file_listener_nop.hpp"
+#include "bc/file_listener_seq.hpp"
 #include "bc/file_reader.hpp"
+#include "bc/interpreter/boot.hpp"
 
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <utility>
 
 auto main(int argc, char **argv) -> int try {
   const auto arguments = lamavm::args::parse(argc, argv);
@@ -22,6 +26,7 @@ auto main(int argc, char **argv) -> int try {
   std::unique_ptr<lamavm::bc::file_listener> listener;
   switch (arguments->disassembly) {
   case lamavm::disassembly_kind::none:
+    listener = std::make_unique<lamavm::bc::file_listener_nop>();
     break;
   case lamavm::disassembly_kind::legacy:
     listener = std::make_unique<lamavm::bc::disassembly::legacy>(std::cout);
@@ -31,11 +36,11 @@ auto main(int argc, char **argv) -> int try {
     break;
   }
 
-  if (!listener) {
-    return 0;
-  }
+  lamavm::bc::file_listener_seq seq(
+    std::move(listener),
+    std::make_unique<lamavm::bc::interpreter::boot>());
 
-  if (const auto e = lamavm::bc::read_file(std::cin, *listener); !e) {
+  if (const auto e = lamavm::bc::read_file(std::cin, seq); !e) {
     for (const auto &message : e.error()) {
       std::cerr << message << '\n';
     }

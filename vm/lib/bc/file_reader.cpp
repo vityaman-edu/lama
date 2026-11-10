@@ -1,7 +1,5 @@
 #include "file_reader.hpp"
 
-#include "code_listener_nop.hpp"
-#include "code_reader.hpp"
 #include "file_listener.hpp"
 #include "layout.hpp"
 
@@ -71,13 +69,7 @@ public:
       return std::unexpected(std::move(errors));
     }
 
-    const auto bytes = std::span<const std::byte>(*code);
-    code_listener_nop validator;
-    if (auto e = read_ops(bytes, validator); !e) {
-      return e;
-    }
-
-    return listener->operator()(bytes);
+    return listener->operator()(*code);
   }
 
 private:
