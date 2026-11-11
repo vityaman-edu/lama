@@ -1,5 +1,6 @@
 #include "bc/code_reader.hpp"
 #include "bc/layout.hpp"
+#include "core/exception.hpp"
 #include "interpreter/boot.hpp"
 #include "interpreter/loop.hpp"
 #include "interpreter/state.hpp"
@@ -28,7 +29,7 @@ TEST(InterpreterState, OwnsStorage) {
   for (const auto table : {""sv, "Std\0"sv, "a table larger than the small string buffer\0"sv}) {
     std::string strings(table);
     std::vector<std::byte> stack(stack_size, initial_value);
-    const state machine(strings, stack);
+    const state machine(strings, {}, stack);
     strings.assign("changed");
     stack.clear();
 
@@ -41,14 +42,14 @@ TEST(InterpreterState, OwnsStorage) {
 }
 
 TEST(InterpreterState, InitializesRegisters) {
-  const state machine({}, std::vector<std::byte>(stack_size));
+  const state machine({}, {}, std::vector<std::byte>(stack_size));
   EXPECT_EQ(machine.ip, 0);
   EXPECT_EQ(machine.sp, stack_size);
   EXPECT_EQ(machine.bp, stack_size);
 }
 
 TEST(InterpreterState, AcceptsEmptyStorage) {
-  const state machine({}, {});
+  const state machine({}, {}, {});
   EXPECT_TRUE(machine.string_table.empty());
   EXPECT_TRUE(machine.stack.empty());
   EXPECT_EQ(machine.ip, 0);
@@ -78,6 +79,33 @@ TEST(InterpreterBoot, RejectsAllPublicSymbols) {
     const auto result = listener(bc::public_symbol{.flag = kind});
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error(), "public symbols are not supported");
+  }
+}
+
+TEST(InterpreterBoot, RunsValidatedCode) {
+  boot listener;
+  const auto bytes = "\x52\x00\x00\x00\x00\x00\x00\x00\x00\xff"sv;
+  const auto result = listener(std::as_bytes(std::span(bytes)));
+  ASSERT_FALSE(result);
+  EXPECT_EQ(result.error(), (std::vector<error>{"unsupported instruction: begin"}));
+}
+
+TEST(InterpreterBoot, ValidatesEntireCodeBeforeExecution) {
+  boot listener;
+  const auto bytes = "\x52\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff"sv;
+  const auto result = listener(std::as_bytes(std::span(bytes)));
+  ASSERT_FALSE(result);
+  EXPECT_EQ(result.error(), (std::vector<error>{"offset 9: code: unknown opcode 0x00"}));
+}
+
+TEST(InterpreterLoop, RunsSuppliedCodeUntilError) {
+  for (const auto bytes : {"\xff"sv, "\x16\x17\xff"sv}) {
+    loop machine({}, std::as_bytes(std::span(bytes)));
+    const auto result = machine.run();
+    ASSERT_FALSE(result);
+    EXPECT_EQ(
+      result.error(),
+      bytes.size() == 1 ? "unsupported instruction: eof" : "unsupported instruction: end");
   }
 }
 
@@ -144,7 +172,7 @@ TEST(InterpreterLoop, NamesEveryUnsupportedInstruction) {
     instruction{bc::opcode::eof, "eof"},
   };
 
-  loop listener(std::string{});
+  loop listener(std::string{}, {});
   for (const auto &[opcode, name] : instructions) {
     std::array<std::byte, sizeof(bc::begin_closure)> code{};
     code.front() = static_cast<std::byte>(opcode);

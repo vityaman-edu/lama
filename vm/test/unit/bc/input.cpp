@@ -449,7 +449,9 @@ TEST(FileListenerSeq, DisassemblyRetainsStringsBeforeBootConsumesThem) {
 
     file_listener_seq listener(std::move(printer), std::make_unique<interpreter::boot>());
     std::istringstream input(bytes);
-    ASSERT_TRUE(read_file(input, listener));
+    const auto result = read_file(input, listener);
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), (std::vector<error>{"unsupported instruction: string"}));
     EXPECT_NE(
       output.str().find(is_modern ? "STRING \"Std\"" : "STRING (\"Std\")"),
       std::string::npos);

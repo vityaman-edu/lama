@@ -5,7 +5,9 @@
 [test/golden/main.py](../../test/golden/main.py) compares LaMaVM
 disassembly against a freshly generated LaMaC stack-machine dump for each
 `.lama` source. It uses Python's standard-library `unittest`, independently of
-CMake/CTest. It does not execute corpus programs or read `.input` or Cram files.
+CMake/CTest. The CLI attempts execution after printing; currently every compiled
+program stops at unsupported `begin`. The suite does not compare execution results
+or read `.input` or Cram files.
 
 ```sh
 python3 vm/test/golden/main.py \
@@ -26,8 +28,9 @@ step in `scripts/test.sh`; the runner does not build tools.
 - [scripts/lamac.sh](../../scripts/lamac.sh) invokes the built driver with runtime
   and stdlib include paths. Calling `Driver.exe` directly needs those paths too.
 - [LaMaVM](../../test/golden/lamavm.py) passes bytecode to `lamavm --disassembly=legacy`
-  on binary stdin and returns decoded stdout. Nonzero exit status fails even
-  when stdout contains a partial dump.
+  on binary stdin and returns decoded stdout. It requires exit status 1 and exactly
+  `unsupported instruction: begin` on stderr while execution remains scaffolding.
+  Any other result fails even when stdout contains a partial dump.
 - Adapters resolve executable paths before changing working directories and
   use argument vectors without a shell, captured output and timeouts. Temporary
   outputs are read before cleanup; generated goldens are not committed.

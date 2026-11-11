@@ -4,6 +4,7 @@
 #include "bc/code_reader.hpp"
 #include "bc/layout.hpp"
 #include "core/exception.hpp"
+#include "loop.hpp"
 
 #include <cstddef>
 #include <expected>
@@ -47,7 +48,16 @@ auto boot::operator()(std::string &strings) -> status {
 
 auto boot::operator()(std::span<const std::byte> code) -> std::expected<void, std::vector<error>> {
   bc::code_listener_nop listener;
-  return bc::read_ops(code, listener);
+  if (auto result = bc::read_ops(code, listener); !result) {
+    return result;
+  }
+
+  loop machine(std::move(string_table), code);
+  if (auto result = machine.run(); !result) {
+    return std::unexpected(std::vector<error>{std::move(result.error())});
+  }
+
+  return {};
 }
 
 } // namespace lamavm::interpreter

@@ -12,9 +12,14 @@ class LaMaVM:
             [str(self.executable), "--disassembly=legacy"],
             input=bc,
             capture_output=True,
-            check=True,
+            check=False,
             timeout=self.timeout,
         )
+        if result.returncode != 1 or result.stderr != b"unsupported instruction: begin\n":
+            raise subprocess.CalledProcessError(
+                result.returncode, result.args, output=result.stdout, stderr=result.stderr
+            )
+
         return result.stdout.decode("utf-8")
 
     def interpret(self, bc: bytes, stdin: str) -> str:

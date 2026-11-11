@@ -1,5 +1,6 @@
 #include "loop.hpp"
 
+#include "bc/code_reader.hpp"
 #include "bc/layout.hpp"
 #include "core/exception.hpp"
 #include "state.hpp"
@@ -19,8 +20,16 @@ constexpr std::size_t stack_size = std::size_t{1024} * 1024;
 
 } // namespace
 
-loop::loop(std::string string_table)
-  : state(std::move(string_table), std::vector<std::byte>(stack_size)) {
+loop::loop(std::string string_table, std::span<const std::byte> code)
+  : state(std::move(string_table), code, std::vector<std::byte>(stack_size)) {
+}
+
+auto loop::run() -> status {
+  for (;;) {
+    if (auto result = bc::read_op_unsafe(code.subspan(ip), *this); !result) {
+      return result;
+    }
+  }
 }
 
 auto loop::operator()(const bc::add &op) -> status {

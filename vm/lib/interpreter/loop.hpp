@@ -5,6 +5,7 @@
 #include "core/exception.hpp"
 #include "state.hpp"
 
+#include <cstddef>
 #include <span>
 #include <string>
 
@@ -12,7 +13,9 @@ namespace lamavm::interpreter {
 
 class loop : public bc::code_listener, private state {
 public:
-  explicit loop(std::string string_table);
+  loop(std::string string_table, std::span<const std::byte> code);
+
+  auto run() -> status;
 
   using bc::code_listener::operator();
 

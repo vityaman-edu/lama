@@ -14,7 +14,7 @@ private:
   std::vector<std::byte> area_stack;
 
 public:
-  state(std::string string_table, std::vector<std::byte> stack);
+  state(std::string string_table, std::span<const std::byte> code, std::vector<std::byte> stack);
 
   state(const state &) = delete;
   state(state &&) = delete;
@@ -24,6 +24,9 @@ public:
 
   // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   std::string_view string_table;
+
+  // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+  std::span<const std::byte> code;
 
   // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
   std::span<std::byte> stack;

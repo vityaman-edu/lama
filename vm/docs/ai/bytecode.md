@@ -116,8 +116,9 @@ by commas. String operands and negative external references resolve to escaped,
 quoted names. Closure captures use explicit global/local/arg/captured kinds.
 
 `--disassembly=modern` selects this format; `--disassembly=legacy` selects the
-LaMaC-compatible printer below. `--disassembly=none` is the default and validates
-stdin without printing output. Invalid kinds are command-line errors (exit status 2).
+LaMaC-compatible printer below. `--disassembly=none` is the default. After
+validation and any requested listing, the VM runs the interpreter loop.
+Invalid kinds are command-line errors (exit status 2).
 Error message prose uses lowercase text; external diagnostics and embedded values
 retain their original spelling.
 
@@ -151,28 +152,35 @@ cxxopts stays out of `main.cpp` and the public header. Its dependency pin lives 
 
 | Invocation | Behavior | Exit status |
 | --- | --- | --- |
-| `lamavm --disassembly=modern < program.bc` | Disassemble stdin; diagnostics go to stderr | 0 on success, 1 on bytecode failure |
-| `lamavm` | Validate stdin without printing output | 0 on success, 1 on bytecode failure |
+| `lamavm --disassembly=modern < program.bc` | Disassemble, validate and run stdin; diagnostics go to stderr | 1 while instructions remain unsupported |
+| `lamavm` | Validate and run stdin | 1 while instructions remain unsupported |
 | `lamavm -h` / `lamavm --help` | Print generated help to stdout without reading bytecode | 0 |
 | Unknown option or positional argument | Print a diagnostic | 2 |
 
 LaMaC uses `-ds`; LaMaVM uses `--disassembly=legacy` for compatible output.
-VM program execution is not implemented.
+All instruction handlers currently report unsupported-instruction errors.
 
 ## Interpreter scaffolding
 
 `interpreter::state` owns a string table and byte stack, exposing a
-`std::string_view` and `std::span<std::byte>` into those allocations.
+`std::string_view` and `std::span<std::byte>` into those allocations. It also
+borrows a `std::span<const std::byte>` of code, whose storage must outlive execution.
 `ip` starts at zero; `sp` and `bp` start at the stack size. State cannot be copied,
 moved or assigned, keeping its views bound to its own storage.
 
 `interpreter::boot` moves the string table into its own storage. Imports must
 reference a `Std` name validated by the file reader; other imports and all public symbols return
 errors. The header callback does nothing. The code callback calls `read_ops` with
-`code_listener_nop` and returns its validation result. `interpreter::loop` returns
+`code_listener_nop` and returns any validation errors before execution. On success,
+it passes the string table and code into `interpreter::loop` and calls `run()`,
+wrapping any execution error in the callback's diagnostic vector.
+`run() -> status` uses `read_op_unsafe(code.subspan(ip), *this)` in a `for (;;)`
+loop until an error; instruction handlers are responsible for advancing `ip`.
+There is no successful termination yet. `interpreter::loop` returns
 an unexpected status for every instruction, including EOF and closures, with
-`unsupported instruction: <opcode type name>`. Boot does not execute the loop yet.
-The loop privately inherits state and accepts a string table, allocating a
+`unsupported instruction: <opcode type name>`. A compiler-produced program
+currently fails with `unsupported instruction: begin`.
+The loop privately inherits state and accepts a string table and code, allocating a
 1 MiB byte stack in its constructor.
 
 ## LaMaC wrapper
