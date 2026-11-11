@@ -6,6 +6,7 @@
 #include "state.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string>
 
@@ -16,6 +17,8 @@ public:
   loop(std::string string_table, std::span<const std::byte> code);
 
   auto run() -> status;
+
+  using state::stack_top;
 
   using bc::code_listener::operator();
 
@@ -78,6 +81,10 @@ public:
   auto operator()(const bc::patt_closure &op) -> status override;
   auto operator()(const bc::barray &op) -> status override;
   auto operator()(const bc::eof &op) -> status override;
+
+private:
+  template <std::int64_t (*function)(void *, void *)>
+  auto binop() -> status;
 };
 
 } // namespace lamavm::interpreter

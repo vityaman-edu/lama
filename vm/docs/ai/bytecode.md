@@ -158,14 +158,17 @@ cxxopts stays out of `main.cpp` and the public header. Its dependency pin lives 
 | Unknown option or positional argument | Print a diagnostic | 2 |
 
 LaMaC uses `-ds`; LaMaVM uses `--disassembly=legacy` for compatible output.
-All instruction handlers currently report unsupported-instruction errors.
+`BEGIN` with zero locals, `CONST`, and all binary operators are implemented.
+Other instructions report unsupported-instruction errors.
 
-## Interpreter scaffolding
+## Interpreter
 
-`interpreter::state` owns a string table and byte stack, exposing a
-`std::string_view` and `std::span<std::byte>` into those allocations. It also
+`interpreter::state` owns a string table and 64-bit value stack, exposing a
+`std::string_view` and `std::span<std::int64_t>` into those allocations. It also
 borrows a `std::span<const std::byte>` of code, whose storage must outlive execution.
-`ip` starts at zero; `sp` and `bp` start at the stack size. State cannot be copied,
+`ip` is a byte offset starting at zero; `sp` and `bp` are element offsets starting
+at the stack size. Checked `stack_push`, `stack_pop` and `stack_top` helpers
+operate on the typed stack without byte copies. State cannot be copied,
 moved or assigned, keeping its views bound to its own storage.
 
 `interpreter::boot` moves the string table into its own storage. Imports must
@@ -176,12 +179,18 @@ it passes the string table and code into `interpreter::loop` and calls `run()`,
 wrapping any execution error in the callback's diagnostic vector.
 `run() -> status` uses `read_op_unsafe(code.subspan(ip), *this)` in a `for (;;)`
 loop until an error; instruction handlers are responsible for advancing `ip`.
-There is no successful termination yet. `interpreter::loop` returns
-an unexpected status for every instruction, including EOF and closures, with
-`unsupported instruction: <opcode type name>`. A compiler-produced program
-currently fails with `unsupported instruction: begin`.
+There is no successful termination yet. Unimplemented instructions, including
+`END`, EOF and closures, return `unsupported instruction: <opcode type name>`.
+`BEGIN` accepts zero locals and ignores arguments for now. `CONST` pushes a
+signed, tagged 64-bit value. All 13 binary operators call the original C runtime
+with the left and right tagged operands, replace them with the result, and
+advance `ip`. Stack overflow, underflow and division/remainder by zero return
+errors. `stack_top()` returns the top tagged value without modifying the stack.
+The `42.lama` and `43.lama` examples compute their results, then stop at the
+unsupported `END`. See [runtime integration](runtime.md) for build constraints
+and the supported instruction contract.
 The loop privately inherits state and accepts a string table and code, allocating a
-1 MiB byte stack in its constructor.
+1 MiB value stack in its constructor.
 
 ## LaMaC wrapper
 

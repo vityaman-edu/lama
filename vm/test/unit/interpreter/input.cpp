@@ -9,7 +9,10 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <expected>
 #include <format>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -24,11 +27,11 @@ using std::literals::string_view_literals::operator""sv;
 constexpr std::size_t stack_size = 32;
 
 TEST(InterpreterState, OwnsStorage) {
-  constexpr std::byte initial_value{0x42};
-  constexpr std::byte changed_value{0x24};
+  constexpr std::int64_t initial_value = 0x42;
+  constexpr std::int64_t changed_value = 0x24;
   for (const auto table : {""sv, "Std\0"sv, "a table larger than the small string buffer\0"sv}) {
     std::string strings(table);
-    std::vector<std::byte> stack(stack_size, initial_value);
+    std::vector<std::int64_t> stack(stack_size, initial_value);
     const state machine(strings, {}, stack);
     strings.assign("changed");
     stack.clear();
@@ -42,7 +45,7 @@ TEST(InterpreterState, OwnsStorage) {
 }
 
 TEST(InterpreterState, InitializesRegisters) {
-  const state machine({}, {}, std::vector<std::byte>(stack_size));
+  const state machine({}, {}, std::vector<std::int64_t>(stack_size));
   EXPECT_EQ(machine.ip, 0);
   EXPECT_EQ(machine.sp, stack_size);
   EXPECT_EQ(machine.bp, stack_size);
@@ -53,6 +56,38 @@ TEST(InterpreterState, AcceptsEmptyStorage) {
   EXPECT_TRUE(machine.string_table.empty());
   EXPECT_TRUE(machine.stack.empty());
   EXPECT_EQ(machine.ip, 0);
+  EXPECT_EQ(machine.sp, 0);
+  EXPECT_EQ(machine.bp, 0);
+}
+
+TEST(InterpreterState, PushesAndPopsValuesInReverseOrder) {
+  constexpr std::array<std::int64_t, 3> values{1, -2, 3};
+  state machine({}, {}, std::vector<std::int64_t>(values.size()));
+  for (const auto value : values) {
+    EXPECT_TRUE(machine.stack_push(value));
+  }
+
+  for (const auto value : std::views::reverse(values)) {
+    EXPECT_EQ(machine.stack_top(), value);
+    EXPECT_EQ(machine.stack_pop(), value);
+  }
+
+  EXPECT_EQ(std::pair(machine.sp, machine.bp), std::pair(values.size(), values.size()));
+}
+
+TEST(InterpreterState, StackOverflowPreservesExistingValue) {
+  state machine({}, {}, std::vector<std::int64_t>(1));
+  EXPECT_TRUE(machine.stack_push(1));
+  EXPECT_EQ(machine.stack_push(2), std::unexpected(error("stack overflow")));
+  EXPECT_EQ(machine.stack_top(), 1);
+  EXPECT_EQ(machine.stack_pop(), 1);
+}
+
+TEST(InterpreterState, EmptyStackOperationsPreserveRegisters) {
+  state machine({}, {}, {});
+  EXPECT_EQ(machine.stack_push(1), std::unexpected(error("stack overflow")));
+  EXPECT_EQ(machine.stack_pop(), std::unexpected(error("stack underflow")));
+  EXPECT_EQ(machine.stack_top(), std::unexpected(error("stack underflow")));
   EXPECT_EQ(machine.sp, 0);
   EXPECT_EQ(machine.bp, 0);
 }
@@ -87,7 +122,7 @@ TEST(InterpreterBoot, RunsValidatedCode) {
   const auto bytes = "\x52\x00\x00\x00\x00\x00\x00\x00\x00\xff"sv;
   const auto result = listener(std::as_bytes(std::span(bytes)));
   ASSERT_FALSE(result);
-  EXPECT_EQ(result.error(), (std::vector<error>{"unsupported instruction: begin"}));
+  EXPECT_EQ(result.error(), (std::vector<error>{"unsupported instruction: eof"}));
 }
 
 TEST(InterpreterBoot, ValidatesEntireCodeBeforeExecution) {
@@ -112,20 +147,6 @@ TEST(InterpreterLoop, RunsSuppliedCodeUntilError) {
 TEST(InterpreterLoop, NamesEveryUnsupportedInstruction) {
   using instruction = std::pair<bc::opcode, std::string_view>;
   constexpr std::array instructions{
-    instruction{bc::opcode::add, "add"},
-    instruction{bc::opcode::sub, "sub"},
-    instruction{bc::opcode::mul, "mul"},
-    instruction{bc::opcode::div, "div"},
-    instruction{bc::opcode::mod, "mod"},
-    instruction{bc::opcode::lt, "lt"},
-    instruction{bc::opcode::le, "le"},
-    instruction{bc::opcode::gt, "gt"},
-    instruction{bc::opcode::ge, "ge"},
-    instruction{bc::opcode::eq, "eq"},
-    instruction{bc::opcode::ne, "ne"},
-    instruction{bc::opcode::logical_and, "logical_and"},
-    instruction{bc::opcode::logical_or, "logical_or"},
-    instruction{bc::opcode::constant, "constant"},
     instruction{bc::opcode::string, "string"},
     instruction{bc::opcode::sexp, "sexp"},
     instruction{bc::opcode::sti, "sti"},
@@ -151,7 +172,6 @@ TEST(InterpreterLoop, NamesEveryUnsupportedInstruction) {
     instruction{bc::opcode::st_clo, "st_clo"},
     instruction{bc::opcode::cjmp_z, "cjmp_z"},
     instruction{bc::opcode::cjmp_nz, "cjmp_nz"},
-    instruction{bc::opcode::begin, "begin"},
     instruction{bc::opcode::begin_closure, "begin_closure"},
     instruction{bc::opcode::closure, "closure"},
     instruction{bc::opcode::callc, "callc"},

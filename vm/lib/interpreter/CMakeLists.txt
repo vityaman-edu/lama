@@ -1,1 +1,1 @@
-lamavm_add_library(liblamavm_bc)
+lamavm_add_library(liblamavm_bc liblamavm_runtime)

@@ -15,7 +15,7 @@ class LaMaVM:
             check=False,
             timeout=self.timeout,
         )
-        if result.returncode != 1 or result.stderr != b"unsupported instruction: begin\n":
+        if result.returncode != 1 or not result.stderr.startswith(b"unsupported instruction: "):
             raise subprocess.CalledProcessError(
                 result.returncode, result.args, output=result.stdout, stderr=result.stderr
             )

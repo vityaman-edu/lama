@@ -1,5 +1,14 @@
 cmake_minimum_required(VERSION 3.25)
-project(lamavm LANGUAGES CXX)
+
+if(CMAKE_HOST_APPLE)
+  set(CMAKE_OSX_ARCHITECTURES x86_64 CACHE STRING "LaMa runtime architecture" FORCE)
+endif()
+
+project(lamavm LANGUAGES C CXX ASM)
+
+if(NOT APPLE AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
+  message(FATAL_ERROR "LaMa runtime requires an x86_64 target")
+endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

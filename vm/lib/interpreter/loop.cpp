@@ -3,9 +3,13 @@
 #include "bc/code_reader.hpp"
 #include "bc/layout.hpp"
 #include "core/exception.hpp"
+#include "runtime/binop.hpp"
+#include "runtime/box.hpp"
 #include "state.hpp"
 
+#include <bit>
 #include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <span>
 #include <string>
@@ -21,7 +25,10 @@ constexpr std::size_t stack_size = std::size_t{1024} * 1024;
 } // namespace
 
 loop::loop(std::string string_table, std::span<const std::byte> code)
-  : state(std::move(string_table), code, std::vector<std::byte>(stack_size)) {
+  : state(
+      std::move(string_table),
+      code,
+      std::vector<std::int64_t>(stack_size / sizeof(std::int64_t))) {
 }
 
 auto loop::run() -> status {
@@ -32,74 +39,98 @@ auto loop::run() -> status {
   }
 }
 
+template <std::int64_t (*f)(void *, void *)>
+auto loop::binop() -> status {
+  if (stack.size() - sp < 2) {
+    return std::unexpected("stack underflow");
+  }
+
+  if constexpr (f == runtime::div || f == runtime::mod) {
+    if (runtime::unbox(*stack_top()) == 0) {
+      return std::unexpected("division by zero");
+    }
+  }
+
+  const auto right = *stack_pop();
+  const auto left = *stack_pop();
+  const auto value = f(std::bit_cast<void *>(left), std::bit_cast<void *>(right));
+  const auto result = stack_push(value);
+  ip += sizeof(bc::add);
+  return result;
+}
+
 auto loop::operator()(const bc::add &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: add");
+  return binop<runtime::add>();
 }
 
 auto loop::operator()(const bc::sub &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: sub");
+  return binop<runtime::sub>();
 }
 
 auto loop::operator()(const bc::mul &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: mul");
+  return binop<runtime::mul>();
 }
 
 auto loop::operator()(const bc::div &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: div");
+  return binop<runtime::div>();
 }
 
 auto loop::operator()(const bc::mod &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: mod");
+  return binop<runtime::mod>();
 }
 
 auto loop::operator()(const bc::lt &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: lt");
+  return binop<runtime::lt>();
 }
 
 auto loop::operator()(const bc::le &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: le");
+  return binop<runtime::le>();
 }
 
 auto loop::operator()(const bc::gt &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: gt");
+  return binop<runtime::gt>();
 }
 
 auto loop::operator()(const bc::ge &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: ge");
+  return binop<runtime::ge>();
 }
 
 auto loop::operator()(const bc::eq &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: eq");
+  return binop<runtime::eq>();
 }
 
 auto loop::operator()(const bc::ne &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: ne");
+  return binop<runtime::ne>();
 }
 
 auto loop::operator()(const bc::logical_and &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: logical_and");
+  return binop<runtime::logical_and>();
 }
 
 auto loop::operator()(const bc::logical_or &op) -> status {
   (void)op;
-  return std::unexpected("unsupported instruction: logical_or");
+  return binop<runtime::logical_or>();
 }
 
 auto loop::operator()(const bc::constant &op) -> status {
-  (void)op;
-  return std::unexpected("unsupported instruction: constant");
+  if (auto result = stack_push(runtime::box(op.value)); !result) {
+    return result;
+  }
+
+  ip += sizeof(op);
+  return {};
 }
 
 auto loop::operator()(const bc::string &op) -> status {
@@ -228,8 +259,14 @@ auto loop::operator()(const bc::cjmp_nz &op) -> status {
 }
 
 auto loop::operator()(const bc::begin &op) -> status {
-  (void)op;
-  return std::unexpected("unsupported instruction: begin");
+  if (op.n_locals != 0) {
+    return std::unexpected("unsupported instruction: begin with nonzero n_locals");
+  }
+
+  // TODO(vityaman): handle n_args when function calls are supported.
+  (void)op.n_args;
+  ip += sizeof(op);
+  return {};
 }
 
 auto loop::operator()(const bc::begin_closure &op) -> status {

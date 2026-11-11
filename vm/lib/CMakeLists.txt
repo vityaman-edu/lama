@@ -1,6 +1,7 @@
 add_subdirectory(support)
 add_subdirectory(core)
 add_subdirectory(bc)
+add_subdirectory(runtime)
 add_subdirectory(interpreter)
 
 add_library(liblamavm STATIC)
