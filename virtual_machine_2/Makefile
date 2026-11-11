@@ -1,3 +1,20 @@
+.PHONY: lamavm2
+lamavm2:
+	printf '%s\n' '#!/bin/sh' 'echo todo' > lamavm2
+	chmod +x lamavm2
+
+.PHONY: style
+style:
+	echo todo
+
+.PHONY: check
+check:
+	echo todo
+
+.PHONY: test
+test: check
+	echo todo
+
 .PHONY: lamac
 lamac:
 	(cd ..; dune build src/Driver.exe)
@@ -10,15 +27,3 @@ lamavm:
 	rm -f lamavm
 	printf '%s\n' '#!/bin/sh' '"$(abspath ../virtual_machine/lama.exe)" -I "$(abspath ../stdlib/x64)" "$$@"' > lamavm
 	chmod +x lamavm
-
-lamavm2:
-	echo todo
-
-style:
-	echo todo
-
-lint:
-	echo todo
-
-test:
-	echo todo
