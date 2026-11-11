@@ -1,5 +1,6 @@
 #include "file_reader.hpp"
 
+#include "core/exception.hpp"
 #include "file_listener.hpp"
 #include "layout.hpp"
 
@@ -23,7 +24,7 @@
 namespace lamavm::bc {
 namespace {
 
-using status = std::expected<void, std::monostate>;
+using parse_status = std::expected<void, std::monostate>;
 
 class file_reader final {
 public:
@@ -32,7 +33,7 @@ public:
     , listener(&output) {
   }
 
-  auto read() -> std::expected<void, std::vector<std::string>> {
+  auto read() -> std::expected<void, std::vector<error>> {
     auto h =
       scoped("header", [this] -> std::expected<header, std::monostate> { return read_header(); });
     if (!h) {
@@ -48,13 +49,20 @@ public:
       return std::unexpected(std::move(errors));
     }
 
-    listener->operator()(std::string_view(*strings));
-
-    if (const auto e = scoped("import", [this, &h] -> status { return read_imports(*h); }); !e) {
+    if (auto result = listener->operator()(std::string_view(*strings)); !result) {
+      errors.push_back(std::move(result.error()));
       return std::unexpected(std::move(errors));
     }
 
-    if (const auto e = scoped("symbol", [this, &h] -> status { return read_symbols(*h); }); !e) {
+    if (
+      const auto e = scoped("import", [this, &h] -> parse_status { return read_imports(*h); });
+      !e) {
+      return std::unexpected(std::move(errors));
+    }
+
+    if (
+      const auto e = scoped("symbol", [this, &h] -> parse_status { return read_symbols(*h); });
+      !e) {
       return std::unexpected(std::move(errors));
     }
 
@@ -73,6 +81,15 @@ public:
   }
 
 private:
+  auto notify(const auto &op) -> parse_status {
+    if (auto result = listener->operator()(op); !result) {
+      errors.push_back(std::move(result.error()));
+      return std::unexpected(std::monostate{});
+    }
+
+    return {};
+  }
+
   auto scoped(std::string_view name, auto f) -> decltype(f()) {
     const auto previous = std::exchange(scope, name);
     auto result = f();
@@ -80,21 +97,23 @@ private:
     return result;
   }
 
-  auto error(std::size_t offset, std::string_view message) -> std::unexpected<std::monostate> {
+  auto make_error(std::size_t offset, std::string_view message) -> std::unexpected<std::monostate> {
     errors.push_back(std::format("offset {}: {}: {}", offset, scope, message));
     return std::unexpected(std::monostate{});
   }
 
   auto expect(std::string_view name, std::int64_t value, std::int64_t end, std::size_t offset)
-    -> status {
+    -> parse_status {
     if (value < 0 || value >= end) {
-      return error(offset, std::format("expected {} in [0, {}), but got {}", name, end, value));
+      return make_error(
+        offset,
+        std::format("expected {} in [0, {}), but got {}", name, end, value));
     }
 
     return {};
   }
 
-  auto consume(std::size_t count, char *destination) -> status {
+  auto consume(std::size_t count, char *destination) -> parse_status {
     const auto size = static_cast<std::int64_t>(bytes_read) + static_cast<std::int64_t>(count);
     if (auto e = expect("file size", size, max_file_size, bytes_read); !e) {
       return e;
@@ -110,7 +129,7 @@ private:
     const auto actual = static_cast<std::size_t>(in->gcount());
     bytes_read += actual;
     if (actual != count || !*in) {
-      return error(bytes_read, std::format("expected {} bytes, but got {}", count, actual));
+      return make_error(bytes_read, std::format("expected {} bytes, but got {}", count, actual));
     }
 
     return {};
@@ -156,7 +175,7 @@ private:
     auto &h = *result;
 
     if (h.magic != std::array{'L', 'a', 'M', 'a'}) {
-      return error(
+      return make_error(
         start,
         std::format(
           "expected magic 'LaMa', but got '{}'",
@@ -164,7 +183,7 @@ private:
     }
 
     if (h.version != 1) {
-      return error(
+      return make_error(
         start + offsetof(header, version),
         std::format("expected version 1, but got {}", std::int32_t{h.version}));
     }
@@ -189,11 +208,14 @@ private:
       offset += sizeof(std::int32_t);
     }
 
-    listener->operator()(std::as_const(h));
+    if (auto e = notify(std::as_const(h)); !e) {
+      return std::unexpected(e.error());
+    }
+
     return result;
   }
 
-  auto read_import(const header &h) -> status {
+  auto read_import(const header &h) -> parse_status {
     const auto start = bytes_read;
 
     auto entry = read<import>();
@@ -205,11 +227,10 @@ private:
       return {};
     }
 
-    listener->operator()(std::as_const(*entry));
-    return {};
+    return notify(std::as_const(*entry));
   }
 
-  auto read_imports(const header &h) -> status {
+  auto read_imports(const header &h) -> parse_status {
     for (std::int32_t i = 0; i < h.imports_count; ++i) {
       if (auto e = read_import(h); !e) {
         return e;
@@ -219,7 +240,7 @@ private:
     return {};
   }
 
-  auto read_symbol(const header &h) -> status {
+  auto read_symbol(const header &h) -> parse_status {
     const auto start = bytes_read;
 
     auto entry = read<public_symbol>();
@@ -236,11 +257,10 @@ private:
       return {};
     }
 
-    listener->operator()(std::as_const(*entry));
-    return {};
+    return notify(std::as_const(*entry));
   }
 
-  auto read_symbols(const header &h) -> status {
+  auto read_symbols(const header &h) -> parse_status {
     for (std::int32_t i = 0; i < h.public_symbols_count; ++i) {
       if (auto e = read_symbol(h); !e) {
         return e;
@@ -259,13 +279,13 @@ private:
       const auto actual = static_cast<std::size_t>(in->gcount());
       bytes_read += actual;
       if (bytes_read >= max_file_size) {
-        return error(bytes_read - actual, "file size exceeds the limit");
+        return make_error(bytes_read - actual, "file size exceeds the limit");
       }
 
       const auto bytes = std::as_bytes(std::span(buffer).first(actual));
       code.insert(code.end(), bytes.begin(), bytes.end());
       if (in->bad() || (in->fail() && !in->eof())) {
-        return error(bytes_read, "failed to read code bytes");
+        return make_error(bytes_read, "failed to read code bytes");
       }
 
       if (in->eof()) {
@@ -280,13 +300,13 @@ private:
   file_listener *listener;
   std::string_view scope;
   std::size_t bytes_read = 0;
-  std::vector<std::string> errors;
+  std::vector<error> errors;
 };
 
 } // namespace
 
 auto read_file(std::istream &in, file_listener &listener)
-  -> std::expected<void, std::vector<std::string>> {
+  -> std::expected<void, std::vector<error>> {
   return file_reader(in, listener).read();
 }
 

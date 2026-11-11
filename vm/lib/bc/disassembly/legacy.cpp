@@ -68,221 +68,313 @@ void legacy::emit(std::size_t size, std::string_view op) {
   code_offset += size;
 }
 
-void legacy::operator()(const header &op) {
+auto legacy::operator()(const header &op) -> status {
   (void)op;
 
   strings.clear();
   code_offset = 0;
+
+  return {};
 }
 
-void legacy::operator()(std::string_view table) {
+auto legacy::operator()(std::string_view table) -> status {
   strings = table;
+
+  return {};
 }
 
-void legacy::operator()(const import &op) {
+auto legacy::operator()(const import &op) -> status {
   *out << std::format("IMPORT ({})\n", support::quote(string_at(op.name_offset)));
+
+  return {};
 }
 
-void legacy::operator()(const public_symbol &op) {
+auto legacy::operator()(const public_symbol &op) -> status {
   *out << std::format(
     "PUBLIC ({}, {})\n",
     support::quote(string_at(op.name_offset)),
     op.flag == public_symbol::flag::function ? "true" : "false");
+
+  return {};
 }
 
-void legacy::operator()(const add &op) {
+auto legacy::operator()(const add &op) -> status {
   emit(sizeof(op), "BINOP (\"+\")");
+
+  return {};
 }
 
-void legacy::operator()(const sub &op) {
+auto legacy::operator()(const sub &op) -> status {
   emit(sizeof(op), "BINOP (\"-\")");
+
+  return {};
 }
 
-void legacy::operator()(const mul &op) {
+auto legacy::operator()(const mul &op) -> status {
   emit(sizeof(op), "BINOP (\"*\")");
+
+  return {};
 }
 
-void legacy::operator()(const div &op) {
+auto legacy::operator()(const div &op) -> status {
   emit(sizeof(op), "BINOP (\"/\")");
+
+  return {};
 }
 
-void legacy::operator()(const mod &op) {
+auto legacy::operator()(const mod &op) -> status {
   emit(sizeof(op), "BINOP (\"%\")");
+
+  return {};
 }
 
-void legacy::operator()(const lt &op) {
+auto legacy::operator()(const lt &op) -> status {
   emit(sizeof(op), "BINOP (\"<\")");
+
+  return {};
 }
 
-void legacy::operator()(const le &op) {
+auto legacy::operator()(const le &op) -> status {
   emit(sizeof(op), "BINOP (\"<=\")");
+
+  return {};
 }
 
-void legacy::operator()(const gt &op) {
+auto legacy::operator()(const gt &op) -> status {
   emit(sizeof(op), "BINOP (\">\")");
+
+  return {};
 }
 
-void legacy::operator()(const ge &op) {
+auto legacy::operator()(const ge &op) -> status {
   emit(sizeof(op), "BINOP (\">=\")");
+
+  return {};
 }
 
-void legacy::operator()(const eq &op) {
+auto legacy::operator()(const eq &op) -> status {
   emit(sizeof(op), "BINOP (\"==\")");
+
+  return {};
 }
 
-void legacy::operator()(const ne &op) {
+auto legacy::operator()(const ne &op) -> status {
   emit(sizeof(op), "BINOP (\"!=\")");
+
+  return {};
 }
 
-void legacy::operator()(const logical_and &op) {
+auto legacy::operator()(const logical_and &op) -> status {
   emit(sizeof(op), "BINOP (\"&&\")");
+
+  return {};
 }
 
-void legacy::operator()(const logical_or &op) {
+auto legacy::operator()(const logical_or &op) -> status {
   emit(sizeof(op), "BINOP (\"!!\")");
+
+  return {};
 }
 
-void legacy::operator()(const sti &op) {
+auto legacy::operator()(const sti &op) -> status {
   emit(sizeof(op), "STI");
+
+  return {};
 }
 
-void legacy::operator()(const sta &op) {
+auto legacy::operator()(const sta &op) -> status {
   emit(sizeof(op), "STA");
+
+  return {};
 }
 
-void legacy::operator()(const end &op) {
+auto legacy::operator()(const end &op) -> status {
   emit(sizeof(op), "END");
+
+  return {};
 }
 
-void legacy::operator()(const ret &op) {
+auto legacy::operator()(const ret &op) -> status {
   emit(sizeof(op), "RET");
+
+  return {};
 }
 
-void legacy::operator()(const drop &op) {
+auto legacy::operator()(const drop &op) -> status {
   emit(sizeof(op), "DROP");
+
+  return {};
 }
 
-void legacy::operator()(const dup &op) {
+auto legacy::operator()(const dup &op) -> status {
   emit(sizeof(op), "DUP");
+
+  return {};
 }
 
-void legacy::operator()(const swap &op) {
+auto legacy::operator()(const swap &op) -> status {
   emit(sizeof(op), "SWAP");
+
+  return {};
 }
 
-void legacy::operator()(const elem &op) {
+auto legacy::operator()(const elem &op) -> status {
   emit(sizeof(op), "ELEM");
+
+  return {};
 }
 
-void legacy::operator()(const constant &op) {
+auto legacy::operator()(const constant &op) -> status {
   emit(sizeof(op), std::format("CONST ({})", std::int32_t{op.value}));
+
+  return {};
 }
 
-void legacy::operator()(const array &op) {
+auto legacy::operator()(const array &op) -> status {
   emit(sizeof(op), std::format("ARRAY ({})", std::int32_t{op.n}));
+
+  return {};
 }
 
-void legacy::operator()(const line &op) {
+auto legacy::operator()(const line &op) -> status {
   emit(sizeof(op), std::format("LINE ({})", std::int32_t{op.line}));
+
+  return {};
 }
 
-void legacy::operator()(const string &op) {
+auto legacy::operator()(const string &op) -> status {
   emit(sizeof(op), std::format("STRING ({})", support::quote(string_at(op.string_offset))));
+
+  return {};
 }
 
-void legacy::operator()(const sexp &op) {
+auto legacy::operator()(const sexp &op) -> status {
   emit(
     sizeof(op),
     std::format(
       "SEXP ({}, {})",
       support::quote(string_at(op.tag_offset)),
       std::int32_t{op.n_fields}));
+
+  return {};
 }
 
-void legacy::operator()(const tag &op) {
+auto legacy::operator()(const tag &op) -> status {
   emit(
     sizeof(op),
     std::format(
       "TAG ({}, {})",
       support::quote(string_at(op.tag_offset)),
       std::int32_t{op.n_fields}));
+
+  return {};
 }
 
-void legacy::operator()(const jmp &op) {
+auto legacy::operator()(const jmp &op) -> status {
   emit(sizeof(op), std::format("JMP ({})", target(op.target)));
+
+  return {};
 }
 
-void legacy::operator()(const cjmp_z &op) {
+auto legacy::operator()(const cjmp_z &op) -> status {
   emit(sizeof(op), std::format("CJMP (\"z\", {})", target(op.target)));
+
+  return {};
 }
 
-void legacy::operator()(const cjmp_nz &op) {
+auto legacy::operator()(const cjmp_nz &op) -> status {
   emit(sizeof(op), std::format("CJMP (\"nz\", {})", target(op.target)));
+
+  return {};
 }
 
-void legacy::operator()(const ld_glo &op) {
+auto legacy::operator()(const ld_glo &op) -> status {
   emit(sizeof(op), std::format("LD ({})", designation(closure::capture::kind::global, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const ld_loc &op) {
+auto legacy::operator()(const ld_loc &op) -> status {
   emit(sizeof(op), std::format("LD ({})", designation(closure::capture::kind::local, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const ld_arg &op) {
+auto legacy::operator()(const ld_arg &op) -> status {
   emit(
     sizeof(op),
     std::format("LD ({})", designation(closure::capture::kind::argument, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const ld_clo &op) {
+auto legacy::operator()(const ld_clo &op) -> status {
   emit(
     sizeof(op),
     std::format("LD ({})", designation(closure::capture::kind::captured, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const lda_glo &op) {
+auto legacy::operator()(const lda_glo &op) -> status {
   emit(
     sizeof(op),
     std::format("LDA ({})", designation(closure::capture::kind::global, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const lda_loc &op) {
+auto legacy::operator()(const lda_loc &op) -> status {
   emit(sizeof(op), std::format("LDA ({})", designation(closure::capture::kind::local, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const lda_arg &op) {
+auto legacy::operator()(const lda_arg &op) -> status {
   emit(
     sizeof(op),
     std::format("LDA ({})", designation(closure::capture::kind::argument, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const lda_clo &op) {
+auto legacy::operator()(const lda_clo &op) -> status {
   emit(
     sizeof(op),
     std::format("LDA ({})", designation(closure::capture::kind::captured, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const st_glo &op) {
+auto legacy::operator()(const st_glo &op) -> status {
   emit(sizeof(op), std::format("ST ({})", designation(closure::capture::kind::global, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const st_loc &op) {
+auto legacy::operator()(const st_loc &op) -> status {
   emit(sizeof(op), std::format("ST ({})", designation(closure::capture::kind::local, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const st_arg &op) {
+auto legacy::operator()(const st_arg &op) -> status {
   emit(
     sizeof(op),
     std::format("ST ({})", designation(closure::capture::kind::argument, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const st_clo &op) {
+auto legacy::operator()(const st_clo &op) -> status {
   emit(
     sizeof(op),
     std::format("ST ({})", designation(closure::capture::kind::captured, op.operand)));
+
+  return {};
 }
 
-void legacy::operator()(const begin &op) {
+auto legacy::operator()(const begin &op) -> status {
   const auto label = support::quote(std::format("0x{:08x}", code_offset));
   *out << std::format("LABEL ({})\n", label);
   emit(
@@ -292,9 +384,11 @@ void legacy::operator()(const begin &op) {
       label,
       std::int32_t{op.n_args},
       std::int32_t{op.n_locals}));
+
+  return {};
 }
 
-void legacy::operator()(const begin_closure &op) {
+auto legacy::operator()(const begin_closure &op) -> status {
   const auto label = support::quote(std::format("0x{:08x}", code_offset));
   std::string captured;
   for (std::int32_t i = 0; i < std::int32_t{op.n_captured}; ++i) {
@@ -314,9 +408,11 @@ void legacy::operator()(const begin_closure &op) {
       std::int32_t{op.n_args},
       std::int32_t{op.n_locals},
       captured));
+
+  return {};
 }
 
-void legacy::operator()(const closure &op, std::span<const closure::capture> captures) {
+auto legacy::operator()(const closure &op, std::span<const closure::capture> captures) -> status {
   std::string captured;
   for (const auto &capture : captures) {
     if (!captured.empty()) {
@@ -329,66 +425,94 @@ void legacy::operator()(const closure &op, std::span<const closure::capture> cap
   emit(
     sizeof(op) + captures.size_bytes(),
     std::format("CLOSURE ({}, [{}])", target(op.target), captured));
+
+  return {};
 }
 
-void legacy::operator()(const callc &op) {
+auto legacy::operator()(const callc &op) -> status {
   emit(sizeof(op), std::format("CALLC ({}, false)", std::int32_t{op.n_args}));
+
+  return {};
 }
 
-void legacy::operator()(const call &op) {
+auto legacy::operator()(const call &op) -> status {
   emit(sizeof(op), std::format("CALL ({}, {}, false)", target(op.target), std::int32_t{op.n_args}));
+
+  return {};
 }
 
-void legacy::operator()(const barray &op) {
+auto legacy::operator()(const barray &op) -> status {
   emit(sizeof(op), std::format("CALL (\".array\", {}, false)", std::int32_t{op.n}));
+
+  return {};
 }
 
-void legacy::operator()(const fail &op) {
+auto legacy::operator()(const fail &op) -> status {
   emit(
     sizeof(op),
     std::format("FAIL (({}, {}), false)", std::int32_t{op.line}, std::int32_t{op.col}));
+
+  return {};
 }
 
-void legacy::operator()(const fail_keep &op) {
+auto legacy::operator()(const fail_keep &op) -> status {
   emit(
     sizeof(op),
     std::format("FAIL (({}, {}), true)", std::int32_t{op.line}, std::int32_t{op.col}));
+
+  return {};
 }
 
-void legacy::operator()(const patt_str_cmp &op) {
+auto legacy::operator()(const patt_str_cmp &op) -> status {
   emit(sizeof(op), "PATT (StrCmp)");
+
+  return {};
 }
 
-void legacy::operator()(const patt_string &op) {
+auto legacy::operator()(const patt_string &op) -> status {
   emit(sizeof(op), "PATT (String)");
+
+  return {};
 }
 
-void legacy::operator()(const patt_array &op) {
+auto legacy::operator()(const patt_array &op) -> status {
   emit(sizeof(op), "PATT (Array)");
+
+  return {};
 }
 
-void legacy::operator()(const patt_sexp &op) {
+auto legacy::operator()(const patt_sexp &op) -> status {
   emit(sizeof(op), "PATT (Sexp)");
+
+  return {};
 }
 
-void legacy::operator()(const patt_boxed &op) {
+auto legacy::operator()(const patt_boxed &op) -> status {
   emit(sizeof(op), "PATT (Boxed)");
+
+  return {};
 }
 
-void legacy::operator()(const patt_unboxed &op) {
+auto legacy::operator()(const patt_unboxed &op) -> status {
   emit(sizeof(op), "PATT (UnBoxed)");
+
+  return {};
 }
 
-void legacy::operator()(const patt_closure &op) {
+auto legacy::operator()(const patt_closure &op) -> status {
   emit(sizeof(op), "PATT (Closure)");
+
+  return {};
 }
 
-void legacy::operator()(const eof &op) {
+auto legacy::operator()(const eof &op) -> status {
   (void)op;
+
+  return {};
 }
 
 auto legacy::operator()(std::span<const std::byte> bytes)
-  -> std::expected<void, std::vector<std::string>> {
+  -> std::expected<void, std::vector<error>> {
   return read_ops(bytes, *this);
 }
 

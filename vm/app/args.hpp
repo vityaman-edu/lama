@@ -1,8 +1,8 @@
 #pragma once
 
+#include "core/exception.hpp"
 #include <cstdint>
 #include <expected>
-#include <string>
 
 namespace lamavm {
 
@@ -16,7 +16,7 @@ struct args {
   bool is_help = false;
   disassembly_kind disassembly = disassembly_kind::none;
 
-  static auto parse(int argc, char **argv) -> std::expected<args, std::string>;
+  static auto parse(int argc, char **argv) -> std::expected<args, error>;
 };
 
 } // namespace lamavm

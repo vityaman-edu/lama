@@ -127,7 +127,7 @@ void modern::emit(const Op &op, std::format_string<Args...> symbolic, Args &&...
   emit(sizeof(op), hex_bytes(op), std::format(symbolic, std::forward<Args>(args)...));
 }
 
-void modern::operator()(const header &op) {
+auto modern::operator()(const header &op) -> status {
   strings.clear();
   rows.clear();
   code_offset = 0;
@@ -144,9 +144,11 @@ void modern::operator()(const header &op) {
   print_field(*out, "globals_count:", std::to_string(op.globals_count));
   print_field(*out, "imports_count:", std::to_string(op.imports_count));
   print_field(*out, "public_symbols_count:", std::to_string(op.public_symbols_count));
+
+  return {};
 }
 
-void modern::operator()(std::string_view table) {
+auto modern::operator()(std::string_view table) -> status {
   strings = table;
   *out << "\nstring_table:\n";
   const auto width = std::to_string(table.size()).size() + 1;
@@ -160,9 +162,11 @@ void modern::operator()(std::string_view table) {
   }
 
   *out << "\nimports:\n";
+
+  return {};
 }
 
-void modern::operator()(const import &entry) {
+auto modern::operator()(const import &entry) -> status {
   *out << std::format(
     "  {:<{}}\t{} ({})\n",
     std::format("{}:", import_index),
@@ -170,9 +174,11 @@ void modern::operator()(const import &entry) {
     string_at(entry.name_offset),
     std::int32_t{entry.name_offset});
   ++import_index;
+
+  return {};
 }
 
-void modern::operator()(const public_symbol &entry) {
+auto modern::operator()(const public_symbol &entry) -> status {
   if (symbol_index == 0) {
     *out << "\npublic_symbols:\n";
   }
@@ -187,242 +193,358 @@ void modern::operator()(const public_symbol &entry) {
     std::int32_t{entry.name_offset},
     std::int32_t{entry.code_offset});
   ++symbol_index;
+
+  return {};
 }
 
-void modern::operator()(const add &op) {
+auto modern::operator()(const add &op) -> status {
   emit(op, "ADD");
+
+  return {};
 }
 
-void modern::operator()(const sub &op) {
+auto modern::operator()(const sub &op) -> status {
   emit(op, "SUB");
+
+  return {};
 }
 
-void modern::operator()(const mul &op) {
+auto modern::operator()(const mul &op) -> status {
   emit(op, "MUL");
+
+  return {};
 }
 
-void modern::operator()(const div &op) {
+auto modern::operator()(const div &op) -> status {
   emit(op, "DIV");
+
+  return {};
 }
 
-void modern::operator()(const mod &op) {
+auto modern::operator()(const mod &op) -> status {
   emit(op, "MOD");
+
+  return {};
 }
 
-void modern::operator()(const lt &op) {
+auto modern::operator()(const lt &op) -> status {
   emit(op, "LT");
+
+  return {};
 }
 
-void modern::operator()(const le &op) {
+auto modern::operator()(const le &op) -> status {
   emit(op, "LE");
+
+  return {};
 }
 
-void modern::operator()(const gt &op) {
+auto modern::operator()(const gt &op) -> status {
   emit(op, "GT");
+
+  return {};
 }
 
-void modern::operator()(const ge &op) {
+auto modern::operator()(const ge &op) -> status {
   emit(op, "GE");
+
+  return {};
 }
 
-void modern::operator()(const eq &op) {
+auto modern::operator()(const eq &op) -> status {
   emit(op, "EQ");
+
+  return {};
 }
 
-void modern::operator()(const ne &op) {
+auto modern::operator()(const ne &op) -> status {
   emit(op, "NE");
+
+  return {};
 }
 
-void modern::operator()(const logical_and &op) {
+auto modern::operator()(const logical_and &op) -> status {
   emit(op, "LOGICAL_AND");
+
+  return {};
 }
 
-void modern::operator()(const logical_or &op) {
+auto modern::operator()(const logical_or &op) -> status {
   emit(op, "LOGICAL_OR");
+
+  return {};
 }
 
-void modern::operator()(const sti &op) {
+auto modern::operator()(const sti &op) -> status {
   emit(op, "STI");
+
+  return {};
 }
 
-void modern::operator()(const sta &op) {
+auto modern::operator()(const sta &op) -> status {
   emit(op, "STA");
+
+  return {};
 }
 
-void modern::operator()(const end &op) {
+auto modern::operator()(const end &op) -> status {
   emit(op, "END");
+
+  return {};
 }
 
-void modern::operator()(const ret &op) {
+auto modern::operator()(const ret &op) -> status {
   emit(op, "RET");
+
+  return {};
 }
 
-void modern::operator()(const drop &op) {
+auto modern::operator()(const drop &op) -> status {
   emit(op, "DROP");
+
+  return {};
 }
 
-void modern::operator()(const dup &op) {
+auto modern::operator()(const dup &op) -> status {
   emit(op, "DUP");
+
+  return {};
 }
 
-void modern::operator()(const swap &op) {
+auto modern::operator()(const swap &op) -> status {
   emit(op, "SWAP");
+
+  return {};
 }
 
-void modern::operator()(const elem &op) {
+auto modern::operator()(const elem &op) -> status {
   emit(op, "ELEM");
+
+  return {};
 }
 
-void modern::operator()(const patt_str_cmp &op) {
+auto modern::operator()(const patt_str_cmp &op) -> status {
   emit(op, "PATT_STR_CMP");
+
+  return {};
 }
 
-void modern::operator()(const patt_string &op) {
+auto modern::operator()(const patt_string &op) -> status {
   emit(op, "PATT_STRING");
+
+  return {};
 }
 
-void modern::operator()(const patt_array &op) {
+auto modern::operator()(const patt_array &op) -> status {
   emit(op, "PATT_ARRAY");
+
+  return {};
 }
 
-void modern::operator()(const patt_sexp &op) {
+auto modern::operator()(const patt_sexp &op) -> status {
   emit(op, "PATT_SEXP");
+
+  return {};
 }
 
-void modern::operator()(const patt_boxed &op) {
+auto modern::operator()(const patt_boxed &op) -> status {
   emit(op, "PATT_BOXED");
+
+  return {};
 }
 
-void modern::operator()(const patt_unboxed &op) {
+auto modern::operator()(const patt_unboxed &op) -> status {
   emit(op, "PATT_UNBOXED");
+
+  return {};
 }
 
-void modern::operator()(const patt_closure &op) {
+auto modern::operator()(const patt_closure &op) -> status {
   emit(op, "PATT_CLOSURE");
+
+  return {};
 }
 
-void modern::operator()(const eof &op) {
+auto modern::operator()(const eof &op) -> status {
   emit(op, "EOF");
+
+  return {};
 }
 
-void modern::operator()(const constant &op) {
+auto modern::operator()(const constant &op) -> status {
   emit(op, "CONST {}", std::int32_t{op.value});
+
+  return {};
 }
 
-void modern::operator()(const array &op) {
+auto modern::operator()(const array &op) -> status {
   emit(op, "ARRAY {}", std::int32_t{op.n});
+
+  return {};
 }
 
-void modern::operator()(const barray &op) {
+auto modern::operator()(const barray &op) -> status {
   emit(op, "BARRAY {}", std::int32_t{op.n});
+
+  return {};
 }
 
-void modern::operator()(const line &op) {
+auto modern::operator()(const line &op) -> status {
   emit(op, "LINE {}", std::int32_t{op.line});
+
+  return {};
 }
 
-void modern::operator()(const callc &op) {
+auto modern::operator()(const callc &op) -> status {
   emit(op, "CALLC {}", std::int32_t{op.n_args});
+
+  return {};
 }
 
-void modern::operator()(const ld_glo &op) {
+auto modern::operator()(const ld_glo &op) -> status {
   emit(op, "LD_GLO {}", target(op.operand));
+
+  return {};
 }
 
-void modern::operator()(const ld_loc &op) {
+auto modern::operator()(const ld_loc &op) -> status {
   emit(op, "LD_LOC {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const ld_arg &op) {
+auto modern::operator()(const ld_arg &op) -> status {
   emit(op, "LD_ARG {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const ld_clo &op) {
+auto modern::operator()(const ld_clo &op) -> status {
   emit(op, "LD_CLO {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const lda_glo &op) {
+auto modern::operator()(const lda_glo &op) -> status {
   emit(op, "LDA_GLO {}", target(op.operand));
+
+  return {};
 }
 
-void modern::operator()(const lda_loc &op) {
+auto modern::operator()(const lda_loc &op) -> status {
   emit(op, "LDA_LOC {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const lda_arg &op) {
+auto modern::operator()(const lda_arg &op) -> status {
   emit(op, "LDA_ARG {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const lda_clo &op) {
+auto modern::operator()(const lda_clo &op) -> status {
   emit(op, "LDA_CLO {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const st_glo &op) {
+auto modern::operator()(const st_glo &op) -> status {
   emit(op, "ST_GLO {}", target(op.operand));
+
+  return {};
 }
 
-void modern::operator()(const st_loc &op) {
+auto modern::operator()(const st_loc &op) -> status {
   emit(op, "ST_LOC {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const st_arg &op) {
+auto modern::operator()(const st_arg &op) -> status {
   emit(op, "ST_ARG {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const st_clo &op) {
+auto modern::operator()(const st_clo &op) -> status {
   emit(op, "ST_CLO {}", std::int32_t{op.operand});
+
+  return {};
 }
 
-void modern::operator()(const jmp &op) {
+auto modern::operator()(const jmp &op) -> status {
   emit(op, "JMP {}", target(op.target));
+
+  return {};
 }
 
-void modern::operator()(const cjmp_z &op) {
+auto modern::operator()(const cjmp_z &op) -> status {
   emit(op, "CJMP_Z {}", target(op.target));
+
+  return {};
 }
 
-void modern::operator()(const cjmp_nz &op) {
+auto modern::operator()(const cjmp_nz &op) -> status {
   emit(op, "CJMP_NZ {}", target(op.target));
+
+  return {};
 }
 
-void modern::operator()(const begin &op) {
+auto modern::operator()(const begin &op) -> status {
   emit(op, "BEGIN {}, {}", std::int32_t{op.n_args}, std::int32_t{op.n_locals});
+
+  return {};
 }
 
-void modern::operator()(const call &op) {
+auto modern::operator()(const call &op) -> status {
   emit(op, "CALL {}, {}", target(op.target), std::int32_t{op.n_args});
+
+  return {};
 }
 
-void modern::operator()(const fail &op) {
+auto modern::operator()(const fail &op) -> status {
   emit(op, "FAIL {}, {}", std::int32_t{op.line}, std::int32_t{op.col});
+
+  return {};
 }
 
-void modern::operator()(const fail_keep &op) {
+auto modern::operator()(const fail_keep &op) -> status {
   emit(op, "FAIL_KEEP {}, {}", std::int32_t{op.line}, std::int32_t{op.col});
+
+  return {};
 }
 
-void modern::operator()(const string &op) {
+auto modern::operator()(const string &op) -> status {
   emit(op, "STRING {}", string_at(op.string_offset));
+
+  return {};
 }
 
-void modern::operator()(const sexp &op) {
+auto modern::operator()(const sexp &op) -> status {
   emit(op, "SEXP {}, {}", string_at(op.tag_offset), std::int32_t{op.n_fields});
+
+  return {};
 }
 
-void modern::operator()(const tag &op) {
+auto modern::operator()(const tag &op) -> status {
   emit(op, "TAG {}, {}", string_at(op.tag_offset), std::int32_t{op.n_fields});
+
+  return {};
 }
 
-void modern::operator()(const begin_closure &op) {
+auto modern::operator()(const begin_closure &op) -> status {
   emit(
     op,
     "BEGIN_CLOSURE {}, {}, {}",
     std::int32_t{op.n_args},
     std::int32_t{op.n_locals},
     std::int32_t{op.n_captured});
+
+  return {};
 }
 
-void modern::operator()(const closure &op, std::span<const closure::capture> captures) {
+auto modern::operator()(const closure &op, std::span<const closure::capture> captures) -> status {
   auto bytes = hex_bytes(op);
   std::string captured;
   for (const auto &capture : captures) {
@@ -439,10 +561,12 @@ void modern::operator()(const closure &op, std::span<const closure::capture> cap
     sizeof(op) + captures.size_bytes(),
     std::move(bytes),
     std::format("CLOSURE {}, [{}]", target(op.target), captured));
+
+  return {};
 }
 
 auto modern::operator()(std::span<const std::byte> bytes)
-  -> std::expected<void, std::vector<std::string>> {
+  -> std::expected<void, std::vector<error>> {
   rows.clear();
   code_offset = 0;
   print_code_header();

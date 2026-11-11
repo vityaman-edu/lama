@@ -1,5 +1,6 @@
 #include "args.hpp"
 
+#include "core/exception.hpp"
 #include <cxxopts.hpp>
 
 #include <expected>
@@ -8,7 +9,7 @@
 
 namespace lamavm {
 
-auto args::parse(int argc, char **argv) -> std::expected<args, std::string> {
+auto args::parse(int argc, char **argv) -> std::expected<args, error> {
   try {
     args parsed;
     std::string disassembly;
@@ -43,7 +44,7 @@ auto args::parse(int argc, char **argv) -> std::expected<args, std::string> {
 
     return parsed;
   } catch (const cxxopts::exceptions::exception &e) {
-    return std::unexpected(std::string(e.what()));
+    return std::unexpected(error(e.what()));
   }
 }
 

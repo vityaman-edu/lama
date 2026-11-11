@@ -1,34 +1,42 @@
 #include "listeners.hpp"
 
 #include "bc/layout.hpp"
+#include "core/exception.hpp"
 
 #include <cstddef>
 #include <expected>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
 namespace lamavm::bc::test {
 
-void noop_file_listener::operator()(const header &op) {
+auto noop_file_listener::operator()(const header &op) -> status {
   (void)op;
+
+  return {};
 }
 
-void noop_file_listener::operator()(const import &op) {
+auto noop_file_listener::operator()(const import &op) -> status {
   (void)op;
+
+  return {};
 }
 
-void noop_file_listener::operator()(const public_symbol &op) {
+auto noop_file_listener::operator()(const public_symbol &op) -> status {
   (void)op;
+
+  return {};
 }
 
-void noop_file_listener::operator()(std::string_view strings) {
+auto noop_file_listener::operator()(std::string_view strings) -> status {
   (void)strings;
+
+  return {};
 }
 
 auto noop_file_listener::operator()(std::span<const std::byte> code)
-  -> std::expected<void, std::vector<std::string>> {
+  -> std::expected<void, std::vector<error>> {
   (void)code;
 
   return {};

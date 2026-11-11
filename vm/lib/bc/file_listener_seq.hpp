@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/exception.hpp"
 #include "file_listener.hpp"
 #include "layout.hpp"
 
@@ -8,7 +9,6 @@
 #include <expected>
 #include <memory>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -20,12 +20,12 @@ public:
 
   using file_listener::operator();
 
-  void operator()(const header &op) override;
-  void operator()(const import &op) override;
-  void operator()(const public_symbol &op) override;
-  void operator()(std::string_view strings) override;
+  auto operator()(const header &op) -> status override;
+  auto operator()(const import &op) -> status override;
+  auto operator()(const public_symbol &op) -> status override;
+  auto operator()(std::string_view strings) -> status override;
   auto operator()(std::span<const std::byte> code)
-    -> std::expected<void, std::vector<std::string>> override;
+    -> std::expected<void, std::vector<error>> override;
 
 private:
   std::array<std::unique_ptr<file_listener>, 2> listeners;

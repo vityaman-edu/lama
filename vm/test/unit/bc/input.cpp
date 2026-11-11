@@ -3,6 +3,7 @@
 #include "bc/disassembly/legacy.hpp"
 #include "bc/disassembly/modern.hpp"
 #include "bc/file_listener.hpp"
+#include "bc/file_listener_nop.hpp"
 #include "bc/file_listener_seq.hpp"
 #include "bc/file_reader.hpp"
 #include "bc/layout.hpp"
@@ -78,21 +79,27 @@ public:
     return result;
   }
 
-  void operator()(const constant &op) override {
+  auto operator()(const constant &op) -> status override {
     result.constant_address = &op;
     result.constants.push_back(std::int32_t{op.value});
+
+    return {};
   }
 
-  void operator()(const closure &op, std::span<const closure::capture> values) override {
+  auto operator()(const closure &op, std::span<const closure::capture> values) -> status override {
     result.closure_address = &op;
     result.captures_address = values.data();
     result.closure_target = op.target;
     result.captures.assign(values.begin(), values.end());
+
+    return {};
   }
 
-  void operator()(const eof &op) override {
+  auto operator()(const eof &op) -> status override {
     result.eof_address = &op;
     result.is_finished = true;
+
+    return {};
   }
 
 private:
@@ -116,28 +123,36 @@ public:
     return result;
   }
 
-  void operator()(const header &op) override {
+  auto operator()(const header &op) -> status override {
     result.file_header = op;
     result.order.emplace_back("header");
+
+    return {};
   }
 
-  void operator()(std::string_view table) override {
+  auto operator()(std::string_view table) -> status override {
     result.order.emplace_back("strings");
     result.strings = table;
+
+    return {};
   }
 
-  void operator()(const import &op) override {
+  auto operator()(const import &op) -> status override {
     result.order.emplace_back("import");
     result.imports.push_back(std::int32_t{op.name_offset});
+
+    return {};
   }
 
-  void operator()(const public_symbol &op) override {
+  auto operator()(const public_symbol &op) -> status override {
     result.order.emplace_back("symbol");
     result.symbols.push_back(std::int32_t{op.code_offset});
+
+    return {};
   }
 
   auto operator()(std::span<const std::byte> code)
-    -> std::expected<void, std::vector<std::string>> override {
+    -> std::expected<void, std::vector<error>> override {
     result.order.emplace_back("code");
     result.code.assign(code.begin(), code.end());
     return {};
@@ -146,6 +161,84 @@ public:
 private:
   file_events result;
 };
+
+TEST(BytecodeFile, PropagatesMetadataListenerErrors) {
+  class rejecting_listener final : public file_listener_nop {
+  public:
+    using file_listener_nop::operator();
+
+    explicit rejecting_listener(std::string_view event)
+      : rejected(event) {
+    }
+
+    auto operator()(const header &op) -> status override {
+      (void)op;
+      return accept("header");
+    }
+
+    auto operator()(std::string_view table) -> status override {
+      (void)table;
+      return accept("strings");
+    }
+
+    auto operator()(const import &op) -> status override {
+      (void)op;
+      return accept("import");
+    }
+
+    auto operator()(const public_symbol &op) -> status override {
+      (void)op;
+      return accept("symbol");
+    }
+
+  private:
+    [[nodiscard]] auto accept(std::string_view event) const -> status {
+      if (event == rejected) {
+        return std::unexpected(error(event));
+      }
+
+      return {};
+    }
+
+    std::string_view rejected;
+  };
+
+  std::string bytes = "LaMa";
+  for (const auto value : {1, 1, 0, 1, 1, 0, 0, 0}) {
+    append_int(bytes, value);
+  }
+
+  bytes.insert(sizeof(header), 1, '\0');
+  bytes += "\0\xff"sv;
+
+  for (const auto event : {"header"sv, "strings"sv, "import"sv, "symbol"sv}) {
+    std::istringstream input(bytes);
+    file_listener_seq listener(
+      std::make_unique<rejecting_listener>(event),
+      std::make_unique<file_listener_nop>());
+    const auto result = read_file(input, listener);
+    ASSERT_FALSE(result) << event;
+    EXPECT_EQ(result.error(), (std::vector<error>{error(event)}));
+  }
+}
+
+TEST(BytecodeOp, PropagatesConcreteListenerErrors) {
+  auto listener = [](const auto &...) -> status {
+    return std::unexpected(error("listener failed"));
+  };
+  for (const auto input : {
+         "\x10\x2a\x00\x00\x00"sv,
+         "\x54\x2a\x00\x00\x00\x01\x00\x00\x00\x01\x07\x00\x00\x00"sv,
+       }) {
+    const auto bytes = std::as_bytes(std::span(input));
+    const auto result = read_op(bytes, listener);
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error(), "listener failed");
+    const auto unsafe_result = read_op_unsafe(bytes, listener);
+    ASSERT_FALSE(unsafe_result);
+    EXPECT_EQ(unsafe_result.error(), "listener failed");
+  }
+}
 
 TEST(BytecodeFile, MetadataPrecedesCodeSpan) {
   const auto table = "external\0function\0"sv;
@@ -217,7 +310,7 @@ TEST(BytecodeFile, CollectsRecoverableMetadataErrors) {
   ASSERT_FALSE(result);
   EXPECT_EQ(
     result.error(),
-    (std::vector<std::string>{
+    (std::vector<error>{
       "offset 25: import: expected name_offset in [0, 1), but got 1",
       "offset 29: import: expected name_offset in [0, 1), but got -1",
       "offset 41: symbol: expected flag in [0, 2), but got 2",
@@ -241,7 +334,7 @@ TEST(BytecodeFile, FramingFailurePreservesEarlierMetadataErrors) {
   ASSERT_FALSE(result);
   EXPECT_EQ(
     result.error(),
-    (std::vector<std::string>{
+    (std::vector<error>{
       "offset 25: import: expected name_offset in [0, 1), but got 1",
       "offset 30: import: expected 4 bytes, but got 1",
     }));
@@ -281,7 +374,7 @@ TEST(FileListenerSeq, CallsBothListenersAndCombinesCodeErrors) {
   ASSERT_FALSE(result);
   EXPECT_EQ(
     result.error(),
-    (std::vector<std::string>{
+    (std::vector<error>{
       "offset 0: code: unknown opcode 0x00",
       "offset 0: code: unknown opcode 0x00",
     }));
@@ -289,7 +382,10 @@ TEST(FileListenerSeq, CallsBothListenersAndCombinesCodeErrors) {
 
 TEST(BytecodeOp, AcceptsConcreteListenerWithoutInheritance) {
   std::size_t calls = 0;
-  auto listener = [&calls](const auto &...) -> void { ++calls; };
+  auto listener = [&calls](const auto &...) -> status {
+    ++calls;
+    return {};
+  };
   for (const auto input : {
          "\x10\x2a\x00\x00\x00"sv,
          "\x54\x2a\x00\x00\x00\x01\x00\x00\x00\x01\x07\x00\x00\x00"sv,
@@ -446,7 +542,7 @@ TEST(BytecodeInput, InvalidCaptureKindReportsItsCodeOffset) {
   ASSERT_FALSE(result);
   EXPECT_EQ(
     result.error(),
-    (std::vector<std::string>{"offset 10: code: expected capture kind in [0, 4), but got 4"}));
+    (std::vector<error>{"offset 10: code: expected capture kind in [0, 4), but got 4"}));
   EXPECT_TRUE(listener.events().captures.empty());
 }
 
@@ -468,7 +564,7 @@ TEST(BytecodeInput, UnknownOpcodeReportsItsCodeOffset) {
   recording_listener listener;
   const auto result = read_ops(std::as_bytes(std::span(input)), listener);
   ASSERT_FALSE(result);
-  EXPECT_EQ(result.error(), (std::vector<std::string>{"offset 0: code: unknown opcode 0x00"}));
+  EXPECT_EQ(result.error(), (std::vector<error>{"offset 0: code: unknown opcode 0x00"}));
   EXPECT_FALSE(listener.events().is_finished);
 }
 
@@ -528,7 +624,7 @@ TEST(Disassembly, MetadataCallbacksWriteImmediately) {
   const auto table = "name\0"sv;
   std::ostringstream output;
   disassembly::modern listener(output);
-  listener(
+  ASSERT_TRUE(listener(
     header{
       .magic = {'L', 'a', 'M', 'a'},
       .version = 1,
@@ -536,21 +632,21 @@ TEST(Disassembly, MetadataCallbacksWriteImmediately) {
       .globals_count = 0,
       .imports_count = 1,
       .public_symbols_count = 1,
-    });
+    }));
   EXPECT_NE(output.str().find("header:\n"), std::string::npos);
 
-  listener(table);
+  ASSERT_TRUE(listener(table));
   EXPECT_NE(output.str().find("\"name\"\n"), std::string::npos);
 
-  listener(import{.name_offset = 0});
+  ASSERT_TRUE(listener(import{.name_offset = 0}));
   EXPECT_NE(output.str().find("0:\t\"name\" (0)\n"), std::string::npos);
 
-  listener(
+  ASSERT_TRUE(listener(
     public_symbol{
       .name_offset = 0,
       .code_offset = 0,
       .flag = public_symbol::flag::function,
-    });
+    }));
   EXPECT_NE(output.str().find("0:\tfunction\t\"name\" (0) at 0\n"), std::string::npos);
   EXPECT_EQ(output.str().find("\ncode:\n"), std::string::npos);
 }
@@ -611,8 +707,8 @@ TEST(Disassembly, PrintsAllFileMetadata) {
 TEST(Disassembly, CodeCallbacksCollectAndCodeSpanFormats) {
   std::ostringstream output;
   disassembly::modern listener(output);
-  listener(constant{.value = 1});
-  listener(eof{});
+  ASSERT_TRUE(listener(constant{.value = 1}));
+  ASSERT_TRUE(listener(eof{}));
   EXPECT_TRUE(output.str().empty());
 
   const auto code = "\x10\x02\x00\x00\x00\xff"sv;
@@ -706,8 +802,8 @@ TEST(Disassembly, RetainedCodeCanBePrintedAndDecodedAgain) {
   const auto original_code = file.code;
   std::ostringstream output;
   disassembly::modern printer(output);
-  printer(file.file_header);
-  printer(file.strings);
+  ASSERT_TRUE(printer(file.file_header));
+  ASSERT_TRUE(printer(file.strings));
   ASSERT_TRUE(printer(file.code));
   EXPECT_EQ(
     code_listing(output.str()),

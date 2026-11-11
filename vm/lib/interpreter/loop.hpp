@@ -2,6 +2,7 @@
 
 #include "bc/code_listener.hpp"
 #include "bc/layout.hpp"
+#include "core/exception.hpp"
 
 #include <span>
 
@@ -11,64 +12,65 @@ class loop : public bc::code_listener {
 public:
   using bc::code_listener::operator();
 
-  void operator()(const bc::add &op) override;
-  void operator()(const bc::sub &op) override;
-  void operator()(const bc::mul &op) override;
-  void operator()(const bc::div &op) override;
-  void operator()(const bc::mod &op) override;
-  void operator()(const bc::lt &op) override;
-  void operator()(const bc::le &op) override;
-  void operator()(const bc::gt &op) override;
-  void operator()(const bc::ge &op) override;
-  void operator()(const bc::eq &op) override;
-  void operator()(const bc::ne &op) override;
-  void operator()(const bc::logical_and &op) override;
-  void operator()(const bc::logical_or &op) override;
-  void operator()(const bc::constant &op) override;
-  void operator()(const bc::string &op) override;
-  void operator()(const bc::sexp &op) override;
-  void operator()(const bc::sti &op) override;
-  void operator()(const bc::sta &op) override;
-  void operator()(const bc::jmp &op) override;
-  void operator()(const bc::end &op) override;
-  void operator()(const bc::ret &op) override;
-  void operator()(const bc::drop &op) override;
-  void operator()(const bc::dup &op) override;
-  void operator()(const bc::swap &op) override;
-  void operator()(const bc::elem &op) override;
-  void operator()(const bc::ld_glo &op) override;
-  void operator()(const bc::ld_loc &op) override;
-  void operator()(const bc::ld_arg &op) override;
-  void operator()(const bc::ld_clo &op) override;
-  void operator()(const bc::lda_glo &op) override;
-  void operator()(const bc::lda_loc &op) override;
-  void operator()(const bc::lda_arg &op) override;
-  void operator()(const bc::lda_clo &op) override;
-  void operator()(const bc::st_glo &op) override;
-  void operator()(const bc::st_loc &op) override;
-  void operator()(const bc::st_arg &op) override;
-  void operator()(const bc::st_clo &op) override;
-  void operator()(const bc::cjmp_z &op) override;
-  void operator()(const bc::cjmp_nz &op) override;
-  void operator()(const bc::begin &op) override;
-  void operator()(const bc::begin_closure &op) override;
-  void operator()(const bc::closure &op, std::span<const bc::closure::capture> captures) override;
-  void operator()(const bc::callc &op) override;
-  void operator()(const bc::call &op) override;
-  void operator()(const bc::tag &op) override;
-  void operator()(const bc::array &op) override;
-  void operator()(const bc::fail &op) override;
-  void operator()(const bc::fail_keep &op) override;
-  void operator()(const bc::line &op) override;
-  void operator()(const bc::patt_str_cmp &op) override;
-  void operator()(const bc::patt_string &op) override;
-  void operator()(const bc::patt_array &op) override;
-  void operator()(const bc::patt_sexp &op) override;
-  void operator()(const bc::patt_boxed &op) override;
-  void operator()(const bc::patt_unboxed &op) override;
-  void operator()(const bc::patt_closure &op) override;
-  void operator()(const bc::barray &op) override;
-  void operator()(const bc::eof &op) override;
+  auto operator()(const bc::add &op) -> status override;
+  auto operator()(const bc::sub &op) -> status override;
+  auto operator()(const bc::mul &op) -> status override;
+  auto operator()(const bc::div &op) -> status override;
+  auto operator()(const bc::mod &op) -> status override;
+  auto operator()(const bc::lt &op) -> status override;
+  auto operator()(const bc::le &op) -> status override;
+  auto operator()(const bc::gt &op) -> status override;
+  auto operator()(const bc::ge &op) -> status override;
+  auto operator()(const bc::eq &op) -> status override;
+  auto operator()(const bc::ne &op) -> status override;
+  auto operator()(const bc::logical_and &op) -> status override;
+  auto operator()(const bc::logical_or &op) -> status override;
+  auto operator()(const bc::constant &op) -> status override;
+  auto operator()(const bc::string &op) -> status override;
+  auto operator()(const bc::sexp &op) -> status override;
+  auto operator()(const bc::sti &op) -> status override;
+  auto operator()(const bc::sta &op) -> status override;
+  auto operator()(const bc::jmp &op) -> status override;
+  auto operator()(const bc::end &op) -> status override;
+  auto operator()(const bc::ret &op) -> status override;
+  auto operator()(const bc::drop &op) -> status override;
+  auto operator()(const bc::dup &op) -> status override;
+  auto operator()(const bc::swap &op) -> status override;
+  auto operator()(const bc::elem &op) -> status override;
+  auto operator()(const bc::ld_glo &op) -> status override;
+  auto operator()(const bc::ld_loc &op) -> status override;
+  auto operator()(const bc::ld_arg &op) -> status override;
+  auto operator()(const bc::ld_clo &op) -> status override;
+  auto operator()(const bc::lda_glo &op) -> status override;
+  auto operator()(const bc::lda_loc &op) -> status override;
+  auto operator()(const bc::lda_arg &op) -> status override;
+  auto operator()(const bc::lda_clo &op) -> status override;
+  auto operator()(const bc::st_glo &op) -> status override;
+  auto operator()(const bc::st_loc &op) -> status override;
+  auto operator()(const bc::st_arg &op) -> status override;
+  auto operator()(const bc::st_clo &op) -> status override;
+  auto operator()(const bc::cjmp_z &op) -> status override;
+  auto operator()(const bc::cjmp_nz &op) -> status override;
+  auto operator()(const bc::begin &op) -> status override;
+  auto operator()(const bc::begin_closure &op) -> status override;
+  auto operator()(const bc::closure &op, std::span<const bc::closure::capture> captures)
+    -> status override;
+  auto operator()(const bc::callc &op) -> status override;
+  auto operator()(const bc::call &op) -> status override;
+  auto operator()(const bc::tag &op) -> status override;
+  auto operator()(const bc::array &op) -> status override;
+  auto operator()(const bc::fail &op) -> status override;
+  auto operator()(const bc::fail_keep &op) -> status override;
+  auto operator()(const bc::line &op) -> status override;
+  auto operator()(const bc::patt_str_cmp &op) -> status override;
+  auto operator()(const bc::patt_string &op) -> status override;
+  auto operator()(const bc::patt_array &op) -> status override;
+  auto operator()(const bc::patt_sexp &op) -> status override;
+  auto operator()(const bc::patt_boxed &op) -> status override;
+  auto operator()(const bc::patt_unboxed &op) -> status override;
+  auto operator()(const bc::patt_closure &op) -> status override;
+  auto operator()(const bc::barray &op) -> status override;
+  auto operator()(const bc::eof &op) -> status override;
 };
 
 } // namespace lamavm::interpreter

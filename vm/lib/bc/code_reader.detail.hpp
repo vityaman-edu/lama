@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/exception.hpp"
 #include "layout.hpp"
 
 #include <algorithm>
@@ -9,14 +10,11 @@
 #include <expected>
 #include <format>
 #include <span>
-#include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace lamavm::bc::detail {
-
-using status = std::expected<void, std::string>;
 
 template <typename Listener, bool unsafe>
 class code_reader final {
@@ -29,11 +27,11 @@ public:
   auto read_op() -> status {
     if constexpr (!unsafe) {
       if (in.size() >= max_file_size) {
-        return error(0, "code size exceeds the limit");
+        return make_error(0, "code size exceeds the limit");
       }
 
       if (bytes_read == in.size()) {
-        return error(bytes_read, "expected 1 bytes, but got 0");
+        return make_error(bytes_read, "expected 1 bytes, but got 0");
       }
     }
 
@@ -55,7 +53,7 @@ public:
   }
 
 private:
-  static auto error(std::size_t offset, std::string_view message) -> std::unexpected<std::string> {
+  static auto make_error(std::size_t offset, std::string_view message) -> std::unexpected<error> {
     return std::unexpected(std::format("offset {}: code: {}", offset, message));
   }
 
@@ -63,19 +61,21 @@ private:
   expect(std::string_view name, std::int64_t value, std::int64_t end, std::size_t offset)
     -> status {
     if (value < 0 || value >= end) {
-      return error(offset, std::format("expected {} in [0, {}), but got {}", name, end, value));
+      return make_error(
+        offset,
+        std::format("expected {} in [0, {}), but got {}", name, end, value));
     }
 
     return {};
   }
 
-  auto consume(std::size_t count) -> std::expected<std::span<const std::byte>, std::string> {
+  auto consume(std::size_t count) -> std::expected<std::span<const std::byte>, error> {
     const auto actual = unsafe ? count : std::min(count, in.size() - bytes_read);
     const auto bytes = in.subspan(bytes_read, actual);
     bytes_read += actual;
     if constexpr (!unsafe) {
       if (actual != count) {
-        return error(bytes_read, std::format("expected {} bytes, but got {}", count, actual));
+        return make_error(bytes_read, std::format("expected {} bytes, but got {}", count, actual));
       }
     }
 
@@ -83,7 +83,7 @@ private:
   }
 
   template <typename T>
-  auto read(std::size_t count) -> std::expected<std::span<const T>, std::string> {
+  auto read(std::size_t count) -> std::expected<std::span<const T>, error> {
     static_assert(alignof(T) == 1);
     static_assert(std::is_trivially_copyable_v<T>);
 
@@ -111,8 +111,7 @@ private:
     if constexpr (std::same_as<Op, closure>) {
       return read_captures(op);
     } else {
-      listener->operator()(op);
-      return {};
+      return listener->operator()(op);
     }
   }
 
@@ -149,8 +148,7 @@ private:
       }
     }
 
-    listener->operator()(op, *captures);
-    return {};
+    return listener->operator()(op, *captures);
   }
 
   auto read_opcode(bc::opcode opcode, std::size_t offset) -> status {
@@ -276,7 +274,7 @@ private:
     if constexpr (unsafe) {
       std::unreachable();
     } else {
-      return error(offset, std::format("unknown opcode 0x{:02x}", std::to_underlying(opcode)));
+      return make_error(offset, std::format("unknown opcode 0x{:02x}", std::to_underlying(opcode)));
     }
   }
 

@@ -1,34 +1,42 @@
 #include "file_listener_nop.hpp"
 
+#include "core/exception.hpp"
 #include "layout.hpp"
 
 #include <cstddef>
 #include <expected>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
 namespace lamavm::bc {
 
-void file_listener_nop::operator()(const header &op) {
+auto file_listener_nop::operator()(const header &op) -> status {
   (void)op;
+
+  return {};
 }
 
-void file_listener_nop::operator()(const import &op) {
+auto file_listener_nop::operator()(const import &op) -> status {
   (void)op;
+
+  return {};
 }
 
-void file_listener_nop::operator()(const public_symbol &op) {
+auto file_listener_nop::operator()(const public_symbol &op) -> status {
   (void)op;
+
+  return {};
 }
 
-void file_listener_nop::operator()(std::string_view strings) {
+auto file_listener_nop::operator()(std::string_view strings) -> status {
   (void)strings;
+
+  return {};
 }
 
 auto file_listener_nop::operator()(std::span<const std::byte> code)
-  -> std::expected<void, std::vector<std::string>> {
+  -> std::expected<void, std::vector<error>> {
   (void)code;
 
   return {};
