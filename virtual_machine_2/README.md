@@ -22,11 +22,12 @@ nix develop
 cd virtual_machine_2
 ```
 
-Build the compiler and reference VM.
+Build the compiler and VMs.
 
 ```sh
 make lamac
 make lamamv
+make lamamv2
 ```
 
 Compile an example to the bytecode.
@@ -37,8 +38,14 @@ lamac -b -ds vm/examples/42.lama
 
 It produces `42.bc` and `42.sm` in `$(pwd)`.
 
-Run it via reference VM.
+Run it via VMs.
 
 ```sh
 lamavm 42.bc
+```
+
+Also there is a helper.
+
+```sh
+./compare.sh ./data/43.lama < /dev/null
 ```
