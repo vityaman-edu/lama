@@ -46,8 +46,12 @@ virtual_machine *vm_create(const char *main_unit_name, const char **paths,
   vm->bc_len = lr.units_len;
 
   vm->stack_size = 8 * 1024 * 1024;
+  int stack_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+#ifdef MAP_GROWSDOWN
+  stack_flags |= MAP_GROWSDOWN;
+#endif
   void *mmap_base = mmap(NULL, vm->stack_size, PROT_READ | PROT_WRITE,
-                         MAP_PRIVATE | MAP_ANONYMOUS | MAP_GROWSDOWN, -1, 0);
+                         stack_flags, -1, 0);
   if (mmap_base == MAP_FAILED) {
     perror("mmap stack");
     vm_destroy(vm);

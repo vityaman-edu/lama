@@ -14,9 +14,3 @@ CAML_LD_LIBRARY_PATH="$(opam var lib)/stublibs${CAML_LD_LIBRARY_PATH:+:$CAML_LD_
 export CAML_LD_LIBRARY_PATH
 
 opam install . --deps-only --assume-depexts --yes || exit 1
-
-export LAMA_REPO="$PWD"
-
-lamac() {
-  "$LAMA_REPO/_build/default/src/Driver.exe" "$@"
-}
