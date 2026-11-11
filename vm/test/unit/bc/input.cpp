@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace lamavm::bc {
@@ -130,7 +131,7 @@ public:
     return {};
   }
 
-  auto operator()(std::string_view table) -> status override {
+  auto operator()(std::string &table) -> status override {
     result.order.emplace_back("strings");
     result.strings = table;
 
@@ -176,7 +177,7 @@ TEST(BytecodeFile, PropagatesMetadataListenerErrors) {
       return accept("header");
     }
 
-    auto operator()(std::string_view table) -> status override {
+    auto operator()(std::string &table) -> status override {
       (void)table;
       return accept("strings");
     }
@@ -340,6 +341,52 @@ TEST(BytecodeFile, FramingFailurePreservesEarlierMetadataErrors) {
     }));
 }
 
+TEST(BytecodeFile, RejectsUnterminatedMetadataNames) {
+  const auto table = "Std\0bad"sv;
+  std::string bytes = "LaMa";
+  for (const auto value : {1, 7, 0, 2, 1}) {
+    append_int(bytes, value);
+  }
+
+  bytes += table;
+  for (const auto value : {0, 4, 4, 0}) {
+    append_int(bytes, value);
+  }
+
+  bytes += "\0\xff"sv;
+  std::istringstream input(bytes);
+  recording_file_listener listener;
+  const auto result = read_file(input, listener);
+  ASSERT_FALSE(result);
+  EXPECT_EQ(
+    result.error(),
+    (std::vector<error>{
+      "offset 35: import: unterminated string at offset 4",
+      "offset 39: symbol: unterminated string at offset 4",
+    }));
+  EXPECT_EQ(listener.events().imports, (std::vector<std::int32_t>{0}));
+  EXPECT_TRUE(listener.events().symbols.empty());
+}
+
+TEST(BytecodeFile, RejectsUnterminatedImportAfterListenerConsumesTable) {
+  const auto table = "Std"sv;
+  std::string bytes = "LaMa";
+  for (const auto value : {1, 3, 0, 1, 0}) {
+    append_int(bytes, value);
+  }
+
+  bytes += table;
+  append_int(bytes, 0);
+  bytes += '\xff';
+  std::istringstream input(bytes);
+  interpreter::boot listener;
+  const auto result = read_file(input, listener);
+  ASSERT_FALSE(result);
+  EXPECT_EQ(
+    result.error(),
+    (std::vector<error>{"offset 27: import: unterminated string at offset 0"}));
+}
+
 TEST(BytecodeFile, CodeValidationIsDelegatedToFileListener) {
   std::istringstream input(make_file("\x10\x01\x00\x00\x00\x00\xff"sv));
   recording_file_listener listener;
@@ -378,6 +425,35 @@ TEST(FileListenerSeq, CallsBothListenersAndCombinesCodeErrors) {
       "offset 0: code: unknown opcode 0x00",
       "offset 0: code: unknown opcode 0x00",
     }));
+}
+
+TEST(FileListenerSeq, DisassemblyRetainsStringsBeforeBootConsumesThem) {
+  const auto table = "Std\0"sv;
+  std::string bytes = "LaMa";
+  for (const auto value : {1, 4, 0, 1, 0}) {
+    append_int(bytes, value);
+  }
+
+  bytes += table;
+  append_int(bytes, 0);
+  bytes += "\x11\x00\x00\x00\x00\xff"sv;
+
+  for (const bool is_modern : {false, true}) {
+    std::ostringstream output;
+    std::unique_ptr<file_listener> printer;
+    if (is_modern) {
+      printer = std::make_unique<disassembly::modern>(output);
+    } else {
+      printer = std::make_unique<disassembly::legacy>(output);
+    }
+
+    file_listener_seq listener(std::move(printer), std::make_unique<interpreter::boot>());
+    std::istringstream input(bytes);
+    ASSERT_TRUE(read_file(input, listener));
+    EXPECT_NE(
+      output.str().find(is_modern ? "STRING \"Std\"" : "STRING (\"Std\")"),
+      std::string::npos);
+  }
 }
 
 TEST(BytecodeOp, AcceptsConcreteListenerWithoutInheritance) {
@@ -621,7 +697,7 @@ TEST(LamacDump, MinExternalReferenceDoesNotOverflow) {
 }
 
 TEST(Disassembly, MetadataCallbacksWriteImmediately) {
-  const auto table = "name\0"sv;
+  std::string table("name\0"sv);
   std::ostringstream output;
   disassembly::modern listener(output);
   ASSERT_TRUE(listener(
@@ -798,7 +874,7 @@ TEST(Disassembly, RetainedCodeCanBePrintedAndDecodedAgain) {
     ASSERT_TRUE(read_file(input, parsed));
   }
 
-  const auto &file = parsed.events();
+  auto file = parsed.events();
   const auto original_code = file.code;
   std::ostringstream output;
   disassembly::modern printer(output);

@@ -53,6 +53,9 @@ structures and `opcode`. Headers contain declarations; implementations live in
   recoverable metadata errors, stops on framing failures, and returns all collected
   diagnostics in its error vector. It propagates code-span callback errors unchanged.
   Invalid metadata returns an unexpected result; listeners validate instructions.
+  The file reader checks metadata name offsets and NUL termination before
+  delivering import or public-symbol callbacks, even when a listener moves the
+  string table. Unterminated names are recoverable metadata errors.
   Listeners can throw, including printers rejecting invalid string references.
 - The bytecode module requires a little-endian host, enforced by a static
   assertion. Packed wire views require byte alignment, also checked statically.
@@ -62,10 +65,11 @@ structures and `opcode`. Headers contain declarations; implementations live in
 - `CLOSURE` contains a target and capture count, followed by count pairs of an
   8-bit designation kind and signed 32-bit index. Negative counts and kinds
   outside 0–3 are rejected before the complete instruction callback.
-- The string-table view, code span, instruction references and closure-capture
-  spans are borrowed. Instruction and capture views point into the caller's code
-  buffer; keep that storage alive while using them. File callbacks borrow data
-  owned by the file reader and must copy data retained after parsing returns.
+- The string-table callback takes `std::string&`: listeners may copy it and an
+  owning listener may move it. In a sequence, listeners that need the original
+  table must run before a listener that consumes it. Code spans, instruction
+  references and closure-capture spans are borrowed; keep their storage alive
+  while using them and copy data retained after file parsing returns.
 - Read stream data in bounded chunks. Untrusted sizes must not cause large
   allocations before the bytes are consumed. Keep opcode dispatch exhaustive,
   without a default branch, and diagnose unknown opcode values after the switch.
@@ -157,11 +161,19 @@ VM program execution is not implemented.
 
 ## Interpreter scaffolding
 
-`interpreter::boot` is a file listener whose metadata callbacks do nothing. Its
-code callback calls `read_ops` with `code_listener_nop` and returns its validation
-result. `interpreter::loop` is a code listener; every instruction callback,
-including EOF and closures, throws `lamavm::exception` reporting an unsupported
-instruction. Boot does not execute the loop yet.
+`interpreter::state` owns a string table and byte stack, exposing a
+`std::string_view` and `std::span<std::byte>` into those allocations.
+`ip` starts at zero; `sp` and `bp` start at the stack size. State cannot be copied,
+moved or assigned, keeping its views bound to its own storage.
+
+`interpreter::boot` moves the string table into its own storage. Imports must
+reference a `Std` name validated by the file reader; other imports and all public symbols return
+errors. The header callback does nothing. The code callback calls `read_ops` with
+`code_listener_nop` and returns its validation result. `interpreter::loop` returns
+an unexpected status for every instruction, including EOF and closures, with
+`unsupported instruction: <opcode type name>`. Boot does not execute the loop yet.
+The loop privately inherits state and accepts a string table, allocating a
+1 MiB byte stack in its constructor.
 
 ## LaMaC wrapper
 

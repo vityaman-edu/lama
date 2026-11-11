@@ -77,7 +77,7 @@ auto legacy::operator()(const header &op) -> status {
   return {};
 }
 
-auto legacy::operator()(std::string_view table) -> status {
+auto legacy::operator()(std::string &table) -> status {
   strings = table;
 
   return {};

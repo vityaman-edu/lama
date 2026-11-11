@@ -148,7 +148,7 @@ auto modern::operator()(const header &op) -> status {
   return {};
 }
 
-auto modern::operator()(std::string_view table) -> status {
+auto modern::operator()(std::string &table) -> status {
   strings = table;
   *out << "\nstring_table:\n";
   const auto width = std::to_string(table.size()).size() + 1;

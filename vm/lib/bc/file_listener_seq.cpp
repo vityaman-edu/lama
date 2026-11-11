@@ -8,7 +8,7 @@
 #include <expected>
 #include <memory>
 #include <span>
-#include <string_view>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -50,7 +50,7 @@ auto file_listener_seq::operator()(const public_symbol &op) -> status {
   return {};
 }
 
-auto file_listener_seq::operator()(std::string_view strings) -> status {
+auto file_listener_seq::operator()(std::string &strings) -> status {
   for (const auto &listener : listeners) {
     if (auto result = (*listener)(strings); !result) {
       return result;

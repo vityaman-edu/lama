@@ -25,7 +25,7 @@ public:
   using code_listener::operator();
 
   auto operator()(const header &op) -> status override;
-  auto operator()(std::string_view table) -> status override;
+  auto operator()(std::string &table) -> status override;
   auto operator()(const import &entry) -> status override;
   auto operator()(const public_symbol &entry) -> status override;
   auto operator()(std::span<const std::byte> bytes)

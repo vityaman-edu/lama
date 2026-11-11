@@ -49,7 +49,10 @@ public:
       return std::unexpected(std::move(errors));
     }
 
-    if (auto result = listener->operator()(std::string_view(*strings)); !result) {
+    const auto last_terminator = strings->rfind('\0');
+    string_table_end = last_terminator == std::string::npos ? 0 : last_terminator + 1;
+
+    if (auto result = listener->operator()(*strings); !result) {
       errors.push_back(std::move(result.error()));
       return std::unexpected(std::move(errors));
     }
@@ -215,6 +218,18 @@ private:
     return result;
   }
 
+  auto validate_name(std::int32_t value, const header &h, std::size_t offset) -> parse_status {
+    if (const auto e = expect("name_offset", value, h.string_table_size, offset); !e) {
+      return e;
+    }
+
+    if (std::cmp_greater_equal(value, string_table_end)) {
+      return make_error(offset, std::format("unterminated string at offset {}", value));
+    }
+
+    return {};
+  }
+
   auto read_import(const header &h) -> parse_status {
     const auto start = bytes_read;
 
@@ -223,7 +238,7 @@ private:
       return std::unexpected(entry.error());
     }
 
-    if (const auto e = expect("name_offset", entry->name_offset, h.string_table_size, start); !e) {
+    if (const auto e = validate_name(entry->name_offset, h, start); !e) {
       return {};
     }
 
@@ -248,7 +263,7 @@ private:
       return std::unexpected(entry.error());
     }
 
-    if (const auto e = expect("name_offset", entry->name_offset, h.string_table_size, start); !e) {
+    if (const auto e = validate_name(entry->name_offset, h, start); !e) {
       return {};
     }
 
@@ -300,6 +315,7 @@ private:
   file_listener *listener;
   std::string_view scope;
   std::size_t bytes_read = 0;
+  std::size_t string_table_end = 0;
   std::vector<error> errors;
 };
 

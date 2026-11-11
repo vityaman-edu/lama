@@ -7,7 +7,7 @@
 #include <cstddef>
 #include <expected>
 #include <span>
-#include <string_view>
+#include <string>
 #include <vector>
 
 namespace lamavm::bc::test {
@@ -19,7 +19,7 @@ public:
   auto operator()(const header &op) -> status override;
   auto operator()(const import &op) -> status override;
   auto operator()(const public_symbol &op) -> status override;
-  auto operator()(std::string_view strings) -> status override;
+  auto operator()(std::string &strings) -> status override;
   auto operator()(std::span<const std::byte> code)
     -> std::expected<void, std::vector<error>> override;
 };

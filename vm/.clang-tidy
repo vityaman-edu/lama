@@ -7,6 +7,7 @@ Checks: >-
   -altera-unroll-loops,
   -bugprone-easily-swappable-parameters,
   -cppcoreguidelines-special-member-functions,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
   -portability-avoid-pragma-once,
   -readability-identifier-length,
   -fuchsia-trailing-return,

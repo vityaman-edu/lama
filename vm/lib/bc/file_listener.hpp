@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <expected>
 #include <span>
-#include <string_view>
+#include <string>
 #include <vector>
 
 namespace lamavm::bc {
@@ -18,7 +18,7 @@ public:
   virtual auto operator()(const header &op) -> status = 0;
   virtual auto operator()(const import &op) -> status = 0;
   virtual auto operator()(const public_symbol &op) -> status = 0;
-  virtual auto operator()(std::string_view strings) -> status = 0;
+  virtual auto operator()(std::string &strings) -> status = 0;
   virtual auto operator()(std::span<const std::byte> code)
     -> std::expected<void, std::vector<error>> = 0;
 };

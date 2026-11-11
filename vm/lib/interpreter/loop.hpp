@@ -3,13 +3,17 @@
 #include "bc/code_listener.hpp"
 #include "bc/layout.hpp"
 #include "core/exception.hpp"
+#include "state.hpp"
 
 #include <span>
+#include <string>
 
 namespace lamavm::interpreter {
 
-class loop : public bc::code_listener {
+class loop : public bc::code_listener, private state {
 public:
+  explicit loop(std::string string_table);
+
   using bc::code_listener::operator();
 
   auto operator()(const bc::add &op) -> status override;

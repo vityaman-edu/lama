@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <expected>
 #include <span>
-#include <string_view>
+#include <string>
 #include <vector>
 
 namespace lamavm::bc::test {
@@ -29,7 +29,7 @@ auto noop_file_listener::operator()(const public_symbol &op) -> status {
   return {};
 }
 
-auto noop_file_listener::operator()(std::string_view strings) -> status {
+auto noop_file_listener::operator()(std::string &strings) -> status {
   (void)strings;
 
   return {};
