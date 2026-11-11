@@ -147,7 +147,6 @@ TEST(InterpreterLoop, RunsSuppliedCodeUntilError) {
 TEST(InterpreterLoop, NamesEveryUnsupportedInstruction) {
   using instruction = std::pair<bc::opcode, std::string_view>;
   constexpr std::array instructions{
-    instruction{bc::opcode::string, "string"},
     instruction{bc::opcode::sexp, "sexp"},
     instruction{bc::opcode::sti, "sti"},
     instruction{bc::opcode::sta, "sta"},

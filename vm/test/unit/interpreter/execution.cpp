@@ -6,11 +6,14 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <limits>
 #include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace lamavm::interpreter {
@@ -78,6 +81,25 @@ TEST(InterpreterExecution, TagsSignedConstants) {
     ASSERT_TRUE(machine(bc::constant{.value = value}));
     EXPECT_EQ(machine.stack_top(), (static_cast<std::int64_t>(value) * 2) + 1);
   }
+}
+
+TEST(InterpreterExecution, PushesPointersIntoStringTable) {
+  std::vector<std::byte> code;
+  append(code, bc::begin{});
+  append(code, bc::string{.string_offset = 4});
+  append(code, bc::end{});
+  loop machine(std::string("Std\0abacaba", sizeof("Std\0abacaba")), code);
+  EXPECT_EQ(machine.run(), std::unexpected(error("unsupported instruction: end")));
+  const auto top = machine.stack_top();
+  ASSERT_TRUE(top);
+  const std::string_view value(std::bit_cast<const char *>(*top));
+  EXPECT_EQ(value, "abacaba");
+
+  ASSERT_TRUE(machine(bc::string{.string_offset = 5}));
+  EXPECT_EQ(machine.stack_top(), std::bit_cast<std::int64_t>(value.substr(1).data()));
+
+  ASSERT_TRUE(machine(bc::string{.string_offset = 11}));
+  EXPECT_EQ(machine.stack_top(), std::bit_cast<std::int64_t>(value.substr(value.size()).data()));
 }
 
 TEST(InterpreterExecution, CallsEveryRuntimeBinopWithLeftThenRight) {
@@ -163,13 +185,15 @@ TEST(InterpreterExecution, ReportsStackUnderflowWithoutConsumingOperands) {
 }
 
 TEST(InterpreterExecution, ReportsStackOverflow) {
-  loop machine({}, {});
+  loop machine("abacaba", {});
   constexpr std::size_t capacity = (std::size_t{1024} * 1024) / sizeof(std::int64_t);
   for (std::size_t index = 0; index < capacity; ++index) {
     ASSERT_TRUE(machine(bc::constant{}));
   }
 
   EXPECT_EQ(machine(bc::constant{}), std::unexpected(error("stack overflow")));
+  EXPECT_EQ(machine(bc::string{}), std::unexpected(error("stack overflow")));
+  EXPECT_EQ(machine.stack_top(), runtime::box(0));
 }
 
 TEST(InterpreterExecution, ReportsDivisionAndRemainderByZero) {

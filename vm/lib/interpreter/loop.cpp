@@ -134,8 +134,14 @@ auto loop::operator()(const bc::constant &op) -> status {
 }
 
 auto loop::operator()(const bc::string &op) -> status {
-  (void)op;
-  return std::unexpected("unsupported instruction: string");
+  const auto *value =
+    std::span(string_table).subspan(static_cast<std::size_t>(op.string_offset)).data();
+  if (auto result = stack_push(std::bit_cast<std::int64_t>(value)); !result) {
+    return result;
+  }
+
+  ip += sizeof(op);
+  return {};
 }
 
 auto loop::operator()(const bc::sexp &op) -> status {

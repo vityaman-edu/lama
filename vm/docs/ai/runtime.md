@@ -32,6 +32,9 @@ Expose a read-only stack-top query for inspecting execution results.
 
 `BEGIN` accepts only zero locals, otherwise reporting unsupported locals.
 Ignore `n_args` for now, with `TODO(vityaman)` marking the missing handling.
+`STRING` pushes `string_table.data() + string_offset` as a raw pointer in a
+64-bit stack slot and advances `ip` by its wire size. It does not allocate or
+tag the string. The table remains owned by the interpreter throughout execution.
 Other instructions, including `END` and EOF, remain unsupported.
 
 Validate all binops, operand order, negative constants, stack errors, and BEGIN
@@ -39,3 +42,5 @@ handling with unit tests. Compile the corpus examples `42.lama` and `43.lama`
 (`42 + 1`) using LaMaC, check the stack results, and verify that the CLI reaches
 the unsupported `END` diagnostic without crashing. Disassembly golden tests
 must allow the execution diagnostic after producing their listing.
+Compile `abacaba.lama` and verify that the stack holds a pointer to `"abacaba"`
+when execution stops at `END`.

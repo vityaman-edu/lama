@@ -158,7 +158,7 @@ cxxopts stays out of `main.cpp` and the public header. Its dependency pin lives 
 | Unknown option or positional argument | Print a diagnostic | 2 |
 
 LaMaC uses `-ds`; LaMaVM uses `--disassembly=legacy` for compatible output.
-`BEGIN` with zero locals, `CONST`, and all binary operators are implemented.
+`BEGIN` with zero locals, `CONST`, `STRING`, and all binary operators are implemented.
 Other instructions report unsupported-instruction errors.
 
 ## Interpreter
@@ -182,10 +182,12 @@ loop until an error; instruction handlers are responsible for advancing `ip`.
 There is no successful termination yet. Unimplemented instructions, including
 `END`, EOF and closures, return `unsupported instruction: <opcode type name>`.
 `BEGIN` accepts zero locals and ignores arguments for now. `CONST` pushes a
-signed, tagged 64-bit value. All 13 binary operators call the original C runtime
-with the left and right tagged operands, replace them with the result, and
+signed, tagged 64-bit value. `STRING` pushes a raw pointer into the owned string
+table at its operand's byte offset and advances `ip`. All 13 binary operators call
+the original C runtime with the left and right tagged operands, replace them with
+the result, and
 advance `ip`. Stack overflow, underflow and division/remainder by zero return
-errors. `stack_top()` returns the top tagged value without modifying the stack.
+errors. `stack_top()` returns the top value without modifying the stack.
 The `42.lama` and `43.lama` examples compute their results, then stop at the
 unsupported `END`. See [runtime integration](runtime.md) for build constraints
 and the supported instruction contract.
