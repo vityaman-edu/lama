@@ -1,4 +1,11 @@
-add_library(liblamavm_runtime STATIC cc/runtime.c cc/gc.c cc/printf.S box.cpp binop.cpp)
+add_library(liblamavm_runtime STATIC
+  cc/runtime.c
+  cc/gc.c
+  cc/printf.S
+  box.cpp
+  binop.cpp
+  heap.c
+  sexp.cpp)
 set_target_properties(liblamavm_runtime PROPERTIES
   C_STANDARD 11
   C_STANDARD_REQUIRED ON

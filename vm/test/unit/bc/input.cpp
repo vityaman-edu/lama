@@ -451,7 +451,7 @@ TEST(FileListenerSeq, DisassemblyRetainsStringsBeforeBootConsumesThem) {
     std::istringstream input(bytes);
     const auto result = read_file(input, listener);
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error(), (std::vector<error>{"unsupported instruction: string"}));
+    EXPECT_EQ(result.error(), (std::vector<error>{"unsupported instruction: eof"}));
     EXPECT_NE(
       output.str().find(is_modern ? "STRING \"Std\"" : "STRING (\"Std\")"),
       std::string::npos);

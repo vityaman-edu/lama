@@ -5,12 +5,15 @@
 #include "core/exception.hpp"
 #include "runtime/binop.hpp"
 #include "runtime/box.hpp"
+#include "runtime/sexp.hpp"
+#include "stack.hpp"
 #include "state.hpp"
 
 #include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <ranges>
 #include <span>
 #include <string>
 #include <utility>
@@ -18,17 +21,8 @@
 
 namespace lamavm::interpreter {
 
-namespace {
-
-constexpr std::size_t stack_size = std::size_t{1024} * 1024;
-
-} // namespace
-
 loop::loop(std::string string_table, std::span<const std::byte> code)
-  : state(
-      std::move(string_table),
-      code,
-      std::vector<std::int64_t>(stack_size / sizeof(std::int64_t))) {
+  : state(std::move(string_table), code) {
 }
 
 auto loop::run() -> status {
@@ -41,20 +35,20 @@ auto loop::run() -> status {
 
 template <std::int64_t (*f)(void *, void *)>
 auto loop::binop() -> status {
-  if (stack.size() - sp < 2) {
+  if (stack::size() < 2) {
     return std::unexpected("stack underflow");
   }
 
   if constexpr (f == runtime::div || f == runtime::mod) {
-    if (runtime::unbox(*stack_top()) == 0) {
+    if (runtime::unbox(*stack::top()) == 0) {
       return std::unexpected("division by zero");
     }
   }
 
-  const auto right = *stack_pop();
-  const auto left = *stack_pop();
+  const auto right = *stack::pop();
+  const auto left = *stack::pop();
   const auto value = f(std::bit_cast<void *>(left), std::bit_cast<void *>(right));
-  const auto result = stack_push(value);
+  const auto result = stack::push(value);
   ip += sizeof(bc::add);
   return result;
 }
@@ -125,7 +119,7 @@ auto loop::operator()(const bc::logical_or &op) -> status {
 }
 
 auto loop::operator()(const bc::constant &op) -> status {
-  if (auto result = stack_push(runtime::box(op.value)); !result) {
+  if (auto result = stack::push(runtime::box(op.value)); !result) {
     return result;
   }
 
@@ -136,7 +130,7 @@ auto loop::operator()(const bc::constant &op) -> status {
 auto loop::operator()(const bc::string &op) -> status {
   const auto *value =
     std::span(string_table).subspan(static_cast<std::size_t>(op.string_offset)).data();
-  if (auto result = stack_push(std::bit_cast<std::int64_t>(value)); !result) {
+  if (auto result = stack::push(std::bit_cast<std::int64_t>(value)); !result) {
     return result;
   }
 
@@ -145,8 +139,37 @@ auto loop::operator()(const bc::string &op) -> status {
 }
 
 auto loop::operator()(const bc::sexp &op) -> status {
-  (void)op;
-  return std::unexpected("unsupported instruction: sexp");
+  if (op.n_fields < 0) {
+    return std::unexpected("negative sexp field count");
+  }
+
+  const auto count = static_cast<std::size_t>(op.n_fields);
+  if (count > stack::size()) {
+    return std::unexpected("stack underflow");
+  }
+
+  if (count == 0 && stack::size() == stack::capacity()) {
+    return std::unexpected("stack overflow");
+  }
+
+  if (op.tag_offset < 0 || static_cast<std::size_t>(op.tag_offset) >= string_table.size()) {
+    return std::unexpected("invalid sexp tag offset");
+  }
+
+  const auto fields = std::views::reverse(stack::values().first(count));
+  std::vector<std::int64_t> args(fields.begin(), fields.end());
+  const auto *tag = std::span(string_table).subspan(static_cast<std::size_t>(op.tag_offset)).data();
+  args.push_back(runtime::tag_hash(tag));
+
+  auto *const value =
+    runtime::sexp(args.data(), runtime::box(static_cast<std::int64_t>(args.size())));
+  if (const auto result = stack::drop(count); !result) {
+    return result;
+  }
+
+  const auto result = stack::push(std::bit_cast<std::int64_t>(value));
+  ip += sizeof(op);
+  return result;
 }
 
 auto loop::operator()(const bc::sti &op) -> status {

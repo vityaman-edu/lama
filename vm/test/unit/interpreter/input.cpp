@@ -3,6 +3,7 @@
 #include "core/exception.hpp"
 #include "interpreter/boot.hpp"
 #include "interpreter/loop.hpp"
+#include "interpreter/stack.hpp"
 #include "interpreter/state.hpp"
 
 #include <gtest/gtest.h>
@@ -16,6 +17,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -24,72 +26,69 @@ namespace {
 
 using std::literals::string_view_literals::operator""sv;
 
-constexpr std::size_t stack_size = 32;
-
-TEST(InterpreterState, OwnsStorage) {
-  constexpr std::int64_t initial_value = 0x42;
-  constexpr std::int64_t changed_value = 0x24;
+TEST(InterpreterState, OwnsStringTable) {
   for (const auto table : {""sv, "Std\0"sv, "a table larger than the small string buffer\0"sv}) {
     std::string strings(table);
-    std::vector<std::int64_t> stack(stack_size, initial_value);
-    const state machine(strings, {}, stack);
+    const state machine(strings, {});
     strings.assign("changed");
-    stack.clear();
-
     EXPECT_EQ(machine.string_table, table);
-    ASSERT_EQ(machine.stack.size(), stack_size);
-    EXPECT_EQ(machine.stack.front(), initial_value);
-    machine.stack.front() = changed_value;
-    EXPECT_EQ(machine.stack.front(), changed_value);
   }
 }
 
 TEST(InterpreterState, InitializesRegisters) {
-  const state machine({}, {}, std::vector<std::int64_t>(stack_size));
+  const state machine({}, {});
   EXPECT_EQ(machine.ip, 0);
-  EXPECT_EQ(machine.sp, stack_size);
-  EXPECT_EQ(machine.bp, stack_size);
+  EXPECT_EQ(machine.bp, stack::capacity());
+  EXPECT_EQ(stack::size(), 0);
 }
 
-TEST(InterpreterState, AcceptsEmptyStorage) {
-  const state machine({}, {}, {});
-  EXPECT_TRUE(machine.string_table.empty());
-  EXPECT_TRUE(machine.stack.empty());
-  EXPECT_EQ(machine.ip, 0);
-  EXPECT_EQ(machine.sp, 0);
-  EXPECT_EQ(machine.bp, 0);
-}
-
-TEST(InterpreterState, PushesAndPopsValuesInReverseOrder) {
+TEST(InterpreterStack, PushesAndPopsValuesInReverseOrder) {
   constexpr std::array<std::int64_t, 3> values{1, -2, 3};
-  state machine({}, {}, std::vector<std::int64_t>(values.size()));
+  const state machine({}, {});
   for (const auto value : values) {
-    EXPECT_TRUE(machine.stack_push(value));
+    EXPECT_TRUE(stack::push(value));
   }
 
   for (const auto value : std::views::reverse(values)) {
-    EXPECT_EQ(machine.stack_top(), value);
-    EXPECT_EQ(machine.stack_pop(), value);
+    EXPECT_EQ(stack::top(), value);
+    EXPECT_EQ(stack::pop(), value);
   }
 
-  EXPECT_EQ(std::pair(machine.sp, machine.bp), std::pair(values.size(), values.size()));
+  EXPECT_EQ(stack::size(), 0);
 }
 
-TEST(InterpreterState, StackOverflowPreservesExistingValue) {
-  state machine({}, {}, std::vector<std::int64_t>(1));
-  EXPECT_TRUE(machine.stack_push(1));
-  EXPECT_EQ(machine.stack_push(2), std::unexpected(error("stack overflow")));
-  EXPECT_EQ(machine.stack_top(), 1);
-  EXPECT_EQ(machine.stack_pop(), 1);
+TEST(InterpreterStack, EmptyStackOperationsPreserveRegisters) {
+  const state machine({}, {});
+  EXPECT_EQ(stack::pop(), std::unexpected(error("stack underflow")));
+  EXPECT_EQ(stack::top(), std::unexpected(error("stack underflow")));
+  EXPECT_EQ(stack::drop(1), std::unexpected(error("stack underflow")));
+  EXPECT_EQ(stack::size(), 0);
+  EXPECT_EQ(machine.bp, stack::capacity());
 }
 
-TEST(InterpreterState, EmptyStackOperationsPreserveRegisters) {
-  state machine({}, {}, {});
-  EXPECT_EQ(machine.stack_push(1), std::unexpected(error("stack overflow")));
-  EXPECT_EQ(machine.stack_pop(), std::unexpected(error("stack underflow")));
-  EXPECT_EQ(machine.stack_top(), std::unexpected(error("stack underflow")));
-  EXPECT_EQ(machine.sp, 0);
-  EXPECT_EQ(machine.bp, 0);
+TEST(InterpreterStack, DropsOnlyAvailableValues) {
+  const state machine({}, {});
+  ASSERT_TRUE(stack::push(1));
+  EXPECT_EQ(stack::drop(2), std::unexpected(error("stack underflow")));
+  EXPECT_EQ(stack::top(), 1);
+  EXPECT_TRUE(stack::drop(1));
+  EXPECT_EQ(stack::size(), 0);
+}
+
+TEST(InterpreterState, RejectsConcurrentConstruction) {
+  const state machine({}, {});
+  ASSERT_TRUE(stack::push(1));
+  bool is_rejected = false;
+  std::jthread contender([&is_rejected] -> void {
+    try {
+      const state other({}, {});
+    } catch (const exception &) {
+      is_rejected = true;
+    }
+  });
+  contender.join();
+  EXPECT_TRUE(is_rejected);
+  EXPECT_EQ(stack::top(), 1);
 }
 
 TEST(InterpreterBoot, OwnsTableAndAcceptsOnlyStdImports) {
@@ -147,7 +146,6 @@ TEST(InterpreterLoop, RunsSuppliedCodeUntilError) {
 TEST(InterpreterLoop, NamesEveryUnsupportedInstruction) {
   using instruction = std::pair<bc::opcode, std::string_view>;
   constexpr std::array instructions{
-    instruction{bc::opcode::sexp, "sexp"},
     instruction{bc::opcode::sti, "sti"},
     instruction{bc::opcode::sta, "sta"},
     instruction{bc::opcode::jmp, "jmp"},

@@ -18,8 +18,6 @@ public:
 
   auto run() -> status;
 
-  using state::stack_top;
-
   using bc::code_listener::operator();
 
   auto operator()(const bc::add &op) -> status override;

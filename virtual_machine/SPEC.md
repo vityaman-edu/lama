@@ -797,10 +797,10 @@ Each capture designation is encoded as a `(kind:uint8 index:int32)` pair, where:
 * `kind = 2` denotes a function argument
 * `kind = 3` denotes a captured closure variable
 
-The `target` operand uses the same external function reference encoding described in [external references](#external-references). Internal `target` values must be in range. Internal and inter-unit `target` must point to a function entry `BEGIN` or `BEGIN_CLOSURE`. For each capture designation, the referenced index must be valid for its kind: 
+The `target` operand uses the same external function reference encoding described in [external references](#external-references). Internal `target` values must be in range. Internal and inter-unit `target` must point to a function entry `BEGIN` or `BEGIN_CLOSURE`. For each capture designation, the referenced index must be valid for its kind:
 * `0 <=` local index `< n_locals`.
-* `0 <=` argument index `< n_args`. 
-* `0 <=` closure capture index `< current function n_captured`. 
+* `0 <=` argument index `< n_args`.
+* `0 <=` closure capture index `< current function n_captured`.
 For a given internal closure entry point, all `CLOSURE` instructions targeting it must agree on `n_captured`.
 
 

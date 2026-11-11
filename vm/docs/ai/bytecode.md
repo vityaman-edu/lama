@@ -158,18 +158,18 @@ cxxopts stays out of `main.cpp` and the public header. Its dependency pin lives 
 | Unknown option or positional argument | Print a diagnostic | 2 |
 
 LaMaC uses `-ds`; LaMaVM uses `--disassembly=legacy` for compatible output.
-`BEGIN` with zero locals, `CONST`, `STRING`, and all binary operators are implemented.
+`BEGIN` with zero locals, `CONST`, `STRING`, `SEXP`, and all binary operators are implemented.
 Other instructions report unsupported-instruction errors.
 
 ## Interpreter
 
-`interpreter::state` owns a string table and 64-bit value stack, exposing a
-`std::string_view` and `std::span<std::int64_t>` into those allocations. It also
-borrows a `std::span<const std::byte>` of code, whose storage must outlive execution.
-`ip` is a byte offset starting at zero; `sp` and `bp` are element offsets starting
-at the stack size. Checked `stack_push`, `stack_pop` and `stack_top` helpers
-operate on the typed stack without byte copies. State cannot be copied,
-moved or assigned, keeping its views bound to its own storage.
+`interpreter::state` owns its string table and borrows a code span whose
+storage must outlive execution. It acquires the singleton `interpreter::stack`
+for its lifetime and rejects a second live state. The stack class provides only
+static methods and owns its storage and stack pointer. `ip` is a byte offset
+starting at zero, while `bp` starts at the stack capacity in elements. Checked
+`push`, `pop`, `drop`, and `top` methods operate on typed values. State cannot be
+copied, moved or assigned.
 
 `interpreter::boot` moves the string table into its own storage. Imports must
 reference a `Std` name validated by the file reader; other imports and all public symbols return
@@ -187,12 +187,12 @@ table at its operand's byte offset and advances `ip`. All 13 binary operators ca
 the original C runtime with the left and right tagged operands, replace them with
 the result, and
 advance `ip`. Stack overflow, underflow and division/remainder by zero return
-errors. `stack_top()` returns the top value without modifying the stack.
+errors. `stack::top()` returns the top value without modifying the stack.
 The `42.lama` and `43.lama` examples compute their results, then stop at the
 unsupported `END`. See [runtime integration](runtime.md) for build constraints
 and the supported instruction contract.
-The loop privately inherits state and accepts a string table and code, allocating a
-1 MiB value stack in its constructor.
+The loop privately inherits state and accepts a string table and code. The state
+owns exclusive access to the singleton 1 MiB value stack for its lifetime.
 
 ## LaMaC wrapper
 
