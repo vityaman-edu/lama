@@ -13,17 +13,10 @@ eval "$(opam env --switch=lama-dev --set-switch)"
 CAML_LD_LIBRARY_PATH="$(opam var lib)/stublibs${CAML_LD_LIBRARY_PATH:+:$CAML_LD_LIBRARY_PATH}"
 export CAML_LD_LIBRARY_PATH
 
-# Nix supplies system dependencies; conf-* packages still check them.
 opam install . --deps-only --assume-depexts --yes || exit 1
 
 export LAMA_REPO="$PWD"
 
 lamac() {
-  "$LAMA_REPO/vm/scripts/lamac.sh" "$@"
-}
-
-lamavm0() {
-  "$LAMA_REPO/_build/default/virtual_machine/lama.exe" \
-    -I "$LAMA_REPO/_build/default/stdlib/x64" \
-    "$@"
+  "$LAMA_REPO/_build/default/src/Driver.exe" "$@"
 }

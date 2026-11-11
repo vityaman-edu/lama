@@ -37,7 +37,7 @@
               pkgconf
             ];
 
-            shellHook = builtins.readFile ./vm/scripts/shell.sh;
+            shellHook = builtins.readFile ./flake.shell.sh;
           };
         });
     };

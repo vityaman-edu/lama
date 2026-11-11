@@ -1,6 +1,5 @@
 {
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}/build/release",
-    "--clang-tidy"
+    "--compile-commands-dir=${workspaceFolder}/build/release"
   ]
 }
