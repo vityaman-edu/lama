@@ -1,7 +1,13 @@
 #include "loop.hpp"
 
+#include "bc/layout.hpp"
 #include "bc/unit.hpp"
 #include "core/assert.hpp"
+#include "core/log.hpp"
+#include <cstdint>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 extern "C" {
 #include <contrib/runtime/gc.h>
@@ -14,23 +20,325 @@ namespace lamavm::interpreter {
 
 namespace {
 
-std::byte* ip = nullptr; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-std::byte* sp = nullptr; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
-std::byte* bp = nullptr; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+std::vector<char> buffer;
 
-std::vector<std::byte> stack; // NOLINT
+std::string_view data;
+std::span<const std::uint8_t> text;
+std::vector<std::size_t> stack;
+
+const std::uint8_t* ip = nullptr;
+std::size_t* sp = nullptr;
 
 } // namespace
 
-void load(const bc::unit_t& unit) {
+namespace {
+
+const char* c_str(std::int32_t offset) {
+  return data.data() + offset;
+}
+
+} // namespace
+
+void load(bc::unit_t unit) {
   static std::atomic_bool is_loaded = false;
   LAMAVM_ASSERT(!is_loaded.exchange(true));
 
-  (void)unit;
+  buffer = std::move(unit.buffer);
+  data = unit.string_table;
+  text = unit.code;
+
+  // T O D O : mmap guard, mmap stack, mmap guard
+  constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(std::size_t);
+  stack = std::vector<std::size_t>(stack_size);
+
+  ip = text.data();
+  sp = stack.data() + stack.size();
 }
 
+namespace {
+
+void op_add() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_add);
+}
+
+void op_sub() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_sub);
+}
+
+void op_mul() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_mul);
+}
+
+void op_div() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_div);
+}
+
+void op_mod() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_mod);
+}
+
+void op_lt() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_lt);
+}
+
+void op_le() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_le);
+}
+
+void op_gt() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_gt);
+}
+
+void op_ge() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_ge);
+}
+
+void op_eq() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_eq);
+}
+
+void op_ne() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_ne);
+}
+
+void op_and() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_and);
+}
+
+void op_or() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_or);
+}
+
+void op_const() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_const);
+}
+
+void op_string() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_string);
+}
+
+void op_sexp() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_sexp);
+}
+
+void op_sta() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_sta);
+}
+
+void op_jmp() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_jmp);
+}
+
+void op_end() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_end);
+}
+
+void op_drop() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_drop);
+}
+
+void op_dup() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_dup);
+}
+
+void op_swap() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_swap);
+}
+
+void op_elem() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_elem);
+}
+
+void op_ld_glo() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_glo);
+}
+
+void op_ld_loc() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_loc);
+}
+
+void op_ld_arg() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_arg);
+}
+
+void op_ld_clo() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_clo);
+}
+
+void op_st_glo() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_st_glo);
+}
+
+void op_st_loc() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_st_loc);
+}
+
+void op_st_arg() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_st_arg);
+}
+
+void op_st_clo() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_st_clo);
+}
+
+void op_cjmp_z() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_cjmp_z);
+}
+
+void op_cjmp_nz() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_cjmp_nz);
+}
+
+void op_begin() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_begin);
+}
+
+void op_begin_closure() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_begin_closure);
+}
+
+void op_closure() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_closure);
+}
+
+void op_callc() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_callc);
+}
+
+void op_call() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_call);
+}
+
+void op_tag() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_tag);
+}
+
+void op_array() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_array);
+}
+
+void op_fail() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_fail);
+}
+
+void op_fail_keep() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_fail_keep);
+}
+
+void op_line() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_line);
+}
+
+void op_patt_str_cmp() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_str_cmp);
+}
+
+void op_patt_string() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_string);
+}
+
+void op_patt_array() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_array);
+}
+
+void op_patt_sexp() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_sexp);
+}
+
+void op_patt_boxed() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_boxed);
+}
+
+void op_patt_unboxed() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_unboxed);
+}
+
+void op_patt_closure() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_closure);
+}
+
+void op_barray() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_barray);
+}
+
+void op_eof() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_eof);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_CASE(op)   \
+  case bc::opcode_t::op: \
+    op();               \
+    return;
+
+void step() {
+  auto opcode = static_cast<bc::opcode_t>(*ip);
+  switch (opcode) {
+    LAMAVM_CASE(op_add)
+    LAMAVM_CASE(op_sub)
+    LAMAVM_CASE(op_mul)
+    LAMAVM_CASE(op_div)
+    LAMAVM_CASE(op_mod)
+    LAMAVM_CASE(op_lt)
+    LAMAVM_CASE(op_le)
+    LAMAVM_CASE(op_gt)
+    LAMAVM_CASE(op_ge)
+    LAMAVM_CASE(op_eq)
+    LAMAVM_CASE(op_ne)
+    LAMAVM_CASE(op_and)
+    LAMAVM_CASE(op_or)
+    LAMAVM_CASE(op_const)
+    LAMAVM_CASE(op_string)
+    LAMAVM_CASE(op_sexp)
+    LAMAVM_CASE(op_sta)
+    LAMAVM_CASE(op_jmp)
+    LAMAVM_CASE(op_end)
+    LAMAVM_CASE(op_drop)
+    LAMAVM_CASE(op_dup)
+    LAMAVM_CASE(op_swap)
+    LAMAVM_CASE(op_elem)
+    LAMAVM_CASE(op_ld_glo)
+    LAMAVM_CASE(op_ld_loc)
+    LAMAVM_CASE(op_ld_arg)
+    LAMAVM_CASE(op_ld_clo)
+    LAMAVM_CASE(op_st_glo)
+    LAMAVM_CASE(op_st_loc)
+    LAMAVM_CASE(op_st_arg)
+    LAMAVM_CASE(op_st_clo)
+    LAMAVM_CASE(op_cjmp_z)
+    LAMAVM_CASE(op_cjmp_nz)
+    LAMAVM_CASE(op_begin)
+    LAMAVM_CASE(op_begin_closure)
+    LAMAVM_CASE(op_closure)
+    LAMAVM_CASE(op_callc)
+    LAMAVM_CASE(op_call)
+    LAMAVM_CASE(op_tag)
+    LAMAVM_CASE(op_array)
+    LAMAVM_CASE(op_fail)
+    LAMAVM_CASE(op_fail_keep)
+    LAMAVM_CASE(op_line)
+    LAMAVM_CASE(op_patt_str_cmp)
+    LAMAVM_CASE(op_patt_string)
+    LAMAVM_CASE(op_patt_array)
+    LAMAVM_CASE(op_patt_sexp)
+    LAMAVM_CASE(op_patt_boxed)
+    LAMAVM_CASE(op_patt_unboxed)
+    LAMAVM_CASE(op_patt_closure)
+    LAMAVM_CASE(op_barray)
+    LAMAVM_CASE(op_eof)
+  }
+
+  fatalf("unexpected opcode {}", opcode);
+}
+
+#undef LAMAVM_CASE
+
+} // namespace
+
 void run() {
-  (void)ip, (void)sp, (void)bp;
+  for (;;) {
+    step();
+  }
 }
 
 } // namespace lamavm::interpreter

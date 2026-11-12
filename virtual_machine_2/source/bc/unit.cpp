@@ -24,7 +24,6 @@ unit_t parse_unit(std::vector<char> buffer) {
 
   const char* data = u.buffer.data();
 
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   const auto* h = reinterpret_cast<const header_t*>(data);
 
   LAMAVM_ASSERT_EQ(std::string_view{h->magic}, "LaMa");
@@ -42,7 +41,6 @@ unit_t parse_unit(std::vector<char> buffer) {
   LAMAVM_ASSERT_LT(off_code, u.buffer.size());
 
   u.string_table = {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
     data + off_string_table,
     static_cast<size_t>(h->string_table_size),
   };
@@ -50,7 +48,6 @@ unit_t parse_unit(std::vector<char> buffer) {
   LAMAVM_ASSERT_EQ(0, h->globals_count);
 
   std::span<const import_t> const imports = {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
     reinterpret_cast<const import_t*>(data + off_imports),
     static_cast<size_t>(h->imports_count),
   };
@@ -61,15 +58,12 @@ unit_t parse_unit(std::vector<char> buffer) {
   LAMAVM_ASSERT_EQ(0, h->public_symbols_count);
 
   u.code = {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
-    reinterpret_cast<const std::byte*>(data + off_code),
-
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
-    reinterpret_cast<const std::byte*>(data + u.buffer.size()),
+    reinterpret_cast<const std::uint8_t*>(data + off_code),
+    reinterpret_cast<const std::uint8_t*>(data + u.buffer.size()),
   };
 
   LAMAVM_ASSERT_LT(0, u.code.size());
-  LAMAVM_ASSERT_EQ(u.code.back(), std::byte{0xFF});
+  LAMAVM_ASSERT_EQ(u.code.back(), std::uint8_t{0xFF});
 
   return u;
 }

@@ -4,7 +4,7 @@
 
 namespace lamavm::interpreter {
 
-void load(const bc::unit_t& unit);
+void load(bc::unit_t unit);
 
 void run();
 

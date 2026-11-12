@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <iosfwd>
 
 namespace lamavm::bc {
 
@@ -84,5 +85,7 @@ enum class opcode_t : std::uint8_t {
   op_barray = 0x74,
   op_eof = 0xFF,
 };
+
+std::ostream& operator<<(std::ostream& os, opcode_t opcode);
 
 } // namespace lamavm::bc

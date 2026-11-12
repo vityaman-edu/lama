@@ -11,7 +11,7 @@ namespace lamavm::bc {
 struct unit_t {
   std::vector<char> buffer;
   std::string_view string_table;
-  std::span<const std::byte> code;
+  std::span<const std::uint8_t> code;
 };
 
 unit_t parse_unit(std::vector<char> buffer);
