@@ -1,4 +1,8 @@
 {
+  "files.associations": {
+    "**/runtime/Std.i": "plaintext"
+  },
+
   "clangd.arguments": [
     "--compile-commands-dir=${workspaceFolder}",
     "--query-driver=",

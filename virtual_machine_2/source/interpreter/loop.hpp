@@ -2,8 +2,10 @@
 
 #include "bc/unit.hpp"
 
-namespace lamavm {
+namespace lamavm::interpreter {
 
-void interpret(const bc::unit_t& unit);
+void load(const bc::unit_t& unit);
 
-} // namespace lamavm
+void run();
+
+} // namespace lamavm::interpreter
