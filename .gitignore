@@ -19,3 +19,6 @@ _build
 *.sm
 *.i
 *.s
+
+# Clang
+compile_commands.json
