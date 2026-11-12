@@ -10,7 +10,9 @@ select = [
 ]
 
 [lint.per-file-ignores]
-"test/main.py" = ["S603", "T201"]
+"test/main.py" = ["T201"]
+"test/lama.py" = ["S603"]
+"test/benchmark.py" = ["S311"]
 
 [format]
 quote-style = "double"

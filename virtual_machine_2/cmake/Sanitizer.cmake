@@ -2,6 +2,7 @@ option(LAMAVM_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer
 
 if(LAMAVM_SANITIZERS)
   add_compile_options(
+    "$<$<COMPILE_LANGUAGE:C,CXX>:-O0>"
     -fsanitize=address,undefined
     -fno-sanitize-recover=all
     -fno-omit-frame-pointer)

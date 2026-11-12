@@ -47,10 +47,10 @@ Run it via VMs.
 lamavm 42.bc
 ```
 
-Also there is a helper.
+Run differential tests.
 
 ```sh
-./compare.sh ./data/43.lama < /dev/null
+make test
 ```
 
 ## Roadmap
@@ -95,11 +95,7 @@ Support global variables.
 
 ### External Call
 
-Call to the external bytecode file.
-
-### FFI Call
-
-Call to FFI.
+Optional? Call to the external bytecode file.
 
 ### SExpr
 

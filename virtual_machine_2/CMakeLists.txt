@@ -26,6 +26,11 @@ include(cmake/Cxxopts.cmake)
 include(cmake/Sanitizer.cmake)
 include(cmake/Library.cmake)
 
+if(NOT LAMAVM_SANITIZERS)
+  add_compile_options("$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-flto>")
+  add_link_options("$<$<CONFIG:Release>:-flto>")
+endif()
+
 add_subdirectory(contrib)
 
 file(GLOB_RECURSE LAMAVM_SOURCES CONFIGURE_DEPENDS source/*.c source/*.cpp)

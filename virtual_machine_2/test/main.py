@@ -1,168 +1,233 @@
-import argparse
-import difflib
-import fnmatch
-import math
 import os
-import subprocess
 import sys
 import tempfile
+from argparse import Namespace
+from functools import partial
 from pathlib import Path
+
+from args import parse_args
+from benchmark import Benchmark, benchmark
+from lama import Lama, RunResult
+from lamac import CompilationError, Lamac
+from lamai import Lamai
+from lamavm import Lamavm
+from lamavm2 import Lamavm2
 
 KNOWN_FAILURES = {
     "regression/test054.lama": (2, b"Indirect assignment is not supported yet"),
     "regression/test110.lama": (2, b"Indirect assignment is not supported yet"),
 }
+IMPLEMENTATIONS = ("lamai", "lamavm", "lamavm2")
 
 
-def positive_seconds(value: str) -> float:
-    seconds = float(value)
-    if not math.isfinite(seconds) or seconds <= 0:
-        raise argparse.ArgumentTypeError("timeout must be positive finite seconds")
+def color(text: str, code: str) -> str:
+    if not sys.stdout.isatty() or "NO_COLOR" in os.environ or os.environ.get("TERM") == "dumb":
+        return text
 
-    return seconds
-
-
-def run(
-    command: list[str], directory: Path, stdin: bytes, timeout: float
-) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(
-        command,
-        cwd=directory,
-        input=stdin,
-        capture_output=True,
-        check=False,
-        timeout=timeout,
-    )
+    return f"\033[{code}m{text}\033[0m"
 
 
-def describe(result: subprocess.CompletedProcess[bytes]) -> str:
-    return (
-        f"command: {result.args!r}\nexit code: {result.returncode}\n"
-        f"stdout: {result.stdout!r}\nstderr: {result.stderr!r}"
-    )
+def color_status(status: str) -> str:
+    colors = {"GOOD": "32", "FAIL": "31", "SKIP": "33", "RUNNING": "36"}
+    return color(status, colors[status])
 
 
-def compare(
-    reference: subprocess.CompletedProcess[bytes], actual: subprocess.CompletedProcess[bytes]
+def color_number(value: int | str) -> str:
+    return color(str(value), "36")
+
+
+def signature(result: RunResult) -> tuple[int | None, bytes, bytes]:
+    return result.exit_code, result.stdout, result.stderr
+
+
+def print_result(name: str, result: RunResult) -> None:
+    exit_code = "timeout" if result.exit_code is None else color_number(result.exit_code)
+    print(f"  {name}:\n    exit code: {exit_code}")
+    print(f"    stdout: {result.stdout!r}\n    stderr: {result.stderr!r}")
+
+
+def measure(
+    implementation: Lama,
+    source: Path,
+    stdin: bytes,
+    runs: int,
+) -> tuple[Benchmark[RunResult] | None, str | None]:
+    try:
+        return (
+            benchmark(
+                partial(implementation.run, source, stdin),
+                runs,
+                lambda result: result.runtime,
+            ),
+            None,
+        )
+    except (OSError, RuntimeError) as error:
+        return None, str(error)
+
+
+def report(
+    source: Path,
+    name: str,
+    status: str,
+    measurements: dict[str, Benchmark[RunResult]],
+    statuses: dict[str, str],
+    errors: dict[str, str],
 ) -> None:
-    if reference.returncode < 0:
-        raise RuntimeError(f"Reference crashed: {describe(reference)}")
+    print(f"{color(name, '1;34')} {color_status(status)}")
+    name_width = max(map(len, IMPLEMENTATIONS)) + 1
+    time_width = max(
+        (
+            len(f"{runtime * 1000:.3f}")
+            for measurement in measurements.values()
+            for runtime in (measurement.mean, *measurement.confidence_interval)
+        ),
+        default=0,
+    )
+    interpreter = measurements.get("lamai")
+    ratios = (
+        {name: measurement.mean / interpreter.mean for name, measurement in measurements.items()}
+        if interpreter is not None and interpreter.mean > 0
+        else {}
+    )
+    ratio_width = max((len(f"{ratio:.3f}") for ratio in ratios.values()), default=5)
+    for implementation in IMPLEMENTATIONS:
+        measurement = measurements.get(implementation)
+        implementation_status = color_status(statuses.get(implementation, status))
+        label = f"{implementation}:".ljust(name_width)
+        if measurement is None:
+            print(f"  {label} {implementation_status}, runtime unavailable")
+            continue
 
-    if (reference.returncode, reference.stdout, reference.stderr) == (
-        actual.returncode,
-        actual.stdout,
-        actual.stderr,
-    ):
-        return
+        low, high = measurement.confidence_interval
+        mean_text = color_number(f"{measurement.mean * 1000:{time_width}.3f}")
+        low_text = color_number(f"{low * 1000:{time_width}.3f}")
+        high_text = color_number(f"{high * 1000:{time_width}.3f}")
+        relative = "n/a".rjust(ratio_width + 1)
+        if implementation in ratios:
+            relative = color_number(f"{ratios[implementation]:{ratio_width}.3f}") + "x"
 
-    differences = []
-    for stream in ("stdout", "stderr"):
-        expected = getattr(reference, stream).decode("utf-8", errors="backslashreplace")
-        received = getattr(actual, stream).decode("utf-8", errors="backslashreplace")
-        differences.extend(
-            difflib.unified_diff(
-                expected.splitlines(keepends=True),
-                received.splitlines(keepends=True),
-                fromfile=f"reference/{stream}",
-                tofile=f"lamavm2/{stream}",
-            )
+        print(
+            f"  {label} {implementation_status}, {mean_text} ms wall, rel={relative}, "
+            f"{color_number(95)}% bootstrap CI [{low_text}, {high_text}] ms, "
+            f"n={color_number(len(measurement.runtimes))}"
         )
 
-    raise RuntimeError(
-        f"{''.join(differences)}\nReference {describe(reference)}\nActual {describe(actual)}"
-    )
+    if status == "FAIL":
+        input_path = source.with_suffix(".input")
+        print(f"  program: {source.absolute()}")
+        print(f"  stdin: {input_path.absolute()}")
+        if not input_path.is_file():
+            print("  stdin file missing; used empty input")
+
+        for implementation, measurement in measurements.items():
+            seen = set()
+            for index, result in enumerate(measurement.results, 1):
+                output = signature(result)
+                if output not in seen:
+                    print_result(f"{implementation} run {color_number(index)}", result)
+                    seen.add(output)
+
+    for implementation, error in errors.items():
+        print(f"  {implementation}: {error}")
 
 
-def test_case(source: Path, name: str, args: argparse.Namespace) -> str:
-    repository = Path(__file__).resolve().parents[2]
+def test_case(source: Path, name: str, args: Namespace) -> str:
+    measurements: dict[str, Benchmark[RunResult]] = {}
+    errors: dict[str, str] = {}
+    statuses: dict[str, str] = {}
     input_path = source.with_suffix(".input")
     stdin = input_path.read_bytes() if input_path.is_file() else b""
     with tempfile.TemporaryDirectory(prefix="lamavm2-") as temporary:
-        directory = Path(temporary)
-        compilation = run(
-            [
-                str(args.lamac),
-                "-runtime",
-                str(repository / "_build/default/runtime"),
-                "-I",
-                str(repository / "_build/default/stdlib/x64"),
-                "-I",
-                str(source.parent.resolve()),
-                "-b",
-                str(source.resolve()),
-            ],
-            directory,
-            b"",
-            args.timeout,
-        )
+        compiler = Lamac(args.lamac, Path(temporary), args.timeout)
         expected_failure = KNOWN_FAILURES.get(name)
-        if compilation.returncode:
-            if (
-                expected_failure
-                and compilation.returncode == expected_failure[0]
-                and expected_failure[1] in compilation.stderr
-            ):
-                return f"SKIP: {expected_failure[1].decode()}"
-
-            raise RuntimeError(f"Compilation failed: {describe(compilation)}")
+        try:
+            compilation = compiler.compile(source, dump_disassembly=args.disassemble)
+        except CompilationError as error:
+            result = error.result
+            is_known_failure = (
+                expected_failure is not None
+                and result.exit_code == expected_failure[0]
+                and expected_failure[1] in result.stderr
+            )
+            status = "SKIP" if is_known_failure else "FAIL"
+            report(source, name, status, measurements, statuses, {"lamac": str(error)})
+            print_result("lamac", result)
+            return status
 
         if expected_failure:
-            raise RuntimeError(
-                "Compiler unexpectedly accepted a known failure; review the exception"
+            report(
+                source,
+                name,
+                "FAIL",
+                measurements,
+                statuses,
+                {"lamac": "Compiler unexpectedly accepted a known failure; review the exception"},
             )
+            print_result("lamac", compilation.result)
+            return "FAIL"
 
-        bytecode = directory / source.with_suffix(".bc").name
-        if not bytecode.is_file():
-            raise RuntimeError(f"Compiler did not produce {bytecode.name}: {describe(compilation)}")
+        reference = Lamavm(args.reference, compiler, arguments=("-I", str(compiler.stdlib)))
+        implementations = (Lamai(compiler), reference, Lamavm2(args.lamavm, compiler))
+        for implementation in implementations:
+            measurement, error = measure(
+                implementation,
+                source,
+                stdin,
+                args.runs,
+            )
+            if measurement is not None:
+                measurements[implementation.name] = measurement
 
-        reference = run([str(args.reference), str(bytecode)], directory, stdin, args.timeout)
-        actual = run([str(args.lamavm), str(bytecode)], directory, stdin, args.timeout)
-        compare(reference, actual)
-        return "GOOD"
+            if error is not None:
+                errors[implementation.name] = error
+
+        reference_measurement = measurements.get(reference.name)
+        expected = reference_measurement.results[0] if reference_measurement else None
+        for implementation in IMPLEMENTATIONS:
+            measurement = measurements.get(implementation)
+            is_matching = (
+                expected is not None
+                and expected.exit_code is not None
+                and expected.exit_code >= 0
+                and measurement is not None
+                and all(signature(result) == signature(expected) for result in measurement.results)
+            )
+            statuses[implementation] = "GOOD" if is_matching else "FAIL"
+
+        status = "GOOD" if all(value == "GOOD" for value in statuses.values()) else "FAIL"
+        report(source, name, status, measurements, statuses, errors)
+        if status == "FAIL" and args.disassemble:
+            print(f"  lamac disassembly: {compilation.disassembly!r}")
+            try:
+                print_result("lamavm disassembly", reference.disassemble(source))
+            except (OSError, RuntimeError) as error:
+                print(f"  lamavm disassembly: {error}")
+
+        return status
 
 
 def main() -> int:
-    project = Path(__file__).resolve().parent.parent
-    parser = argparse.ArgumentParser(description="Differential tests against the reference LaMa VM")
-    parser.add_argument("--lamac", type=Path, default=project / "lamac")
-    parser.add_argument("--reference", type=Path, default=project / "lamavm")
-    parser.add_argument("--lamavm", type=Path, default=project / "lamavm2")
-    parser.add_argument("--data", type=Path, default=project / "test/data")
-    parser.add_argument("--filter", default="*", help="glob matching a path relative to test/data")
-    parser.add_argument("--timeout", type=positive_seconds, default=30)
-    args = parser.parse_args()
-    for attribute in ("lamac", "reference", "lamavm"):
-        executable = getattr(args, attribute).absolute()
-        if not executable.is_file() or not os.access(executable, os.X_OK):
-            parser.error(f"executable is missing or not executable: {executable}")
-
-        setattr(args, attribute, executable)
-
-    data = args.data.absolute()
-    sources = sorted(
-        Path(root) / name
-        for root, _, names in os.walk(data, followlinks=True)
-        for name in names
-        if name.endswith(".lama")
-        and fnmatch.fnmatch((Path(root) / name).relative_to(data).as_posix(), args.filter)
-    )
-    if not sources:
-        parser.error(f"no .lama files match {args.filter!r} in {data}")
-
+    args = parse_args()
     counts = {"GOOD": 0, "FAIL": 0, "SKIP": 0}
-    for source in sources:
-        name = source.relative_to(data).as_posix()
+    for source in args.sources:
+        name = source.relative_to(args.data).as_posix()
+        print(
+            f"{color(name, '1;34')} {color_status('RUNNING')} (n={color_number(args.runs)})",
+            flush=True,
+        )
         try:
             status = test_case(source, name, args)
-        except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+        except (OSError, RuntimeError) as error:
             status = "FAIL"
-            print(f"{name} {status}\n{error}")
-        else:
-            print(f"{name} {status}")
+            report(source, name, status, {}, {}, {"test": str(error)})
 
-        counts[status.split(":", maxsplit=1)[0]] += 1
+        counts[status] += 1
 
-    print(f"{counts['GOOD']} GOOD, {counts['FAIL']} FAIL, {counts['SKIP']} SKIP")
+    print(
+        f"{color_number(counts['GOOD'])} {color_status('GOOD')}, "
+        f"{color_number(counts['FAIL'])} {color_status('FAIL')}, "
+        f"{color_number(counts['SKIP'])} {color_status('SKIP')}"
+    )
     return int(counts["FAIL"] != 0)
 
 
