@@ -1,6 +1,6 @@
 #pragma once
 
-#include "log.hpp"
+#include "log.hpp" // IWYU pragma: keep
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_ASSERT_C(c, m)                                                                      \
