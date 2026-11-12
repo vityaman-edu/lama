@@ -20,7 +20,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
-set(LAMAVM_CXX_FLAGS -Wall -Wextra -Wpedantic)
+set(LAMAVM_CXX_FLAGS -Wall -Wextra -Wpedantic -Werror)
 
 include(cmake/Cxxopts.cmake)
 include(cmake/Sanitizer.cmake)

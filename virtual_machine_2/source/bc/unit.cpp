@@ -4,15 +4,16 @@
 #include "core/assert.hpp"
 
 #include <cstddef>
+#include <filesystem>
 #include <fstream>
+#include <istream>
+#include <iterator>
 #include <span>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace lamavm::bc {
-
-std::string_view unit_t::string_at(size_t i) {
-  return string_table.substr(i).data();
-}
 
 unit_t parse_unit(std::vector<char> buffer) {
   unit_t u = {
@@ -23,6 +24,7 @@ unit_t parse_unit(std::vector<char> buffer) {
 
   const char* data = u.buffer.data();
 
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   const auto* h = reinterpret_cast<const header_t*>(data);
 
   LAMAVM_ASSERT_EQ(std::string_view{h->magic}, "LaMa");
@@ -33,31 +35,36 @@ unit_t parse_unit(std::vector<char> buffer) {
   LAMAVM_ASSERT_LE(0, h->public_symbols_count);
 
   const size_t off_string_table = sizeof(header_t);
-  const size_t off_imports = off_string_table + sizeof(char) * h->string_table_size;
-  const size_t off_public_symbols = off_imports + sizeof(import_t) * h->imports_count;
-  const size_t off_code = off_public_symbols + sizeof(public_symbol_t) * h->public_symbols_count;
+  const size_t off_imports = off_string_table + (sizeof(char) * h->string_table_size);
+  const size_t off_public_symbols = off_imports + (sizeof(import_t) * h->imports_count);
+  const size_t off_code = off_public_symbols + (sizeof(public_symbol_t) * h->public_symbols_count);
 
-  LAMAVM_ASSERT_LT(off_code, buffer.size());
+  LAMAVM_ASSERT_LT(off_code, u.buffer.size());
 
   u.string_table = {
-    reinterpret_cast<const char*>(data + off_string_table),
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
+    data + off_string_table,
     static_cast<size_t>(h->string_table_size),
   };
 
   LAMAVM_ASSERT_EQ(0, h->globals_count);
 
-  std::span<const import_t> imports = {
+  std::span<const import_t> const imports = {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
     reinterpret_cast<const import_t*>(data + off_imports),
     static_cast<size_t>(h->imports_count),
   };
 
   LAMAVM_ASSERT_EQ(imports.size(), 1);
-  LAMAVM_ASSERT_EQ(u.string_at(imports[0].name_offset), "Std");
+  LAMAVM_ASSERT_EQ(u.string_table.substr(imports.front().name_offset), "Std");
 
   LAMAVM_ASSERT_EQ(0, h->public_symbols_count);
 
   u.code = {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
     reinterpret_cast<const std::byte*>(data + off_code),
+
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-*)
     reinterpret_cast<const std::byte*>(data + u.buffer.size()),
   };
 

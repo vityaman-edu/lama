@@ -6,6 +6,7 @@
 
 namespace lamavm {
 
+// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 args args::parse(int argc, char* argv[]) try {
   cxxopts::Options options("lamavm2", "LaMa virtual machine");
   options.add_options()("bytecode", "Bytecode path", cxxopts::value<std::string>());

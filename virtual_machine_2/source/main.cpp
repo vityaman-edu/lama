@@ -8,10 +8,13 @@
 
 namespace lamavm {
 
-void main(int argc, char* argv[]) try {
-  args args = args::parse(argc, argv);
+namespace {
 
-  bc::unit_t unit = bc::parse_unit(args.bc_path);
+// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+void main(int argc, char* argv[]) try {
+  args const args = args::parse(argc, argv);
+
+  bc::unit_t const unit = bc::parse_unit(args.bc_path);
   (void)unit;
 
   fatalf("not implemented {}", "yet");
@@ -19,9 +22,13 @@ void main(int argc, char* argv[]) try {
   fatalf("io error: {}", e.code().message());
 } catch (const std::exception& e) {
   fatalf("unexpected exception: {}", e.what());
+} catch (...) {
+  fatalf("unexpected exception");
 }
 
-}
+} // namespace
+
+} // namespace lamavm
 
 int main(int argc, char* argv[]) {
   lamavm::main(argc, argv);
