@@ -7,9 +7,11 @@
 - **KISS**. Follow the `runtime` and `virtual_machine` style.
   This is an educational project, keep it as simple as possible.
 
-- **Low LLM**. Write `.c` and `.h` files by hand.
+- **Low LLM**. Write it by hand.
 
 - **MacOS**. Only MacOS is supported, but with Linux in mind.
+
+- **Compile-time paramters**. Only macros are parameters.
 
 ## Getting Started
 
@@ -49,3 +51,85 @@ Also there is a helper.
 ```sh
 ./compare.sh ./data/43.lama < /dev/null
 ```
+
+## Roadmap
+
+### Procedures
+
+The goal is to correctly run the `42.lama`.
+
+- BEGIN
+- CONST
+- END
+- EOF
+
+### Simple Instructions
+
+The goal is to support more interesting expressions.
+
+- BINOP
+- STRING
+- JMP
+- CJMP
+- DROP
+- DUP
+- SWAP
+
+### Internal Call
+
+Call to the current bytecode file.
+
+- CALL
+- LD_LOC
+- LD_ARG
+- ST_LOC
+- ST_ARG
+
+### Globals
+
+Support global variables.
+
+- LD_GLO
+- ST_GLO
+
+### External Call
+
+Call to the external bytecode file.
+
+### FFI Call
+
+Call to FFI.
+
+### SExpr
+
+- SEXP
+- TAG
+- ELEM
+
+### Array
+
+- BARRAY
+- ARRAY
+
+### Clojure
+
+- BEGIN_CLOJURE
+- CLOSURE
+- CALLC
+- ST_CLO
+- LD_CLO
+
+### Pattern Matching
+
+- FAIL
+- PATT_STR_CMP
+- PATT_STRING
+- PATT_ARRAY
+- PATT_SEXP
+- PATT_BOXED
+- PATT_UNBOXED
+- PATT_CLOSURE
+
+### Other
+
+- LINE
