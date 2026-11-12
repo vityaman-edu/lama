@@ -11,7 +11,8 @@
 
 - **MacOS**. Only MacOS is supported, but with Linux in mind.
 
-- **Compile-time paramters**. Only macros are parameters.
+- **Compile-time paramters**. Parameterization is implemented
+  via macro definitions, to keep it simple.
 
 ## Getting Started
 
