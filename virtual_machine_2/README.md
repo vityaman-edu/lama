@@ -14,6 +14,8 @@
 - **Compile-time paramters**. Parameterization is implemented
   via macro definitions, to keep it simple.
 
+- **Single Thread**. Only this is supported by the LaMa runtime.
+
 ## Getting Started
 
 You need Nix with flakes.

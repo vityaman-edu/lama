@@ -1,5 +1,7 @@
 {
   "clangd.arguments": [
-    "--compile-commands-dir=${workspaceFolder}"
+    "--compile-commands-dir=${workspaceFolder}",
+    "--query-driver=",
+    "--clang-tidy",
   ]
 }

@@ -7,25 +7,47 @@ Checks: >-
   -altera-unroll-loops,
   -bugprone-easily-swappable-parameters,
   -portability-avoid-pragma-once,
-  -readability-identifier-length
+  -readability-identifier-length,
+  -fuchsia-default-arguments-calls,
 WarningsAsErrors: '*'
 CheckOptions:
-  readability-identifier-naming.NamespaceCase: lower_case
-  readability-identifier-naming.ClassCase: lower_case
-  readability-identifier-naming.StructCase: lower_case
-  readability-identifier-naming.UnionCase: lower_case
-  readability-identifier-naming.EnumCase: lower_case
-  readability-identifier-naming.EnumConstantCase: lower_case
-  readability-identifier-naming.TypeAliasCase: lower_case
-  readability-identifier-naming.TypedefCase: lower_case
-  readability-identifier-naming.ConceptCase: lower_case
-  readability-identifier-naming.FunctionCase: lower_case
-  readability-identifier-naming.MethodCase: lower_case
-  readability-identifier-naming.VariableCase: lower_case
-  readability-identifier-naming.ParameterCase: lower_case
-  readability-identifier-naming.MemberCase: lower_case
-  readability-identifier-naming.ConstantCase: lower_case
-  readability-identifier-naming.TemplateParameterCase: lower_case
-  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
-  readability-identifier-naming.TypeTemplateParameterCase: CamelCase
-  readability-identifier-naming.TemplateTemplateParameterCase: CamelCase
+  - key: readability-identifier-naming.NamespaceCase:
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase:
+    value: lower_case
+  - key: readability-identifier-naming.StructCase:
+    value: lower_case
+  - key: readability-identifier-naming.UnionCase:
+    value: lower_case
+  - key: readability-identifier-naming.EnumCase:
+    value: lower_case
+  - key: readability-identifier-naming.EnumConstantCase:
+    value: lower_case
+  - key: readability-identifier-naming.TypeAliasCase:
+    value: lower_case
+  - key: readability-identifier-naming.TypedefCase:
+    value: lower_case
+  - key: readability-identifier-naming.ConceptCase:
+    value: lower_case
+  - key: readability-identifier-naming.FunctionCase:
+    value: lower_case
+  - key: readability-identifier-naming.MethodCase:
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase:
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase:
+    value: lower_case
+  - key: readability-identifier-naming.MemberCase:
+    value: lower_case
+  - key: readability-identifier-naming.ConstantCase:
+    value: lower_case
+  - key: readability-identifier-naming.TemplateParameterCase:
+    value: lower_case
+  - key: readability-identifier-naming.MacroDefinitionCase:
+    value: UPPER_CASE
+  - key: readability-identifier-naming.TypeTemplateParameterCase:
+    value: CamelCase
+  - key: readability-identifier-naming.TemplateTemplateParameterCase:
+    value: CamelCase
+  - key: readability-function-cognitive-complexity.IgnoreMacros
+    value: true
