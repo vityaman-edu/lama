@@ -1,0 +1,18 @@
+target-version = "py310"
+line-length = 100
+
+[lint]
+select = [
+  "A", "ANN", "ARG", "ASYNC", "B", "C4", "DTZ", "E", "F", "FBT", "FLY",
+  "G", "I", "ICN", "INT", "ISC", "LOG", "N", "PERF", "PGH", "PIE", "PLC", "PLE",
+  "PLW", "PT", "PTH", "Q", "RET", "RSE", "RUF", "S", "SIM", "SLF", "SLOT",
+  "T10", "T20", "TID", "UP", "W", "YTT",
+]
+
+[lint.per-file-ignores]
+"test/main.py" = ["S603", "T201"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

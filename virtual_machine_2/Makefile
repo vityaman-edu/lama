@@ -1,29 +1,35 @@
-.PHONY: lamavm2
+.PHONY: lamavm2 lamavm2-san style style-cpp style-py check check-cpp check-py test test-san lamac lamavm
+
 lamavm2:
-	printf '%s\n' '#!/bin/sh' 'echo todo' > lamavm2
-	chmod +x lamavm2
+	./scripts/lamavm2.sh
 
-.PHONY: style
-style:
-	echo todo
+lamavm2-san:
+	./scripts/lamavm2.sh san
 
-.PHONY: check
-check:
-	echo todo
+style: style-cpp style-py
 
-.PHONY: test
-test: check
-	echo todo
+style-cpp:
+	./scripts/style-cpp.sh
 
-.PHONY: lamac
+style-py:
+	./scripts/style-py.sh
+
+check: check-cpp check-py
+
+check-cpp:
+	./scripts/check-cpp.sh
+
+check-py:
+	./scripts/check-py.sh
+
+test: check lamac lamavm lamavm2
+	./scripts/test.sh
+
+test-san: check lamac lamavm lamavm2-san
+	./scripts/test.sh san
+
 lamac:
-	(cd ..; dune build src/Driver.exe)
-	rm -f lamac
-	ln -s ../_build/default/src/Driver.exe lamac
+	./scripts/lamac.sh
 
-.PHONY: lamavm
 lamavm:
-	(cd ..; dune build virtual_machine/lama.exe)
-	rm -f lamavm
-	printf '%s\n' '#!/bin/sh' '"$(abspath ../virtual_machine/lama.exe)" -I "$(abspath ../stdlib/x64)" "$$@"' > lamavm
-	chmod +x lamavm
+	./scripts/lamavm.sh

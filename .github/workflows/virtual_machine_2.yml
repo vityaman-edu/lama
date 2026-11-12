@@ -1,0 +1,51 @@
+name: Lama VM 2
+
+on:
+  push:
+    branches: [vm]
+  pull_request:
+    branches: [vm]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [test, test-san]
+    env:
+      CC: clang
+      CXX: clang++
+      CCACHE_DIR: ${{ github.workspace }}/virtual_machine_2/build/ccache/${{ matrix.target }}
+      CCACHE_MAXSIZE: 1GiB
+      CCACHE_COMPILERCHECK: content
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Cache CCache
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('flake.lock', 'flake.nix') }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('flake.lock', 'flake.nix') }}-
+
+      - name: Cache Opam
+        uses: actions/cache@v6
+        with:
+          path: ~/.opam
+          key: opam-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock', 'flake.nix', 'flake.shell.sh', 'Lama.opam', 'dune-project', '*.opam.locked') }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test
+        run: nix develop --command make -C virtual_machine_2 ${{ matrix.target }}

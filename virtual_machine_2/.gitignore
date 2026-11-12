@@ -7,3 +7,5 @@
 lamac
 lamavm
 lamavm2
+__pycache__/
+.ruff_cache/

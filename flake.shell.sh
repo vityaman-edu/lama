@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ "$(uname -s)" = Darwin ]; then
+  export MallocNanoZone=0
+fi
+
 if [ ! -f "${OPAMROOT:-$HOME/.opam}/config" ]; then
   opam init --bare --no-setup --yes || exit 1
 fi
