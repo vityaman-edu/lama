@@ -20,6 +20,7 @@ namespace lamavm::bc {
 unit_t parse_unit(std::vector<char> buffer) {
   unit_t u = {
     .buffer = std::move(buffer),
+    .globals_count = 0,
     .string_table = "",
     .code = {},
   };
@@ -47,7 +48,7 @@ unit_t parse_unit(std::vector<char> buffer) {
     static_cast<size_t>(h->string_table_size),
   };
 
-  LAMAVM_ASSERT_B(0, ==, h->globals_count);
+  u.globals_count = h->globals_count;
 
   std::span<const import_t> const imports = {
     reinterpret_cast<const import_t*>(data + off_imports),

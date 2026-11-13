@@ -10,6 +10,7 @@ namespace lamavm::bc {
 
 struct unit_t {
   std::vector<char> buffer;
+  std::size_t globals_count = {};
   std::string_view string_table;
   std::span<const std::uint8_t> code;
 };

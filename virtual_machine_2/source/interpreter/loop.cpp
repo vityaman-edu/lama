@@ -218,7 +218,12 @@ void op_elem() {
 }
 
 void op_ld_glo() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_glo);
+  const auto operand = text_next<std::int32_t>();
+  LAMAVM_ASSERT_B(0, <=, operand);
+
+  auto value = stack[stack.size() - 1 - operand];
+  tracef("ld_glo {} = {}", operand, unbox(value));
+  stack_push(value);
 }
 
 void op_ld_loc() {
@@ -244,7 +249,15 @@ void op_ld_clo() {
 }
 
 void op_st_glo() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_st_glo);
+  const auto operand = text_next<std::int32_t>();
+  LAMAVM_ASSERT_B(0, <=, operand);
+
+  const auto value = stack_pop();
+  stack_push(value);
+
+  auto& target = stack[stack.size() - 1 - operand];
+  tracef("sd_glo {} := {}", operand, unbox(value));
+  target = value;
 }
 
 void op_st_loc() {
@@ -484,6 +497,10 @@ void run(bc::unit_t unit) {
 
   LAMAVM_ASSERT_B(0U, <, text.size());
   LAMAVM_ASSERT_B(static_cast<bc::opcode_t>(text.back()), ==, bc::opcode_t::op_eof);
+
+  for (std::size_t i = 0; i < unit.globals_count; ++i) {
+    stack_push(box(0));
+  }
 
   stack_push(box(static_cast<std::int64_t>(0)));
   stack_push(box(static_cast<std::int64_t>(0)));
