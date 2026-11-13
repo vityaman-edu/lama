@@ -1,0 +1,10 @@
+fun f(x, y) {
+  var z;
+  x := 1; -- ST_ARG
+  y := 2; -- ST_LOC
+  z := x; -- LD_ARG
+  z := y; -- LD_LOC
+  1
+}
+
+f(10, 20)

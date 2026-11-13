@@ -71,8 +71,8 @@ std::int64_t stack_pop() {
 }
 
 void stack_push_frame(frame f) {
-  std::int64_t* fp1 = sp;
   stack_push(box(f.n_args));
+  std::int64_t* fp1 = sp;
   stack_push(f.fp);
   stack_push(f.ip);
   stack_push(f.sp);
@@ -80,13 +80,13 @@ void stack_push_frame(frame f) {
 }
 
 void stack_pop_frame() {
-  sp = reinterpret_cast<std::int64_t*>(fp[-4]); // NOLINT(performance-no-int-to-ptr)
-  ip = reinterpret_cast<std::uint8_t*>(fp[-3]); // NOLINT(performance-no-int-to-ptr)
-  fp = reinterpret_cast<std::int64_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
+  sp = reinterpret_cast<std::int64_t*>(fp[-3]); // NOLINT(performance-no-int-to-ptr)
+  ip = reinterpret_cast<std::uint8_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
+  fp = reinterpret_cast<std::int64_t*>(fp[-1]); // NOLINT(performance-no-int-to-ptr)
 }
 
 std::int64_t stack_n_args() {
-  return unbox(fp[-1]);
+  return unbox(fp[0]);
 }
 
 auto gc_call(auto f) {
@@ -222,17 +222,20 @@ void op_ld_glo() {
 }
 
 void op_ld_loc() {
-  const auto n_args = stack_n_args();
   const auto operand = text_next<std::int32_t>();
-  const auto loc = fp[-n_args - operand];
-  tracef("ld_loc {} = {}", operand, loc);
+  const auto loc = fp[-4 - operand];
+  tracef("ld_loc {} = {}", operand, unbox(loc));
   stack_push(loc);
 }
 
+// ... [arg_{n-1}] [arg_n] [n_args] [fp] [ip] [sp] [locals...]
+//                         ^ fp[0]
+//     ^ fp[+2]    ^ fp[+1]         ^ fp[-1]  ^fp[-3]
 void op_ld_arg() {
+  const auto n_args = stack_n_args();
   const auto operand = text_next<std::int32_t>();
-  const auto arg = fp[-operand];
-  tracef("ld_arg {} = {}", operand, arg);
+  const auto arg = fp[n_args - operand];
+  tracef("ld_arg {} = {}", operand, unbox(arg));
   stack_push(arg);
 }
 
@@ -245,11 +248,26 @@ void op_st_glo() {
 }
 
 void op_st_loc() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_st_loc);
+  const auto operand = text_next<std::int32_t>();
+
+  const auto value = stack_pop();
+  stack_push(value);
+
+  auto& loc = fp[-4 - operand];
+  tracef("st_loc {} := {}", operand, unbox(value));
+  loc = value;
 }
 
 void op_st_arg() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_st_arg);
+  const auto n_args = stack_n_args();
+  const auto operand = text_next<std::int32_t>();
+
+  const auto value = stack_pop();
+  stack_push(value);
+
+  auto& arg = fp[n_args - operand];
+  tracef("st_arg {} := {}", operand, unbox(value));
+  arg = value;
 }
 
 void op_st_clo() {
