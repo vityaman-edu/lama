@@ -271,8 +271,11 @@ void op_callc() {
 }
 
 void op_call() {
-  // T O D O: call push_stack_frame here
-  fatalf("unexpected opcode {}", bc::opcode_t::op_call);
+  const auto target = text_next<std::int32_t>();
+  const auto n_args = text_next<std::int32_t>();
+  LAMAVM_ASSERT_B(0, <=, target);
+  stack_push_frame({.fp = fp, .ip = ip, .sp = sp + n_args});
+  ip = text.data() + target;
 }
 
 void op_begin() {
@@ -317,7 +320,7 @@ void op_fail_keep() {
 }
 
 void op_line() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_line);
+  text_next<std::int32_t>();
 }
 
 void op_patt_str_cmp() {
