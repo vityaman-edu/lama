@@ -3,26 +3,44 @@
 #include "log.hpp" // IWYU pragma: keep
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LAMAVM_ASSERT_C(c, m)                                                                      \
+#define LAMAVM_EXPECT_C(c, m)                                                                      \
   do { /* NOLINT(cppcoreguidelines-avoid-do-while) */                                              \
     if (!(c)) {                                                                                    \
-      ::lamavm::fatalf("{}:{}: assertion failed: {}", __FILE__, __LINE__, (m));                    \
+      ::lamavm::fatalf("{}:{}:1: unexepectedly {}", __FILE__, __LINE__, (m));                      \
     }                                                                                              \
   } while (false)
 
-#define LAMAVM_ASSERT(c) LAMAVM_ASSERT_C(c, #c " is false")
+#define LAMAVM_EXPECT(c) LAMAVM_EXPECT_C(c, #c " is false")
 
-#define LAMAVM_ASSERT_B(lhs, op, rhs)                                                              \
+#define LAMAVM_EXPECT_B(lhs, op, rhs)                                                              \
   do { /* NOLINT(cppcoreguidelines-avoid-do-while) */                                              \
-    auto&& lamavm_assert_lhs = (lhs);                                                              \
-    auto&& lamavm_assert_rhs = (rhs);                                                              \
-    LAMAVM_ASSERT_C(                                                                               \
-      lamavm_assert_lhs op lamavm_assert_rhs,                                                      \
+    auto&& lamavm_expect_lhs = (lhs);                                                              \
+    auto&& lamavm_expect_rhs = (rhs);                                                              \
+    LAMAVM_EXPECT_C(                                                                               \
+      lamavm_expect_lhs op lamavm_expect_rhs,                                                      \
       std::format(                                                                                 \
-        "({}) {} ({}), where lhs = ({}), rhs = ({})",                                              \
+        "{} {} {} ({} {} {})",                                                                     \
         #lhs,                                                                                      \
         #op,                                                                                       \
         #rhs,                                                                                      \
-        lamavm_assert_lhs,                                                                         \
-        lamavm_assert_rhs));                                                                       \
+        lamavm_expect_lhs,                                                                         \
+        #op,                                                                                       \
+        lamavm_expect_rhs));                                                                       \
   } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_EXPECT_BB(a, ab, b, bc, c)                                                          \
+  LAMAVM_EXPECT_B(a, ab, b);                                                                       \
+  LAMAVM_EXPECT_B(b, bc, c)
+
+#ifdef NDEBUG
+#define LAMAVM_ASSERT_C(c, m) (void)(0)             // NOLINT(cppcoreguidelines-macro-usage)
+#define LAMAVM_ASSERT(c) (void)(0)                  // NOLINT(cppcoreguidelines-macro-usage)
+#define LAMAVM_ASSERT_B(lhs, op, rhs) (void)(0)     // NOLINT(cppcoreguidelines-macro-usage)
+#define LAMAVM_ASSERT_BB(a, ab, b, bc, c) (void)(0) // NOLINT(cppcoreguidelines-macro-usage)
+#else
+#define LAMAVM_ASSERT_C(c, m) LAMAVM_EXPECT_C(c, m)
+#define LAMAVM_ASSERT(c) LAMAVM_EXPECT(c)
+#define LAMAVM_ASSERT_B(lhs, op, rhs) LAMAVM_EXPECT_B(lhs, op, rhs)
+#define LAMAVM_ASSERT_BB(lhs, op, rhs) LAMAVM_EXPECT_BB(lhs, op, rhs)
+#endif

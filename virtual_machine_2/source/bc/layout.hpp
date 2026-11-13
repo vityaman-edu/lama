@@ -24,7 +24,7 @@ struct [[gnu::packed]] import_t {
 struct [[gnu::packed]] public_symbol_t {
   std::int32_t name_offset;
   std::int32_t code_offset;
-  bool flag;
+  std::int8_t flag;
 };
 
 enum class opcode_t : unsigned char {

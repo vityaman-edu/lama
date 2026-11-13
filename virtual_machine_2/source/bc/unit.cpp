@@ -1,6 +1,8 @@
 #include "unit.hpp"
 
-#include "bc/layout.hpp"
+#include "bc/limit.hpp"
+#include "layout.hpp"
+
 #include "core/assert.hpp"
 
 #include <cstddef>
@@ -9,7 +11,6 @@
 #include <filesystem>
 #include <fstream>
 #include <istream>
-#include <iterator>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -17,75 +18,102 @@
 
 namespace lamavm::bc {
 
-unit_t parse_unit(std::vector<char> buffer) {
-  unit_t u = {
-    .buffer = std::move(buffer),
-    .globals_count = 0,
-    .string_table = "",
-    .code = {},
+using namespace std::string_view_literals;
+
+const header_t& unit::header() const {
+  return *reinterpret_cast<const header_t*>(arena.data());
+}
+
+std::span<const char> unit::string_table() const {
+  return {
+    reinterpret_cast<const char*>(arena.data() + sizeof(header_t)),
+    static_cast<std::size_t>(header().string_table_size),
   };
+}
 
-  const char* data = u.buffer.data();
-
-  const auto* h = reinterpret_cast<const header_t*>(data);
-
-  LAMAVM_ASSERT_B(std::string_view{h->magic}, ==, std::string_view{"LaMa"});
-  LAMAVM_ASSERT_B(h->version, ==, 1);
-  LAMAVM_ASSERT_B(0, <=, h->string_table_size);
-  LAMAVM_ASSERT_B(0, <=, h->globals_count);
-  LAMAVM_ASSERT_B(0, <=, h->imports_count);
-  LAMAVM_ASSERT_B(0, <=, h->public_symbols_count);
-
-  const size_t off_string_table = sizeof(header_t);
-  const size_t off_imports = off_string_table + (sizeof(char) * h->string_table_size);
-  const size_t off_public_symbols = off_imports + (sizeof(import_t) * h->imports_count);
-  const size_t off_code = off_public_symbols + (sizeof(public_symbol_t) * h->public_symbols_count);
-
-  LAMAVM_ASSERT_B(off_code, <, u.buffer.size());
-
-  u.string_table = {
-    data + off_string_table,
-    static_cast<size_t>(h->string_table_size),
+std::span<const import_t> unit::imports() const {
+  const auto offset = sizeof(header_t) + string_table().size_bytes();
+  return {
+    reinterpret_cast<const import_t*>(arena.data() + offset),
+    static_cast<std::size_t>(header().imports_count),
   };
+}
 
-  u.globals_count = h->globals_count;
-
-  std::span<const import_t> const imports = {
-    reinterpret_cast<const import_t*>(data + off_imports),
-    static_cast<size_t>(h->imports_count),
+std::span<const public_symbol_t> unit::public_symbols() const {
+  const auto offset = sizeof(header_t) + string_table().size_bytes() + imports().size_bytes();
+  return {
+    reinterpret_cast<const public_symbol_t*>(arena.data() + offset),
+    static_cast<std::size_t>(header().public_symbols_count),
   };
+}
 
-  LAMAVM_ASSERT_B(imports.size(), ==, 1U);
-
-  const char* import_name = u.string_table.data() + imports.front().name_offset;
-  LAMAVM_ASSERT_B(std::strcmp(import_name, "Std"), ==, 0);
-
-  LAMAVM_ASSERT_B(0, ==, h->public_symbols_count);
-
-  u.code = {
-    reinterpret_cast<const std::uint8_t*>(data + off_code),
-    reinterpret_cast<const std::uint8_t*>(data + u.buffer.size()),
+std::span<const std::uint8_t> unit::code_section() const {
+  const auto offset = sizeof(header_t) +
+                      string_table().size_bytes() +
+                      imports().size_bytes() +
+                      public_symbols().size_bytes();
+  return {
+    reinterpret_cast<const std::uint8_t*>(arena.data() + offset),
+    arena.size() - offset,
   };
+}
 
-  LAMAVM_ASSERT_B(0U, <, u.code.size());
-  LAMAVM_ASSERT_B(u.code.back(), ==, std::uint8_t{0xFF});
+unit unit::parse(std::vector<std::byte> arena) {
+  unit u(std::move(arena));
+
+  LAMAVM_EXPECT_B(sizeof(header_t), <=, u.arena.size());
+  const auto& header = u.header();
+  const std::string_view header_magic(header.magic.data(), header.magic.size());
+  LAMAVM_EXPECT_B(header_magic, ==, "LaMa"sv);
+  LAMAVM_EXPECT_B(header.version, ==, 1);
+  LAMAVM_EXPECT_B(0, <=, header.string_table_size);
+  LAMAVM_EXPECT_BB(0, <=, header.globals_count, <=, max_globals_count);
+  LAMAVM_EXPECT_BB(0, <=, header.imports_count, <=, max_imports_count);
+  LAMAVM_EXPECT_BB(0, <=, header.public_symbols_count, <=, max_public_symbols_count);
+
+  const auto code_section = u.code_section();
+  const auto code_offset  = reinterpret_cast<const std::byte*>(code_section.data()) -
+                            reinterpret_cast<const std::byte*>(u.arena.data());
+  const auto arena_size   = static_cast<std::ptrdiff_t>(arena.size());
+  LAMAVM_EXPECT_B(code_offset, <, arena_size);
+
+  const auto string_table_size = static_cast<std::int32_t>(u.string_table().size());
+  const auto code_section_size = static_cast<std::int32_t>(code_section.size());
+
+  for (const import_t& i : u.imports()) {
+    LAMAVM_EXPECT_BB(0, <=, i.name_offset, <, string_table_size);
+  }
+
+  for (const public_symbol_t& s : u.public_symbols()) {
+    LAMAVM_EXPECT_BB(0, <=, s.name_offset, <=, string_table_size);
+    LAMAVM_EXPECT_BB(0, <=, s.code_offset, <=, code_section_size);
+    LAMAVM_EXPECT_BB(0, <=, s.flag, <=, 1);
+  }
+
+  LAMAVM_EXPECT_B(0U, <, code_section.size());
+  LAMAVM_EXPECT_B(code_section.back(), ==, std::uint8_t{0xFF});
 
   return u;
 }
 
-unit_t parse_unit(std::istream& in) {
-  using it = std::istreambuf_iterator<char>;
+unit unit::parse(const std::filesystem::path& path) {
+  LAMAVM_EXPECT_B(path.extension().string(), ==, ".bc"sv);
 
-  in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-  std::vector<char> buffer(it{in}, it{});
-  return parse_unit(std::move(buffer));
+  std::ifstream f;
+  f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+  f.open(path, std::ifstream::binary | std::ifstream::ate);
+
+  const auto size = static_cast<std::size_t>(f.tellg());
+  LAMAVM_EXPECT_B(size, <=, max_unit_size);
+
+  std::vector<std::byte> arena(size);
+  f.seekg(0);
+  f.read(reinterpret_cast<char*>(arena.data()), static_cast<std::streamsize>(arena.size()));
+  return parse(std::move(arena));
 }
 
-unit_t parse_unit(const std::filesystem::path& path) {
-  LAMAVM_ASSERT_B(path.extension().string(), ==, std::string_view{".bc"});
-
-  std::ifstream f(path);
-  return parse_unit(f);
+unit::unit(std::vector<std::byte> arena)
+  : arena(std::move(arena)) {
 }
 
 } // namespace lamavm::bc

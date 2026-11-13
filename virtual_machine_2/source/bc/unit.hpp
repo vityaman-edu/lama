@@ -1,22 +1,29 @@
 #pragma once
 
+#include "bc/layout.hpp"
+
 #include <cstddef>
 #include <filesystem>
 #include <span>
-#include <string_view>
 #include <vector>
 
 namespace lamavm::bc {
 
-struct unit_t {
-  std::vector<char> buffer;
-  std::size_t globals_count = {};
-  std::string_view string_table;
-  std::span<const std::uint8_t> code;
-};
+class unit final {
+public:
+  [[nodiscard]] const header_t& header() const;
+  [[nodiscard]] std::span<const char> string_table() const;
+  [[nodiscard]] std::span<const import_t> imports() const;
+  [[nodiscard]] std::span<const public_symbol_t> public_symbols() const;
+  [[nodiscard]] std::span<const std::uint8_t> code_section() const;
 
-unit_t parse_unit(std::vector<char> buffer);
-unit_t parse_unit(std::istream& in);
-unit_t parse_unit(const std::filesystem::path& path);
+  static unit parse(std::vector<std::byte> arena);
+  static unit parse(const std::filesystem::path& path);
+
+private:
+  explicit unit(std::vector<std::byte> arena);
+
+  std::vector<std::byte> arena;
+};
 
 } // namespace lamavm::bc

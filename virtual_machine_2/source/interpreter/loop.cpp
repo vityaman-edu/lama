@@ -476,13 +476,13 @@ void step() {
 
 } // namespace
 
-void run(bc::unit_t unit) {
+void run(bc::unit unit) {
   static std::atomic_bool is_loaded = false;
   LAMAVM_ASSERT(!is_loaded.exchange(true));
 
   buffer = std::move(unit.buffer);
   data = unit.string_table;
-  text = unit.code;
+  text = unit.code_section;
 
   // T O D O : mmap guard, mmap stack, mmap guard
   constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(std::size_t);

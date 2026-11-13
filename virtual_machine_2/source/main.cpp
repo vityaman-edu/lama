@@ -17,7 +17,7 @@ namespace {
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 void main(int argc, char* argv[]) try {
   args const args = args::parse(argc, argv);
-  bc::unit_t unit = bc::parse_unit(args.bc_path);
+  bc::unit unit = bc::parse_unit(args.bc_path);
   interpreter::run(std::move(unit));
 } catch (const std::ios_base::failure& e) {
   fatalf("io error: {}", e.code().message());
