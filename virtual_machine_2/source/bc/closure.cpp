@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <exception>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -86,10 +87,13 @@ std::size_t closure_size(const unit& main, const preclosure& cj) {
 }
 
 unit closure(preclosure cj) {
-  LAMAVM_ASSERT_B(0, <, cj.order.size());
+  LAMAVM_ASSERT_B(0ULL, <, cj.order.size());
   const auto& main = cj.unit_by_name.at(std::string(cj.order.back()));
 
   std::size_t size = closure_size(main, cj);
+  (void)size;
+
+  std::terminate(); // unreachable
   // Relocations:
   // - public_symbols (merge in-memory for easy resolution)
   //     name_offset  DO (string table moved)
