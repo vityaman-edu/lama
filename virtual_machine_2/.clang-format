@@ -3,6 +3,7 @@ AllowShortFunctionsOnASingleLine: None
 IndentWidth: 2
 PointerAlignment: Left
 ColumnLimit: 100
+BreakBinaryOperations: OnePerLine
 BreakTemplateDeclarations: Yes
 BreakConstructorInitializers: BeforeComma
 PackConstructorInitializers: Never
@@ -13,5 +14,6 @@ BinPackArguments: false
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowAllArgumentsOnNextLine: false
 AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveAssignments: AcrossEmptyLines
 ContinuationIndentWidth: 2
 FixNamespaceComments: false

@@ -132,3 +132,38 @@ Call to the external bytecode file.
 ### Other
 
 - LINE
+
+## Redesign
+
+### Input
+
+The input of `lamavm2` is an only `.bc` file.
+
+```sh
+./lamavm2 Main.bc
+./lamavm2 ./Main.bc
+./lamavm2 path/to/Main.bc
+```
+
+The main unit can reference external symbols (globals or functions).
+Only public symbols of imported units can be referenced.
+Imported units are found relative to the main unit directory.
+
+### Parsing
+
+The parsing transforms **bytes** into the **unit**.
+
+### Unit Closure
+
+The unit closure recursively resolves imported modules.
+The closure is a single module.
+Module contents are written in a some topological order.
+String Tables are merged, but not interned.
+Global Arrays are appended.
+Imports are gone.
+Public symbols are not merged, only top-level are leaved.
+Relocation is done.
+
+### Analysis
+
+TODO
