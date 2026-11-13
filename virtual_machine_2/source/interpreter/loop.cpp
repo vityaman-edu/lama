@@ -186,10 +186,6 @@ void op_sta() {
   fatalf("unexpected opcode {}", bc::opcode_t::op_sta);
 }
 
-void op_jmp() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_jmp);
-}
-
 void op_drop() {
   stack_pop();
 }
@@ -243,12 +239,27 @@ void op_st_clo() {
   fatalf("unexpected opcode {}", bc::opcode_t::op_st_clo);
 }
 
+void op_jmp() {
+  const auto target = text_next<std::int32_t>();
+  ip = text.data() + target;
+}
+
 void op_cjmp_z() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_cjmp_z);
+  const auto value = stack_pop();
+  if (unbox(value) == 0) {
+    op_jmp();
+  } else {
+    text_next<std::int32_t>();
+  }
 }
 
 void op_cjmp_nz() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_cjmp_nz);
+  const auto value = stack_pop();
+  if (unbox(value) != 0) {
+    op_jmp();
+  } else {
+    text_next<std::int32_t>();
+  }
 }
 
 void op_callc() {
