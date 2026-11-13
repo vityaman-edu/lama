@@ -191,15 +191,20 @@ void op_jmp() {
 }
 
 void op_drop() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_drop);
+  stack_pop();
 }
 
 void op_dup() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_dup);
+  const auto x = stack_pop();
+  stack_push(x);
+  stack_push(x);
 }
 
 void op_swap() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_swap);
+  const auto x = stack_pop();
+  const auto y = stack_pop();
+  stack_push(x);
+  stack_push(y);
 }
 
 void op_elem() {
