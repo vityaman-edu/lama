@@ -43,7 +43,10 @@ def signature(result: RunResult) -> tuple[int | None, bytes, bytes]:
 def print_result(name: str, result: RunResult) -> None:
     exit_code = "timeout" if result.exit_code is None else color_number(result.exit_code)
     print(f"  {name}:\n    exit code: {exit_code}")
-    print(f"    stdout: {result.stdout!r}\n    stderr: {result.stderr!r}")
+    for key, value in (("stdout", result.stdout), ("stderr", result.stderr)):
+        print(f"    {key}: |2")
+        for line in value.decode("utf-8", errors="replace").splitlines():
+            print(f"      {line}")
 
 
 def measure(
@@ -196,8 +199,10 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
 
         status = "GOOD" if all(value == "GOOD" for value in statuses.values()) else "FAIL"
         report(source, name, status, measurements, statuses, errors)
-        if status == "FAIL" and args.disassemble:
-            print(f"  lamac disassembly: {compilation.disassembly!r}")
+        if status == "FAIL":
+            if args.disassemble:
+                print(f"  lamac disassembly: {compilation.disassembly!r}")
+
             try:
                 print_result("lamavm disassembly", reference.disassemble(source))
             except (OSError, RuntimeError) as error:

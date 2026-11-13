@@ -1,6 +1,9 @@
 #include "layout.hpp"
 
+#include <format>
 #include <ostream>
+#include <sstream>
+#include <string_view>
 
 namespace lamavm::bc {
 
@@ -116,3 +119,11 @@ std::ostream& operator<<(std::ostream& os, opcode_t opcode) {
 }
 
 } // namespace lamavm::bc
+
+std::format_context::iterator std::formatter<lamavm::bc::opcode_t>::format(
+  lamavm::bc::opcode_t opcode,
+  std::format_context& ctx) const {
+  std::ostringstream os;
+  os << opcode;
+  return std::formatter<std::string_view>::format(os.str(), ctx);
+}

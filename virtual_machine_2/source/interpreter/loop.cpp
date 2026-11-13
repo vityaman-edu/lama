@@ -1,17 +1,23 @@
 #include "loop.hpp"
 
+#include "runtime.hpp"
+
 #include "bc/layout.hpp"
 #include "bc/unit.hpp"
 #include "core/assert.hpp"
 #include "core/log.hpp"
+
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
 
-extern "C" {
-#include <contrib/runtime/gc.h>
-}
+// extern "C" {
+// #include <contrib/runtime/gc.h>
+// }
 
 #include <atomic>
 #include <cstddef>
@@ -24,36 +30,64 @@ std::vector<char> buffer;
 
 std::string_view data;
 std::span<const std::uint8_t> text;
-std::vector<std::size_t> stack;
+std::vector<std::int64_t> stack;
 
 const std::uint8_t* ip = nullptr;
-std::size_t* sp = nullptr;
+std::int64_t* sp = nullptr;
+std::int64_t* fp = nullptr;
 
 } // namespace
 
 namespace {
 
-const char* c_str(std::int32_t offset) {
-  return data.data() + offset;
+struct frame {
+  std::int64_t* fp = nullptr;
+  const std::uint8_t* ip = nullptr;
+  std::int64_t* sp = nullptr;
+};
+
+// const char* c_str(std::int32_t offset) {
+//   return data.data() + offset;
+// }
+
+template <typename T>
+T text_next() {
+  T x;
+  std::memcpy(&x, ip, sizeof(T));
+  ip += sizeof(T);
+  return x;
+}
+
+void stack_push(std::int64_t x) {
+  --sp;
+  *sp = x;
+}
+
+void stack_push(const void* x) {
+  stack_push(reinterpret_cast<std::int64_t>(x));
+}
+
+std::int64_t stack_pop() {
+  const std::int64_t x = *sp;
+  sp++;
+  return x;
+}
+
+void stack_push_frame(frame f) {
+  std::int64_t* fp1 = sp;
+  stack_push(f.fp);
+  stack_push(f.ip);
+  stack_push(f.sp);
+  fp = fp1;
+}
+
+void stack_pop_frame() {
+  sp = reinterpret_cast<std::int64_t*>(fp[-3]); // NOLINT(performance-no-int-to-ptr)
+  ip = reinterpret_cast<std::uint8_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
+  fp = reinterpret_cast<std::int64_t*>(fp[-1]); // NOLINT(performance-no-int-to-ptr)
 }
 
 } // namespace
-
-void load(bc::unit_t unit) {
-  static std::atomic_bool is_loaded = false;
-  LAMAVM_ASSERT(!is_loaded.exchange(true));
-
-  buffer = std::move(unit.buffer);
-  data = unit.string_table;
-  text = unit.code;
-
-  // T O D O : mmap guard, mmap stack, mmap guard
-  constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(std::size_t);
-  stack = std::vector<std::size_t>(stack_size);
-
-  ip = text.data();
-  sp = stack.data() + stack.size();
-}
 
 namespace {
 
@@ -110,7 +144,8 @@ void op_or() {
 }
 
 void op_const() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_const);
+  const auto value = text_next<std::int32_t>();
+  stack_push(value);
 }
 
 void op_string() {
@@ -127,10 +162,6 @@ void op_sta() {
 
 void op_jmp() {
   fatalf("unexpected opcode {}", bc::opcode_t::op_jmp);
-}
-
-void op_end() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_end);
 }
 
 void op_drop() {
@@ -189,8 +220,24 @@ void op_cjmp_nz() {
   fatalf("unexpected opcode {}", bc::opcode_t::op_cjmp_nz);
 }
 
+void op_callc() {
+  fatalf("unexpected opcode {}", bc::opcode_t::op_callc);
+}
+
+void op_call() {
+  // T O D O: call push_stack_frame here
+  fatalf("unexpected opcode {}", bc::opcode_t::op_call);
+}
+
 void op_begin() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_begin);
+  const auto n_args = text_next<std::int32_t>();
+  const auto n_locals = text_next<std::int32_t>();
+
+  (void)n_args; // T O D O : why is it needed?
+
+  for (std::int32_t i = 0; i < n_locals; ++i) {
+    stack_push(box(0));
+  }
 }
 
 void op_begin_closure() {
@@ -201,12 +248,10 @@ void op_closure() {
   fatalf("unexpected opcode {}", bc::opcode_t::op_closure);
 }
 
-void op_callc() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_callc);
-}
-
-void op_call() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_call);
+void op_end() {
+  const std::int64_t x = stack_pop();
+  stack_pop_frame();
+  stack_push(x);
 }
 
 void op_tag() {
@@ -262,17 +307,20 @@ void op_barray() {
 }
 
 void op_eof() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_eof);
+  std::exit(0); // NOLINT(concurrency-mt-unsafe)
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LAMAVM_CASE(op)   \
-  case bc::opcode_t::op: \
-    op();               \
+#define LAMAVM_CASE(op)                                                                            \
+  case bc::opcode_t::op:                                                                           \
+    op();                                                                                          \
     return;
 
 void step() {
-  auto opcode = static_cast<bc::opcode_t>(*ip);
+  const auto offset = ip - text.data();
+  const auto opcode = text_next<bc::opcode_t>();
+  tracef("step {} ip={}", opcode, offset);
+
   switch (opcode) {
     LAMAVM_CASE(op_add)
     LAMAVM_CASE(op_sub)
@@ -335,7 +383,26 @@ void step() {
 
 } // namespace
 
-void run() {
+void run(bc::unit_t unit) {
+  static std::atomic_bool is_loaded = false;
+  LAMAVM_ASSERT(!is_loaded.exchange(true));
+
+  buffer = std::move(unit.buffer);
+  data = unit.string_table;
+  text = unit.code;
+
+  // T O D O : mmap guard, mmap stack, mmap guard
+  constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(std::size_t);
+  stack = std::vector<int64_t>(stack_size);
+
+  ip = text.data();
+  sp = stack.data() + stack.size();
+  fp = sp;
+
+  LAMAVM_ASSERT_B(0U, <, text.size());
+  LAMAVM_ASSERT_B(static_cast<bc::opcode_t>(text.back()), ==, bc::opcode_t::op_eof);
+  stack_push_frame(frame{.fp = fp, .ip = text.data() + text.size() - 1, .sp = sp});
+
   for (;;) {
     step();
   }

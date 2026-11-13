@@ -2,7 +2,9 @@
 
 #include <array>
 #include <cstdint>
+#include <format>
 #include <iosfwd>
+#include <string_view>
 
 namespace lamavm::bc {
 
@@ -89,3 +91,8 @@ enum class opcode_t : std::uint8_t {
 std::ostream& operator<<(std::ostream& os, opcode_t opcode);
 
 } // namespace lamavm::bc
+
+template <>
+struct std::formatter<lamavm::bc::opcode_t> : std::formatter<std::string_view> {
+  std::format_context::iterator format(lamavm::bc::opcode_t opcode, std::format_context& ctx) const;
+};

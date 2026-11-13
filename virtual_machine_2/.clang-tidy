@@ -12,6 +12,7 @@ Checks: >-
   -hicpp-avoid-c-arrays,
   -altera-struct-pack-align,
   -altera-unroll-loops,
+  -altera-id-dependent-backward-branch,
   -bugprone-easily-swappable-parameters,
   -portability-avoid-pragma-once,
   -readability-identifier-length,

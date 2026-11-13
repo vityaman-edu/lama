@@ -37,7 +37,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--runs", type=run_count, default=20, help="runs per implementation (default: 20)"
     )
-    parser.add_argument("--disassemble", action="store_true", help="show disassembly on failure")
+    parser.add_argument(
+        "--disassemble", action="store_true", help="also show compiler disassembly on failure"
+    )
     args = parser.parse_args()
     for attribute in ("lamac", "reference", "lamavm"):
         executable = getattr(args, attribute).absolute()
