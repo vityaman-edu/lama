@@ -2,6 +2,7 @@
 
 #include "runtime.hpp"
 
+#include "bc/decode.hpp"
 #include "bc/layout.hpp"
 #include "bc/unit.hpp"
 #include "core/assert.hpp"
@@ -9,7 +10,6 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <span>
 #include <vector>
 
@@ -21,34 +21,26 @@ namespace lamavm::interpreter {
 namespace {
 
 std::span<const char> data;
-std::span<const std::uint8_t> text;
+std::span<const std::byte> text;
 std::vector<std::int64_t> stack;
 
-const std::uint8_t* ip = nullptr;
-std::int64_t* sp       = nullptr;
-std::int64_t* fp       = nullptr;
+const std::byte* ip = nullptr;
+std::int64_t* sp = nullptr;
+std::int64_t* fp = nullptr;
 
 } // namespace
 
 namespace {
 
 struct frame {
-  std::int64_t n_args    = 0;
-  std::int64_t* fp       = nullptr;
-  const std::uint8_t* ip = nullptr;
-  std::int64_t* sp       = nullptr;
+  std::int64_t n_args = 0;
+  std::int64_t* fp = nullptr;
+  const std::byte* ip = nullptr;
+  std::int64_t* sp = nullptr;
 };
 
 const char* c_str(std::int32_t offset) {
   return data.data() + offset;
-}
-
-template <typename T>
-T text_next() {
-  T x;
-  std::memcpy(&x, ip, sizeof(T));
-  ip += sizeof(T);
-  return x;
 }
 
 void stack_push(std::int64_t x) {
@@ -76,9 +68,9 @@ void stack_push_frame(frame f) {
 }
 
 void stack_pop_frame() {
-  sp = reinterpret_cast<std::int64_t*>(fp[-3]); // NOLINT(performance-no-int-to-ptr)
-  ip = reinterpret_cast<std::uint8_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
-  fp = reinterpret_cast<std::int64_t*>(fp[-1]); // NOLINT(performance-no-int-to-ptr)
+  sp = reinterpret_cast<std::int64_t*>(fp[-3]);    // NOLINT(performance-no-int-to-ptr)
+  ip = reinterpret_cast<const std::byte*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
+  fp = reinterpret_cast<std::int64_t*>(fp[-1]);    // NOLINT(performance-no-int-to-ptr)
 }
 
 std::int64_t stack_n_args() {
@@ -94,381 +86,218 @@ auto gc_call(auto f) {
 
 namespace {
 
-void op_add() {
+void execute([[maybe_unused]] const bc::op_add_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_43(x, y));
 }
 
-void op_sub() {
+void execute([[maybe_unused]] const bc::op_sub_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_45(x, y));
 }
 
-void op_mul() {
+void execute([[maybe_unused]] const bc::op_mul_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_42(x, y));
 }
 
-void op_div() {
+void execute([[maybe_unused]] const bc::op_div_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_47(x, y));
 }
 
-void op_mod() {
+void execute([[maybe_unused]] const bc::op_mod_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_37(x, y));
 }
 
-void op_lt() {
+void execute([[maybe_unused]] const bc::op_lt_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_60(x, y));
 }
 
-void op_le() {
+void execute([[maybe_unused]] const bc::op_le_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_6061(x, y));
 }
 
-void op_gt() {
+void execute([[maybe_unused]] const bc::op_gt_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_62(x, y));
 }
 
-void op_ge() {
+void execute([[maybe_unused]] const bc::op_ge_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_6261(x, y));
 }
 
-void op_eq() {
+void execute([[maybe_unused]] const bc::op_eq_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_6161(x, y));
 }
 
-void op_ne() {
+void execute([[maybe_unused]] const bc::op_ne_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_3361(x, y));
 }
 
-void op_and() {
+void execute([[maybe_unused]] const bc::op_and_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_3838(x, y));
 }
 
-void op_or() {
+void execute([[maybe_unused]] const bc::op_or_t& op) {
   const auto y = stack_pop();
   const auto x = stack_pop();
   stack_push(Ls__Infix_3333(x, y));
 }
 
-void op_const() {
-  const auto value = text_next<std::int32_t>();
-  stack_push(box(value));
+void execute(const bc::op_const_t& op) {
+  stack_push(box(op.value));
 }
 
-void op_string() {
-  const auto str   = text_next<std::int32_t>();
-  const char* str1 = c_str(str);
+void execute(const bc::op_string_t& op) {
+  const char* str1 = c_str(op.string_offset);
   const void* str2 = gc_call([&] { return Bstring(static_cast<const void*>(&str1)); });
   stack_push(str2);
 }
 
-void op_sexp() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_sexp);
-}
-
-void op_sta() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_sta);
-}
-
-void op_drop() {
+void execute([[maybe_unused]] const bc::op_drop_t& op) {
   stack_pop();
 }
 
-void op_dup() {
+void execute([[maybe_unused]] const bc::op_dup_t& op) {
   const auto x = stack_pop();
   stack_push(x);
   stack_push(x);
 }
 
-void op_swap() {
+void execute([[maybe_unused]] const bc::op_swap_t& op) {
   const auto x = stack_pop();
   const auto y = stack_pop();
   stack_push(x);
   stack_push(y);
 }
 
-void op_elem() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_elem);
-}
+void execute(const bc::op_ld_glo_t& op) {
+  LAMAVM_ASSERT_B(0, <=, op.index);
 
-void op_ld_glo() {
-  const auto operand = text_next<std::int32_t>();
-  LAMAVM_ASSERT_B(0, <=, operand);
-
-  auto value = stack[stack.size() - 1 - operand];
-  tracef("ld_glo {} = {}", operand, unbox(value));
+  auto value = stack[stack.size() - 1 - op.index];
+  tracef("ld_glo {} = {}", op.index, unbox(value));
   stack_push(value);
 }
 
-void op_ld_loc() {
-  const auto operand = text_next<std::int32_t>();
-  const auto loc     = fp[-4 - operand];
-  tracef("ld_loc {} = {}", operand, unbox(loc));
+void execute(const bc::op_ld_loc_t& op) {
+  const auto loc = fp[-4 - op.index];
+  tracef("ld_loc {} = {}", op.index, unbox(loc));
   stack_push(loc);
 }
 
-// ... [arg_{n-1}] [arg_n] [n_args] [fp] [ip] [sp] [locals...]
-//                         ^ fp[0]
-//     ^ fp[+2]    ^ fp[+1]         ^ fp[-1]  ^fp[-3]
-void op_ld_arg() {
-  const auto n_args  = stack_n_args();
-  const auto operand = text_next<std::int32_t>();
-  const auto arg     = fp[n_args - operand];
-  tracef("ld_arg {} = {}", operand, unbox(arg));
+void execute(const bc::op_ld_arg_t& op) {
+  const auto n_args = stack_n_args();
+  const auto arg = fp[n_args - op.index];
+  tracef("ld_arg {} = {}", op.index, unbox(arg));
   stack_push(arg);
 }
 
-void op_ld_clo() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_clo);
-}
-
-void op_st_glo() {
-  const auto operand = text_next<std::int32_t>();
-  LAMAVM_ASSERT_B(0, <=, operand);
+void execute(const bc::op_st_glo_t& op) {
+  LAMAVM_ASSERT_B(0, <=, op.index);
 
   const auto value = stack_pop();
   stack_push(value);
 
-  auto& target = stack[stack.size() - 1 - operand];
-  tracef("sd_glo {} := {}", operand, unbox(value));
+  auto& target = stack[stack.size() - 1 - op.index];
+  tracef("sd_glo {} := {}", op.index, unbox(value));
   target = value;
 }
 
-void op_st_loc() {
-  const auto operand = text_next<std::int32_t>();
-
-  const auto value   = stack_pop();
+void execute(const bc::op_st_loc_t& op) {
+  const auto value = stack_pop();
   stack_push(value);
 
-  auto& loc = fp[-4 - operand];
-  tracef("st_loc {} := {}", operand, unbox(value));
+  auto& loc = fp[-4 - op.index];
+  tracef("st_loc {} := {}", op.index, unbox(value));
   loc = value;
 }
 
-void op_st_arg() {
-  const auto n_args  = stack_n_args();
-  const auto operand = text_next<std::int32_t>();
+void execute(const bc::op_st_arg_t& op) {
+  const auto n_args = stack_n_args();
 
-  const auto value   = stack_pop();
+  const auto value = stack_pop();
   stack_push(value);
 
-  auto& arg = fp[n_args - operand];
-  tracef("st_arg {} := {}", operand, unbox(value));
+  auto& arg = fp[n_args - op.index];
+  tracef("st_arg {} := {}", op.index, unbox(value));
   arg = value;
 }
 
-void op_st_clo() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_st_clo);
+void execute(const bc::op_jmp_t& op) {
+  ip = text.data() + op.target;
 }
 
-void op_jmp() {
-  const auto target = text_next<std::int32_t>();
-  ip                = text.data() + target;
-}
-
-void op_cjmp_z() {
+void execute(const bc::op_cjmp_z_t& op) {
   const auto value = stack_pop();
   if (unbox(value) == 0) {
-    op_jmp();
-  } else {
-    text_next<std::int32_t>();
+    ip = text.data() + op.target;
   }
 }
 
-void op_cjmp_nz() {
+void execute(const bc::op_cjmp_nz_t& op) {
   const auto value = stack_pop();
   if (unbox(value) != 0) {
-    op_jmp();
-  } else {
-    text_next<std::int32_t>();
+    ip = text.data() + op.target;
   }
 }
 
-void op_callc() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_callc);
-}
-
-void op_call() {
-  const auto target = text_next<std::int32_t>();
-  const auto n_args = text_next<std::int32_t>();
+void execute(const bc::op_call_t& op) {
+  [[maybe_unused]] const auto target = op.target;
   LAMAVM_ASSERT_B(0, <=, target);
-  stack_push_frame({.n_args = n_args, .fp = fp, .ip = ip, .sp = sp + n_args});
-  ip = text.data() + target;
+  stack_push_frame({.n_args = op.n_args, .fp = fp, .ip = ip, .sp = sp + op.n_args});
+  ip = text.data() + op.target;
 }
 
-void op_begin() {
-  [[maybe_unused]] const auto n_args = text_next<std::int32_t>();
-  const auto n_locals                = text_next<std::int32_t>();
-
+void execute(const bc::op_begin_t& op) {
+  [[maybe_unused]] const auto n_args = op.n_args;
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
-  for (std::int32_t i = 0; i < n_locals; ++i) {
+  for (std::int32_t i = 0; i < op.n_locals; ++i) {
     stack_push(static_cast<std::int64_t>(0));
   }
 }
 
-void op_begin_closure() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_begin_closure);
-}
-
-void op_closure() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_closure);
-}
-
-void op_end() {
+void execute([[maybe_unused]] const bc::op_end_t& op) {
   const std::int64_t x = stack_pop();
   stack_pop_frame();
   stack_push(x);
 }
 
-void op_tag() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_tag);
+void execute([[maybe_unused]] const bc::op_line_t& op) {
 }
 
-void op_array() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_array);
-}
-
-void op_fail() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_fail);
-}
-
-void op_fail_keep() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_fail_keep);
-}
-
-void op_line() {
-  text_next<std::int32_t>();
-}
-
-void op_patt_str_cmp() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_str_cmp);
-}
-
-void op_patt_string() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_string);
-}
-
-void op_patt_array() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_array);
-}
-
-void op_patt_sexp() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_sexp);
-}
-
-void op_patt_boxed() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_boxed);
-}
-
-void op_patt_unboxed() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_unboxed);
-}
-
-void op_patt_closure() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_patt_closure);
-}
-
-void op_barray() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_barray);
-}
-
-void op_eof() {
+void execute([[maybe_unused]] const bc::op_eof_t& op) {
   std::exit(0); // NOLINT(concurrency-mt-unsafe)
 }
 
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LAMAVM_CASE(op)                                                                            \
-  case bc::opcode_t::op:                                                                           \
-    op();                                                                                          \
-    return;
-
 void step() {
   const auto offset = ip - text.data();
-  const auto opcode = text_next<bc::opcode_t>();
-  tracef("step {} ip={}", opcode, offset);
-
-  switch (opcode) {
-    LAMAVM_CASE(op_add)
-    LAMAVM_CASE(op_sub)
-    LAMAVM_CASE(op_mul)
-    LAMAVM_CASE(op_div)
-    LAMAVM_CASE(op_mod)
-    LAMAVM_CASE(op_lt)
-    LAMAVM_CASE(op_le)
-    LAMAVM_CASE(op_gt)
-    LAMAVM_CASE(op_ge)
-    LAMAVM_CASE(op_eq)
-    LAMAVM_CASE(op_ne)
-    LAMAVM_CASE(op_and)
-    LAMAVM_CASE(op_or)
-    LAMAVM_CASE(op_const)
-    LAMAVM_CASE(op_string)
-    LAMAVM_CASE(op_sexp)
-    LAMAVM_CASE(op_sta)
-    LAMAVM_CASE(op_jmp)
-    LAMAVM_CASE(op_end)
-    LAMAVM_CASE(op_drop)
-    LAMAVM_CASE(op_dup)
-    LAMAVM_CASE(op_swap)
-    LAMAVM_CASE(op_elem)
-    LAMAVM_CASE(op_ld_glo)
-    LAMAVM_CASE(op_ld_loc)
-    LAMAVM_CASE(op_ld_arg)
-    LAMAVM_CASE(op_ld_clo)
-    LAMAVM_CASE(op_st_glo)
-    LAMAVM_CASE(op_st_loc)
-    LAMAVM_CASE(op_st_arg)
-    LAMAVM_CASE(op_st_clo)
-    LAMAVM_CASE(op_cjmp_z)
-    LAMAVM_CASE(op_cjmp_nz)
-    LAMAVM_CASE(op_begin)
-    LAMAVM_CASE(op_begin_closure)
-    LAMAVM_CASE(op_closure)
-    LAMAVM_CASE(op_callc)
-    LAMAVM_CASE(op_call)
-    LAMAVM_CASE(op_tag)
-    LAMAVM_CASE(op_array)
-    LAMAVM_CASE(op_fail)
-    LAMAVM_CASE(op_fail_keep)
-    LAMAVM_CASE(op_line)
-    LAMAVM_CASE(op_patt_str_cmp)
-    LAMAVM_CASE(op_patt_string)
-    LAMAVM_CASE(op_patt_array)
-    LAMAVM_CASE(op_patt_sexp)
-    LAMAVM_CASE(op_patt_boxed)
-    LAMAVM_CASE(op_patt_unboxed)
-    LAMAVM_CASE(op_patt_closure)
-    LAMAVM_CASE(op_barray)
-    LAMAVM_CASE(op_eof)
-  }
-
-  fatalf("unexpected opcode {}", opcode);
+  auto visitor = [offset](const auto& op) {
+    tracef("step {} ip={}", op.opcode, offset);
+    execute(op);
+  };
+  bc::decode_fast(ip, visitor);
 }
-
-#undef LAMAVM_CASE
 
 } // namespace
 
@@ -477,15 +306,14 @@ void run(const bc::unit& unit) {
   LAMAVM_EXPECT(!is_loaded.exchange(true));
 
   data = unit.string_table();
-  text = unit.code_section();
+  text = std::as_bytes(unit.code_section());
 
-  // T O D O : mmap guard, mmap stack, mmap guard
   constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(std::size_t);
-  stack                       = std::vector<int64_t>(stack_size);
+  stack = std::vector<int64_t>(stack_size);
 
-  ip                          = text.data();
-  sp                          = stack.data() + stack.size();
-  fp                          = sp;
+  ip = text.data();
+  sp = stack.data() + stack.size();
+  fp = sp;
 
   gc_init();
   gc_set_stack_bottom(sp);

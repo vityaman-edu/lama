@@ -29,8 +29,10 @@ Implement the cursor interface agreed in the design discussion:
   builds.
 - Initially support only the instruction layouts already in `layout.hpp`:
   BINOP, BEGIN, CONST, END, EOF, STRING, JMP, CJMP, DROP, DUP, SWAP, CALL,
-  LD_LOC, LD_ARG, ST_LOC, ST_ARG, LD_GLO, and ST_GLO. Reject remaining opcodes
-  without callbacks. CLOSURE and its capture-span interface are deferred.
+  LD_LOC, LD_ARG, ST_LOC, ST_ARG, LD_GLO, and ST_GLO. Execution integration
+  additionally supports LINE as specified in `execution-decode.md`. Reject
+  remaining opcodes without callbacks. CLOSURE and its capture-span interface
+  are deferred.
 - Give each of the 13 BINOP forms in `virtual_machine/SPEC.md` its own packed,
   opcode-only struct, `ctype` check, formatter, and decoder visitor dispatch.
 - Likewise, use separate packed `op_cjmp_z_t` and `op_cjmp_nz_t` layouts, each

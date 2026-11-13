@@ -248,3 +248,8 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ld_glo_t, x, ctx) {
 LAMAVM_FORMAT_DEFINE(lamavm::bc::op_st_glo_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.index);
 }
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_line_t, x, ctx) {
+  const auto line = x.line;
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, line);
+}

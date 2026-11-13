@@ -21,12 +21,10 @@ void decode_op(Byte*& ip, const std::byte* end, V& v) {
   static_assert(alignof(Op) == 1);
   static_assert(std::endian::native == std::endian::little);
 
-  LAMAVM_ASSERT_B(ip, <=, end);
-  [[maybe_unused]] const auto tail = static_cast<std::size_t>(end - ip);
   if constexpr (is_safe) {
+    LAMAVM_EXPECT(ip <= end);
+    const auto tail = static_cast<std::size_t>(end - ip);
     LAMAVM_EXPECT_B(sizeof(Op), <=, tail);
-  } else {
-    LAMAVM_ASSERT_B(sizeof(Op), <=, tail);
   }
 
   auto& op = *reinterpret_cast<op_t*>(ip);
@@ -43,7 +41,6 @@ void decode(Byte*& ip, const std::byte* end, V& v) {
   } else {
     LAMAVM_ASSERT(ip != nullptr);
     LAMAVM_ASSERT(end == nullptr);
-    LAMAVM_ASSERT(ip < end);
   }
 
   const auto opcode = static_cast<opcode_t>(*ip);
@@ -111,6 +108,8 @@ void decode(Byte*& ip, const std::byte* end, V& v) {
     return decode_op<op_ld_glo_t, is_safe>(ip, end, v);
   case opcode_t::op_st_glo:
     return decode_op<op_st_glo_t, is_safe>(ip, end, v);
+  case opcode_t::op_line:
+    return decode_op<op_line_t, is_safe>(ip, end, v);
   case opcode_t::op_sexp:
   case opcode_t::op_sta:
   case opcode_t::op_elem:
@@ -123,7 +122,6 @@ void decode(Byte*& ip, const std::byte* end, V& v) {
   case opcode_t::op_array:
   case opcode_t::op_fail:
   case opcode_t::op_fail_keep:
-  case opcode_t::op_line:
   case opcode_t::op_patt_str_cmp:
   case opcode_t::op_patt_string:
   case opcode_t::op_patt_array:
@@ -158,12 +156,12 @@ void decode_safe(const std::byte*& ip, const std::byte* end, V& v) {
 
 template <typename V>
 void decode_fast(std::byte*& ip, V& v) {
-  detail::decode<false>(ip, /*end=*/nullptr, v);
+  detail::decode<false>(ip, nullptr, v);
 }
 
 template <typename V>
 void decode_fast(const std::byte*& ip, V& v) {
-  detail::decode<false>(ip, /*end=*/nullptr, v);
+  detail::decode<false>(ip, nullptr, v);
 }
 
 } // namespace lamavm::bc

@@ -2,15 +2,19 @@
 
 #include "bc/layout.hpp"
 #include "bc/limit.hpp"
+#include "bc/unit.hpp"
 #include "core/assert.hpp"
 
-#include <algorithm>
 #include <cstddef>
 #include <exception>
+#include <filesystem>
+#include <format>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace lamavm::bc {
 
@@ -42,7 +46,7 @@ public:
     LAMAVM_EXPECT_B(size, <=, max_unit_size);
 
     for (const auto& import : u.imports()) {
-      std::string_view name(u.string(import.name_offset));
+      std::string_view const name(u.string(import.name_offset));
 
       auto subpath = path.parent_path() / name;
       subpath += ".bc";
@@ -90,7 +94,7 @@ unit closure(preclosure cj) {
   LAMAVM_ASSERT_B(0ULL, <, cj.order.size());
   const auto& main = cj.unit_by_name.at(std::string(cj.order.back()));
 
-  std::size_t size = closure_size(main, cj);
+  const std::size_t size = closure_size(main, cj);
   (void)size;
 
   std::terminate(); // unreachable
