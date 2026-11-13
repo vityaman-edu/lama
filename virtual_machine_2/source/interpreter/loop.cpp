@@ -15,10 +15,6 @@
 #include <utility>
 #include <vector>
 
-// extern "C" {
-// #include <contrib/runtime/gc.h>
-// }
-
 #include <atomic>
 #include <cstddef>
 
@@ -46,9 +42,9 @@ struct frame {
   std::int64_t* sp = nullptr;
 };
 
-// const char* c_str(std::int32_t offset) {
-//   return data.data() + offset;
-// }
+const char* c_str(std::int32_t offset) {
+  return data.data() + offset;
+}
 
 template <typename T>
 T text_next() {
@@ -85,6 +81,11 @@ void stack_pop_frame() {
   sp = reinterpret_cast<std::int64_t*>(fp[-3]); // NOLINT(performance-no-int-to-ptr)
   ip = reinterpret_cast<std::uint8_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
   fp = reinterpret_cast<std::int64_t*>(fp[-1]); // NOLINT(performance-no-int-to-ptr)
+}
+
+auto gc_call(auto f) {
+  gc_set_stack_top(sp - 1);
+  return f();
 }
 
 } // namespace
@@ -175,7 +176,10 @@ void op_const() {
 }
 
 void op_string() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_string);
+  const auto str = text_next<std::int32_t>();
+  const char* str1 = c_str(str);
+  const void* str2 = gc_call([&] { return Bstring(static_cast<const void*>(&str1)); });
+  stack_push(str2);
 }
 
 void op_sexp() {
@@ -440,6 +444,9 @@ void run(bc::unit_t unit) {
   ip = text.data();
   sp = stack.data() + stack.size();
   fp = sp;
+
+  gc_init();
+  gc_set_stack_bottom(sp);
 
   LAMAVM_ASSERT_B(0U, <, text.size());
   LAMAVM_ASSERT_B(static_cast<bc::opcode_t>(text.back()), ==, bc::opcode_t::op_eof);
