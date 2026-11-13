@@ -97,7 +97,7 @@ Support global variables.
 
 ### External Call
 
-Optional? Call to the external bytecode file.
+Call to the external bytecode file.
 
 ### SExpr
 
