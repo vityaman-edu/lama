@@ -59,6 +59,14 @@ std::span<const std::uint8_t> unit::code_section() const {
   };
 }
 
+std::size_t unit::size() const {
+  return arena.size();
+}
+
+const char* unit::string(std::size_t offset) const {
+  return string_table().data() + offset;
+}
+
 unit unit::parse(std::vector<std::byte> arena) {
   unit u(std::move(arena));
 
@@ -74,8 +82,8 @@ unit unit::parse(std::vector<std::byte> arena) {
 
   const auto code_section = u.code_section();
   const auto code_offset  = reinterpret_cast<const std::byte*>(code_section.data()) -
-                           reinterpret_cast<const std::byte*>(u.arena.data());
-  const auto arena_size = static_cast<std::ptrdiff_t>(u.arena.size());
+                            reinterpret_cast<const std::byte*>(u.arena.data());
+  const auto arena_size   = static_cast<std::ptrdiff_t>(u.arena.size());
   LAMAVM_EXPECT_B(code_offset, <, arena_size);
 
   const auto string_table_size = static_cast<std::int32_t>(u.string_table().size());
