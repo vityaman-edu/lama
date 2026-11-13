@@ -167,3 +167,8 @@ Relocation is done.
 ### Analysis
 
 TODO
+
+## T O D O
+
+- Span that has end only at DEBUG and checks range bounds
+- Strong Alias Box for stack content and Std functions args

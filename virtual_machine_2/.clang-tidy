@@ -9,6 +9,7 @@ Checks: >-
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-special-member-functions,
   -hicpp-avoid-c-arrays,
   -altera-struct-pack-align,
   -altera-unroll-loops,

@@ -141,7 +141,55 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_eof_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
 }
 
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_binop_t, x, ctx) {
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_add_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_sub_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_mul_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_div_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_mod_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_lt_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_le_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_gt_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ge_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_eq_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ne_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_and_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_or_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
 }
 
@@ -153,7 +201,11 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_jmp_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
 }
 
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_cjmp_t, x, ctx) {
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_cjmp_z_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_cjmp_nz_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
 }
 

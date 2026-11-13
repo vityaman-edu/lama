@@ -27,7 +27,7 @@ struct [[gnu::packed]] public_symbol_t {
   std::int8_t flag;
 };
 
-enum class opcode_t : unsigned char {
+enum class opcode_t : std::uint8_t {
   op_add           = 0x01,
   op_sub           = 0x02,
   op_mul           = 0x03,
@@ -107,7 +107,55 @@ struct [[gnu::packed]] op_eof_t {
   opcode_t opcode;
 };
 
-struct [[gnu::packed]] op_binop_t {
+struct [[gnu::packed]] op_add_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_sub_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_mul_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_div_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_mod_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_lt_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_le_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_gt_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_ge_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_eq_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_ne_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_and_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_or_t {
   opcode_t opcode;
 };
 
@@ -121,7 +169,12 @@ struct [[gnu::packed]] op_jmp_t {
   std::int32_t target;
 };
 
-struct [[gnu::packed]] op_cjmp_t {
+struct [[gnu::packed]] op_cjmp_z_t {
+  opcode_t opcode;
+  std::int32_t target;
+};
+
+struct [[gnu::packed]] op_cjmp_nz_t {
   opcode_t opcode;
   std::int32_t target;
 };
@@ -181,10 +234,23 @@ static_assert(ctype<op_begin_t>);
 static_assert(ctype<op_const_t>);
 static_assert(ctype<op_end_t>);
 static_assert(ctype<op_eof_t>);
-static_assert(ctype<op_binop_t>);
+static_assert(ctype<op_add_t>);
+static_assert(ctype<op_sub_t>);
+static_assert(ctype<op_mul_t>);
+static_assert(ctype<op_div_t>);
+static_assert(ctype<op_mod_t>);
+static_assert(ctype<op_lt_t>);
+static_assert(ctype<op_le_t>);
+static_assert(ctype<op_gt_t>);
+static_assert(ctype<op_ge_t>);
+static_assert(ctype<op_eq_t>);
+static_assert(ctype<op_ne_t>);
+static_assert(ctype<op_and_t>);
+static_assert(ctype<op_or_t>);
 static_assert(ctype<op_string_t>);
 static_assert(ctype<op_jmp_t>);
-static_assert(ctype<op_cjmp_t>);
+static_assert(ctype<op_cjmp_z_t>);
+static_assert(ctype<op_cjmp_nz_t>);
 static_assert(ctype<op_drop_t>);
 static_assert(ctype<op_dup_t>);
 static_assert(ctype<op_swap_t>);
@@ -205,10 +271,23 @@ LAMAVM_FORMAT_DECLARE(lamavm::bc::op_begin_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_const_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_end_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_eof_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_binop_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_add_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_sub_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_mul_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_div_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_mod_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_lt_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_le_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_gt_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_ge_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_eq_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_ne_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_and_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_or_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_string_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_jmp_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_cjmp_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_cjmp_z_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_cjmp_nz_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_drop_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_dup_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_swap_t, x, ctx);
