@@ -80,14 +80,19 @@ unit unit::parse(std::vector<std::byte> arena) {
   LAMAVM_EXPECT_BB(0, <=, header.imports_count, <=, max_imports_count);
   LAMAVM_EXPECT_BB(0, <=, header.public_symbols_count, <=, max_public_symbols_count);
 
-  const auto code_section = u.code_section();
-  const auto code_offset  = reinterpret_cast<const std::byte*>(code_section.data()) -
-                            reinterpret_cast<const std::byte*>(u.arena.data());
-  const auto arena_size   = static_cast<std::ptrdiff_t>(u.arena.size());
+  const auto code_section      = u.code_section();
+  const auto code_section_size = static_cast<std::int32_t>(code_section.size());
+
+  const auto code_offset       = reinterpret_cast<const std::byte*>(code_section.data()) -
+                                 reinterpret_cast<const std::byte*>(u.arena.data());
+  const auto arena_size        = static_cast<std::ptrdiff_t>(u.arena.size());
   LAMAVM_EXPECT_B(code_offset, <, arena_size);
 
-  const auto string_table_size = static_cast<std::int32_t>(u.string_table().size());
-  const auto code_section_size = static_cast<std::int32_t>(code_section.size());
+  const auto string_table      = u.string_table();
+  const auto string_table_size = static_cast<std::int32_t>(string_table.size());
+
+  LAMAVM_EXPECT_B(0, <, string_table_size);
+  LAMAVM_EXPECT_B(string_table.back(), ==, '\0');
 
   for (const import_t& i : u.imports()) {
     LAMAVM_EXPECT_BB(0, <=, i.name_offset, <, string_table_size);
