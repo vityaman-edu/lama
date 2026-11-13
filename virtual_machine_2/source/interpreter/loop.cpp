@@ -92,60 +92,86 @@ void stack_pop_frame() {
 namespace {
 
 void op_add() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_add);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_43(x, y));
 }
 
 void op_sub() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_sub);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_45(x, y));
 }
 
 void op_mul() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_mul);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_42(x, y));
 }
 
 void op_div() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_div);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_47(x, y));
 }
 
 void op_mod() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_mod);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_37(x, y));
 }
 
 void op_lt() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_lt);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_60(x, y));
 }
 
 void op_le() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_le);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_6061(x, y));
 }
 
 void op_gt() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_gt);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_62(x, y));
 }
 
 void op_ge() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_ge);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_6261(x, y));
 }
 
 void op_eq() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_eq);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_6161(x, y));
 }
 
 void op_ne() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_ne);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_3361(x, y));
 }
 
 void op_and() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_and);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_3838(x, y));
 }
 
 void op_or() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_or);
+  const auto y = stack_pop();
+  const auto x = stack_pop();
+  stack_push(Ls__Infix_3333(x, y));
 }
 
 void op_const() {
   const auto value = text_next<std::int32_t>();
-  stack_push(value);
+  stack_push(box(value));
 }
 
 void op_string() {
