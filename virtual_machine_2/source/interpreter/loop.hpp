@@ -4,6 +4,6 @@
 
 namespace lamavm::interpreter {
 
-[[noreturn]] void run(bc::unit unit);
+[[noreturn]] void run(const bc::unit& unit);
 
 } // namespace lamavm::interpreter

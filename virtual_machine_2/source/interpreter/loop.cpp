@@ -11,8 +11,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <span>
-#include <string_view>
-#include <utility>
 #include <vector>
 
 #include <atomic>
@@ -22,25 +20,23 @@ namespace lamavm::interpreter {
 
 namespace {
 
-std::vector<char> buffer;
-
-std::string_view data;
+std::span<const char> data;
 std::span<const std::uint8_t> text;
 std::vector<std::int64_t> stack;
 
 const std::uint8_t* ip = nullptr;
-std::int64_t* sp = nullptr;
-std::int64_t* fp = nullptr;
+std::int64_t* sp       = nullptr;
+std::int64_t* fp       = nullptr;
 
 } // namespace
 
 namespace {
 
 struct frame {
-  std::int64_t n_args = 0;
-  std::int64_t* fp = nullptr;
+  std::int64_t n_args    = 0;
+  std::int64_t* fp       = nullptr;
   const std::uint8_t* ip = nullptr;
-  std::int64_t* sp = nullptr;
+  std::int64_t* sp       = nullptr;
 };
 
 const char* c_str(std::int32_t offset) {
@@ -182,7 +178,7 @@ void op_const() {
 }
 
 void op_string() {
-  const auto str = text_next<std::int32_t>();
+  const auto str   = text_next<std::int32_t>();
   const char* str1 = c_str(str);
   const void* str2 = gc_call([&] { return Bstring(static_cast<const void*>(&str1)); });
   stack_push(str2);
@@ -228,7 +224,7 @@ void op_ld_glo() {
 
 void op_ld_loc() {
   const auto operand = text_next<std::int32_t>();
-  const auto loc = fp[-4 - operand];
+  const auto loc     = fp[-4 - operand];
   tracef("ld_loc {} = {}", operand, unbox(loc));
   stack_push(loc);
 }
@@ -237,9 +233,9 @@ void op_ld_loc() {
 //                         ^ fp[0]
 //     ^ fp[+2]    ^ fp[+1]         ^ fp[-1]  ^fp[-3]
 void op_ld_arg() {
-  const auto n_args = stack_n_args();
+  const auto n_args  = stack_n_args();
   const auto operand = text_next<std::int32_t>();
-  const auto arg = fp[n_args - operand];
+  const auto arg     = fp[n_args - operand];
   tracef("ld_arg {} = {}", operand, unbox(arg));
   stack_push(arg);
 }
@@ -263,7 +259,7 @@ void op_st_glo() {
 void op_st_loc() {
   const auto operand = text_next<std::int32_t>();
 
-  const auto value = stack_pop();
+  const auto value   = stack_pop();
   stack_push(value);
 
   auto& loc = fp[-4 - operand];
@@ -272,10 +268,10 @@ void op_st_loc() {
 }
 
 void op_st_arg() {
-  const auto n_args = stack_n_args();
+  const auto n_args  = stack_n_args();
   const auto operand = text_next<std::int32_t>();
 
-  const auto value = stack_pop();
+  const auto value   = stack_pop();
   stack_push(value);
 
   auto& arg = fp[n_args - operand];
@@ -289,7 +285,7 @@ void op_st_clo() {
 
 void op_jmp() {
   const auto target = text_next<std::int32_t>();
-  ip = text.data() + target;
+  ip                = text.data() + target;
 }
 
 void op_cjmp_z() {
@@ -323,8 +319,8 @@ void op_call() {
 }
 
 void op_begin() {
-  const auto n_args = text_next<std::int32_t>();
-  const auto n_locals = text_next<std::int32_t>();
+  [[maybe_unused]] const auto n_args = text_next<std::int32_t>();
+  const auto n_locals                = text_next<std::int32_t>();
 
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
@@ -476,21 +472,20 @@ void step() {
 
 } // namespace
 
-void run(bc::unit unit) {
-  static std::atomic_bool is_loaded = false;
-  LAMAVM_ASSERT(!is_loaded.exchange(true));
+void run(const bc::unit& unit) {
+  [[maybe_unused]] static std::atomic_bool is_loaded = false;
+  LAMAVM_EXPECT(!is_loaded.exchange(true));
 
-  buffer = std::move(unit.buffer);
-  data = unit.string_table;
-  text = unit.code_section;
+  data = unit.string_table();
+  text = unit.code_section();
 
   // T O D O : mmap guard, mmap stack, mmap guard
   constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(std::size_t);
-  stack = std::vector<int64_t>(stack_size);
+  stack                       = std::vector<int64_t>(stack_size);
 
-  ip = text.data();
-  sp = stack.data() + stack.size();
-  fp = sp;
+  ip                          = text.data();
+  sp                          = stack.data() + stack.size();
+  fp                          = sp;
 
   gc_init();
   gc_set_stack_bottom(sp);
@@ -498,7 +493,7 @@ void run(bc::unit unit) {
   LAMAVM_ASSERT_B(0U, <, text.size());
   LAMAVM_ASSERT_B(static_cast<bc::opcode_t>(text.back()), ==, bc::opcode_t::op_eof);
 
-  for (std::size_t i = 0; i < unit.globals_count; ++i) {
+  for (std::int32_t i = 0; i < unit.header().globals_count; ++i) {
     stack_push(box(0));
   }
 
