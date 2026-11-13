@@ -1,10 +1,13 @@
-.PHONY: lamavm2 lamavm2-san compile_commands style style-cpp style-py check check-cpp check-py test test-san lamac lamavm
+.PHONY: lamavm2 lamavm2-san lamavm2-san-trace compile_commands style style-cpp style-py check check-cpp check-py test test-san lamac lamavm
 
 lamavm2:
 	./scripts/lamavm2.sh
 
 lamavm2-san:
 	./scripts/lamavm2.sh san
+
+lamavm2-san-trace:
+	./scripts/lamavm2.sh san trace
 
 compile_commands:
 	./scripts/configure.sh

@@ -36,8 +36,8 @@ def color_number(value: int | str) -> str:
     return color(str(value), "36")
 
 
-def signature(result: RunResult) -> tuple[int | None, bytes, bytes]:
-    return result.exit_code, result.stdout, result.stderr
+def signature(result: RunResult) -> tuple[int | None, bytes]:
+    return result.exit_code, result.stdout
 
 
 def print_result(name: str, result: RunResult) -> None:
@@ -122,13 +122,19 @@ def report(
         if not input_path.is_file():
             print("  stdin file missing; used empty input")
 
+        reference = measurements.get("lamavm")
+        expected = reference.results[0] if reference else None
+        expected_signature = (
+            signature(expected)
+            if expected is not None and expected.exit_code is not None and expected.exit_code >= 0
+            else None
+        )
         for implementation, measurement in measurements.items():
-            seen = set()
             for index, result in enumerate(measurement.results, 1):
                 output = signature(result)
-                if output not in seen:
+                if output != expected_signature:
                     print_result(f"{implementation} run {color_number(index)}", result)
-                    seen.add(output)
+                    break
 
     for implementation, error in errors.items():
         print(f"  {implementation}: {error}")
@@ -199,6 +205,13 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
 
         status = "GOOD" if all(value == "GOOD" for value in statuses.values()) else "FAIL"
         report(source, name, status, measurements, statuses, errors)
+        if args.is_show_stderr:
+            for implementation, measurement in measurements.items():
+                print(f"  {implementation} run {color_number(1)} stderr: |2")
+                stderr = measurement.results[0].stderr.decode("utf-8", errors="replace")
+                for line in stderr.splitlines():
+                    print(f"      {line}")
+
         if status == "FAIL":
             if args.disassemble:
                 print(f"  lamac disassembly: {compilation.disassembly!r}")

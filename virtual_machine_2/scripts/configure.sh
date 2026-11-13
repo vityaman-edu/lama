@@ -2,16 +2,21 @@
 set -euo pipefail
 
 mode=${1:-rel}
+are_traces_enabled=OFF
 
 case "$mode" in
   rel) build_type=Release; are_sanitizers_enabled=OFF ;;
   san) build_type=Debug; are_sanitizers_enabled=ON ;;
-  *) echo "Usage: $0 [rel|san]" >&2; exit 2 ;;
+  *) echo "Usage: $0 [rel|san] [trace]" >&2; exit 2 ;;
 esac
 
-if [[ $# -gt 1 ]]; then
-  echo "Usage: $0 [rel|san]" >&2
+if [[ $# -gt 2 || ( $# -eq 2 && "$2" != trace ) ]]; then
+  echo "Usage: $0 [rel|san] [trace]" >&2
   exit 2
+fi
+
+if [[ ${2:-} == trace ]]; then
+  are_traces_enabled=ON
 fi
 
 vm_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
@@ -32,6 +37,7 @@ cmake -S \
   -G Ninja \
   -DCMAKE_BUILD_TYPE="$build_type" \
   -DLAMAVM_SANITIZERS="$are_sanitizers_enabled" \
+  -DLAMAVM_TRACE="$are_traces_enabled" \
   -DCMAKE_C_COMPILER_LAUNCHER=ccache \
   -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
   "${compiler_flags[@]}"

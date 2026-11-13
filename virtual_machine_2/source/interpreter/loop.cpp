@@ -37,6 +37,7 @@ std::int64_t* fp = nullptr;
 namespace {
 
 struct frame {
+  std::int64_t n_args = 0;
   std::int64_t* fp = nullptr;
   const std::uint8_t* ip = nullptr;
   std::int64_t* sp = nullptr;
@@ -71,6 +72,7 @@ std::int64_t stack_pop() {
 
 void stack_push_frame(frame f) {
   std::int64_t* fp1 = sp;
+  stack_push(box(f.n_args));
   stack_push(f.fp);
   stack_push(f.ip);
   stack_push(f.sp);
@@ -78,9 +80,13 @@ void stack_push_frame(frame f) {
 }
 
 void stack_pop_frame() {
-  sp = reinterpret_cast<std::int64_t*>(fp[-3]); // NOLINT(performance-no-int-to-ptr)
-  ip = reinterpret_cast<std::uint8_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
-  fp = reinterpret_cast<std::int64_t*>(fp[-1]); // NOLINT(performance-no-int-to-ptr)
+  sp = reinterpret_cast<std::int64_t*>(fp[-4]); // NOLINT(performance-no-int-to-ptr)
+  ip = reinterpret_cast<std::uint8_t*>(fp[-3]); // NOLINT(performance-no-int-to-ptr)
+  fp = reinterpret_cast<std::int64_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
+}
+
+std::int64_t stack_n_args() {
+  return unbox(fp[-1]);
 }
 
 auto gc_call(auto f) {
@@ -216,11 +222,18 @@ void op_ld_glo() {
 }
 
 void op_ld_loc() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_loc);
+  const auto n_args = stack_n_args();
+  const auto operand = text_next<std::int32_t>();
+  const auto loc = fp[-n_args - operand];
+  tracef("ld_loc {} = {}", operand, loc);
+  stack_push(loc);
 }
 
 void op_ld_arg() {
-  fatalf("unexpected opcode {}", bc::opcode_t::op_ld_arg);
+  const auto operand = text_next<std::int32_t>();
+  const auto arg = fp[-operand];
+  tracef("ld_arg {} = {}", operand, arg);
+  stack_push(arg);
 }
 
 void op_ld_clo() {
@@ -274,7 +287,7 @@ void op_call() {
   const auto target = text_next<std::int32_t>();
   const auto n_args = text_next<std::int32_t>();
   LAMAVM_ASSERT_B(0, <=, target);
-  stack_push_frame({.fp = fp, .ip = ip, .sp = sp + n_args});
+  stack_push_frame({.n_args = n_args, .fp = fp, .ip = ip, .sp = sp + n_args});
   ip = text.data() + target;
 }
 
@@ -282,10 +295,10 @@ void op_begin() {
   const auto n_args = text_next<std::int32_t>();
   const auto n_locals = text_next<std::int32_t>();
 
-  (void)n_args; // T O D O : why is it needed?
+  LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {
-    stack_push(box(0));
+    stack_push(static_cast<std::int64_t>(0));
   }
 }
 
@@ -453,7 +466,10 @@ void run(bc::unit_t unit) {
 
   LAMAVM_ASSERT_B(0U, <, text.size());
   LAMAVM_ASSERT_B(static_cast<bc::opcode_t>(text.back()), ==, bc::opcode_t::op_eof);
-  stack_push_frame(frame{.fp = fp, .ip = text.data() + text.size() - 1, .sp = sp});
+
+  stack_push(box(static_cast<std::int64_t>(0)));
+  stack_push(box(static_cast<std::int64_t>(0)));
+  stack_push_frame(frame{.n_args = 2, .fp = fp, .ip = text.data() + text.size() - 1, .sp = sp});
 
   for (;;) {
     step();

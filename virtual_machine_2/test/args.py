@@ -40,6 +40,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--disassemble", action="store_true", help="also show compiler disassembly on failure"
     )
+    parser.add_argument(
+        "--show-stderr",
+        dest="is_show_stderr",
+        action="store_true",
+        help="always show stderr from the first run of each implementation",
+    )
     args = parser.parse_args()
     for attribute in ("lamac", "reference", "lamavm"):
         executable = getattr(args, attribute).absolute()
