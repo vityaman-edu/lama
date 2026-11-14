@@ -18,20 +18,5 @@ std::int64_t Ls__Infix_3361(std::int64_t x, std::int64_t y); // NOLINT
 std::int64_t Ls__Infix_3838(std::int64_t x, std::int64_t y); // NOLINT
 std::int64_t Ls__Infix_3333(std::int64_t x, std::int64_t y); // NOLINT
 void* Bstring(const void* args);                             // NOLINT
+
 }
-
-namespace lamavm::interpreter {
-
-bool is_unboxed(std::int64_t x);
-
-std::int64_t box(std::int64_t x);
-
-std::int64_t unbox(std::int64_t x);
-
-void gc_init();
-
-void gc_set_stack_bottom(void* x);
-
-void gc_set_stack_top(void* x);
-
-} // namespace lamavm::interpreter

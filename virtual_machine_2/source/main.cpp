@@ -2,7 +2,7 @@
 
 #include "bc/unit.hpp"
 #include "core/log.hpp"
-#include "interpreter/loop.hpp"
+#include "interpreter/naive/loop.hpp"
 
 #include <exception>
 #include <ios>

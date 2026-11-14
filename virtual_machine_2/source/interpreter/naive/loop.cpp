@@ -1,6 +1,8 @@
 #include "loop.hpp"
 
-#include "runtime.hpp"
+#include "interpreter/runtime/box.hpp"
+#include "interpreter/runtime/gc.hpp"
+#include "interpreter/runtime/std.hpp"
 
 #include "op/handler.hpp"
 #include "op/word.hpp"
@@ -82,7 +84,7 @@ std::int64_t stack_n_args() {
 }
 
 auto gc_call(auto f) {
-  gc_set_stack_top(sp - 1);
+  gc::set_top(sp - 1);
   return f();
 }
 
@@ -461,8 +463,8 @@ void run(const bc::unit& unit) {
   sp = stack.data() + stack.size();
   fp = sp;
 
-  gc_init();
-  gc_set_stack_bottom(sp);
+  gc::init();
+  gc::set_bot(sp);
 
   constexpr auto eof_id = static_cast<op::handler_id_t>(bc::opcode_t::op_eof);
   LAMAVM_ASSERT_B(0U, <, text.size());
