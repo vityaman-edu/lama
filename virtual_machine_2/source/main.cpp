@@ -1,8 +1,6 @@
 #include "args.hpp"
 
-#include "bc/unit.hpp"
 #include "bc/units.hpp"
-#include "core/assert.hpp"
 #include "core/log.hpp"
 #include "interpreter/naive/loop.hpp"
 
@@ -18,7 +16,7 @@ namespace {
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 void main(int argc, char* argv[]) try {
   args const args = args::parse(argc, argv);
-  bc::units units = bc::units::from(args.bc_path);
+  bc::units const units = bc::units::from(args.bc_path);
   interpreter::run(units);
 } catch (const std::ios_base::failure& e) {
   fatalf("io error: {}", e.code().message());

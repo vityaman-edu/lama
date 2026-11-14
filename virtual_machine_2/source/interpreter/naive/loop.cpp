@@ -1,5 +1,6 @@
 #include "loop.hpp"
 
+#include "bc/units.hpp"
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/gc.hpp"
 #include "interpreter/runtime/std.hpp"
@@ -8,7 +9,6 @@
 #include "op/word.hpp"
 
 #include "bc/layout.hpp"
-#include "bc/unit.hpp"
 
 #include "core/assert.hpp"
 #include "core/log.hpp"
