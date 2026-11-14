@@ -328,6 +328,13 @@ void unit_parser::fixup_jump_targets() {
 
 } // namespace
 
+std::size_t unit::size(const unit& u) {
+  return (u.string_table.size() * sizeof(decltype(u.string_table)::value_type)) +
+         (u.text.size() * sizeof(decltype(u.text)::value_type)) +
+         (u.imports.size() * sizeof(decltype(u.imports)::value_type)) +
+         (u.public_symbols.size() * sizeof(decltype(u.public_symbols)::value_type));
+}
+
 unit unit::parse(std::istream& in) {
   return unit_parser(in).read_unit();
 }

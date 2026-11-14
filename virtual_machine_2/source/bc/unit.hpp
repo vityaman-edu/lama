@@ -27,6 +27,8 @@ struct unit {
   std::vector<std::string_view> imports;
   std::unordered_map<std::string_view, public_symbol> public_symbols;
 
+  static std::size_t size(const unit& u);
+
   static unit parse(std::istream& in);
   static unit parse(const std::filesystem::path& path);
 };

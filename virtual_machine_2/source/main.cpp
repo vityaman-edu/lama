@@ -1,6 +1,8 @@
 #include "args.hpp"
 
 #include "bc/unit.hpp"
+#include "bc/units.hpp"
+#include "core/assert.hpp"
 #include "core/log.hpp"
 #include "interpreter/naive/loop.hpp"
 
@@ -16,8 +18,13 @@ namespace {
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 void main(int argc, char* argv[]) try {
   args const args = args::parse(argc, argv);
-  bc::unit const unit = bc::unit::parse(args.bc_path);
-  interpreter::run(unit);
+
+  bc::units units = bc::units::from(args.bc_path);
+  LAMAVM_EXPECT_B(units.initialization_order.size(), ==, 1U);
+
+  bc::unit main = units.initialization_order.front()->second;
+
+  interpreter::run(main);
 } catch (const std::ios_base::failure& e) {
   fatalf("io error: {}", e.code().message());
 } catch (const std::exception& e) {

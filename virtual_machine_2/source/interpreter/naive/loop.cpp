@@ -219,7 +219,7 @@ void op_call() {
 
 void op_begin() {
   const auto args = (*ip++).as_i32;
-  [[maybe_unused]] const auto n_args = args.arg0;
+  const auto n_args = args.arg0;
   const auto n_locals = args.arg1;
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
