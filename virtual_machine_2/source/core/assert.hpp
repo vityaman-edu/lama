@@ -33,6 +33,9 @@
   LAMAVM_EXPECT_B(a, ab, b);                                                                       \
   LAMAVM_EXPECT_B(b, bc, c)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_UNEXPECTEDLY(s, ...) LAMAVM_EXPECT_C(false, std::format(s, __VA_ARGS__))
+
 #ifdef NDEBUG
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

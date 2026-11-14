@@ -53,13 +53,16 @@ void visit(loader& l, const std::filesystem::path& path) {
   LAMAVM_EXPECT(is_new);
   const auto& [name1, u1] = *it1;
 
+  const std::size_t uidx = l.u.initialization_order.size();
+
   for (const auto& [name, s] : u1.public_symbols) {
-    const auto [it2, is_new] = l.u.symbols.emplace(name, units::symbol{s, it1});
+    const auto [it2, is_new] = l.u.symbols.emplace(name, symbol{s, uidx});
     const auto& [_, s2] = *it2;
-    const auto& [name2, u2] = *s2.unit;
-    LAMAVM_EXPECT_C(
-      is_new,
-      std::format("ambiguous public symbol '{}' from units '{}' and '{}'", name, name1, name2));
+
+    if (!is_new) {
+      const auto& [name2, _] = *l.u.initialization_order.at(s2.uidx);
+      LAMAVM_UNEXPECTEDLY("ambiguous symbol '{}' from units '{}' and '{}'", name, name1, name2);
+    }
   }
 
   l.u.initialization_order.push_back(it1);

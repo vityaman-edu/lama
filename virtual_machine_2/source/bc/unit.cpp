@@ -1,5 +1,6 @@
 #include "unit.hpp"
 
+#include "core/format.hpp"
 #include "layout.hpp"
 #include "limit.hpp"
 
@@ -349,3 +350,16 @@ unit unit::parse(const std::filesystem::path& path) {
 }
 
 } // namespace lamavm::bc
+
+LAMAVM_FORMAT_DEFINE(enum lamavm::bc::public_symbol::kind, x, ctx) {
+  using enum lamavm::bc::public_symbol::kind;
+
+  switch (x) {
+  case lamavm::bc::public_symbol::kind::function:
+    return LAMAVM_FORMAT_DERIVE(ctx, "function");
+  case lamavm::bc::public_symbol::kind::global:
+    return LAMAVM_FORMAT_DERIVE(ctx, "global");
+  }
+
+  return LAMAVM_FORMAT_DERIVE(ctx, "{:x}", static_cast<unsigned int>(x));
+}

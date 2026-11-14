@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <limits>
 #include <span>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -33,6 +34,7 @@ struct uctx {
   std::size_t glo_base = 0;
 };
 
+bc::symbol::index symbols;
 std::vector<uctx> units;
 std::vector<box> stack;
 
@@ -222,7 +224,7 @@ void op_cjmp_nz() {
 
 void op_call() {
   const auto args = (*pc++).as_i32;
-  const std::int32_t target = args.arg0;
+  std::int32_t target = args.arg0;
   const std::int32_t n_args = args.arg1;
 
   stack_push_frame({
@@ -233,7 +235,15 @@ void op_call() {
     .up = up,
   });
 
-  LAMAVM_ASSERT_B(0, <=, target);
+  if (target < 0) {
+    const bc::symbol& s = symbols.at(std::string_view{c_str(-target - 1)});
+    LAMAVM_EXPECT_B(s.kind, ==, bc::symbol::kind::function);
+
+    up = units.data() + s.uidx;
+
+    target = s.offset;
+  }
+
   pc = up->text.data() + target;
 }
 
@@ -420,11 +430,13 @@ void exec(const uctx* up1) {
 
 } // namespace
 
-void run(const bc::units& units1) {
+void run(bc::units units1) {
   static std::atomic_bool is_loaded = false;
   LAMAVM_EXPECT(!is_loaded.exchange(true));
 
   std::size_t globals = 0;
+
+  symbols = std::move(units1.symbols);
 
   units.reserve(units1.initialization_order.size());
   for (const auto& it : units1.initialization_order) {

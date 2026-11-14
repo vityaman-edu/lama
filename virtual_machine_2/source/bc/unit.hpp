@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/format.hpp"
 #include "op/word.hpp"
 
 #include <cstddef>
@@ -34,3 +35,5 @@ struct unit {
 };
 
 } // namespace lamavm::bc
+
+LAMAVM_FORMAT_DECLARE(enum lamavm::bc::public_symbol::kind, x, ctx);
