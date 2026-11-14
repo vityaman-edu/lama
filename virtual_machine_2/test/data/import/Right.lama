@@ -1,0 +1,11 @@
+import Leaf;
+
+var x, y;
+
+fun f(z) {
+  x * z + y
+}
+
+x := 30;
+y := 3;
+f(2)

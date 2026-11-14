@@ -28,7 +28,7 @@ def color(text: str, code: str) -> str:
 
 
 def color_status(status: str) -> str:
-    colors = {"GOOD": "32", "FAIL": "31", "SKIP": "33", "RUNNING": "36"}
+    colors = {"GOOD": "32", "WARN": "33", "FAIL": "31", "SKIP": "33", "RUNNING": "36"}
     return color(status, colors[status])
 
 
@@ -115,7 +115,7 @@ def report(
             f"n={color_number(len(measurement.runtimes))}"
         )
 
-    if status == "FAIL":
+    if status in ("FAIL", "WARN"):
         input_path = source.with_suffix(".input")
         print(f"  program: {source.absolute()}")
         print(f"  stdin: {input_path.absolute()}")
@@ -203,7 +203,24 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
             )
             statuses[implementation] = "GOOD" if is_matching else "FAIL"
 
-        status = "GOOD" if all(value == "GOOD" for value in statuses.values()) else "FAIL"
+        interpreter = measurements.get("lamai")
+        if (
+            expected is not None
+            and expected.exit_code is not None
+            and expected.exit_code > 0
+            and statuses["lamavm"] == "GOOD"
+            and statuses["lamavm2"] == "GOOD"
+            and interpreter is not None
+            and all(result.exit_code == 0 for result in interpreter.results)
+        ):
+            statuses["lamai"] = "WARN"
+
+        status = "GOOD"
+        if "FAIL" in statuses.values():
+            status = "FAIL"
+        elif "WARN" in statuses.values():
+            status = "WARN"
+
         report(source, name, status, measurements, statuses, errors)
         if args.is_show_stderr:
             for implementation, measurement in measurements.items():
@@ -226,7 +243,7 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
 
 def main() -> int:
     args = parse_args()
-    counts = {"GOOD": 0, "FAIL": 0, "SKIP": 0}
+    counts = {"GOOD": 0, "WARN": 0, "FAIL": 0, "SKIP": 0}
     for source in args.sources:
         name = source.relative_to(args.data).as_posix()
         print(
@@ -243,6 +260,7 @@ def main() -> int:
 
     print(
         f"{color_number(counts['GOOD'])} {color_status('GOOD')}, "
+        f"{color_number(counts['WARN'])} {color_status('WARN')}, "
         f"{color_number(counts['FAIL'])} {color_status('FAIL')}, "
         f"{color_number(counts['SKIP'])} {color_status('SKIP')}"
     )

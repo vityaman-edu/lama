@@ -1,0 +1,10 @@
+import Leaf;
+
+var x;
+
+fun f(y) {
+  x - y
+}
+
+x := 20;
+f(2)

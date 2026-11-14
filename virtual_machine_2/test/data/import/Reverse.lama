@@ -1,0 +1,11 @@
+import Right;
+import Left;
+
+var x;
+
+fun f(y) {
+  x - y * 2
+}
+
+x := 50;
+f(5)

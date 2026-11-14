@@ -66,6 +66,18 @@ class Lamac:
 
         compilation = Compilation(bytecode, result, disassembly)
         self.compilations[program] = compilation
+
+        interface = program.with_suffix(".i")
+        if interface.is_file():
+            for declaration in interface.read_text().splitlines():
+                if not declaration.startswith("I,"):
+                    continue
+
+                name = declaration.removeprefix("I,").removesuffix(";")
+                dependency = program.with_name(f"{name}.lama")
+                if dependency.is_file():
+                    self.compile(dependency)
+
         return compilation
 
     def disassemble(self, program: Path) -> bytes:
