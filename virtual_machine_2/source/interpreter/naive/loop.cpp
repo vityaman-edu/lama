@@ -224,7 +224,7 @@ void op_call() {
   const auto args = (*pc++).as_i32;
   const std::int32_t target = args.arg0;
   const std::int32_t n_args = args.arg1;
-  LAMAVM_ASSERT_B(0, <=, target);
+
   stack_push_frame({
     .n_args = n_args,
     .fp = fp,
@@ -232,6 +232,8 @@ void op_call() {
     .sp = sp + n_args,
     .up = up,
   });
+
+  LAMAVM_ASSERT_B(0, <=, target);
   pc = up->text.data() + target;
 }
 
@@ -402,6 +404,7 @@ void exec(const uctx* up1) {
 
   stack_push(box(std::int64_t{0}));
   stack_push(box(std::int64_t{0}));
+
   stack_push_frame({
     .n_args = 2,
     .fp = fp,
