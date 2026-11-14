@@ -1,0 +1,16 @@
+import Sum1;
+
+var sentinel = 7;
+
+if sumBase == 40 && sumStep == 2 && sentinel == 7 then
+  sumBase := sumBase + sumStep;
+  sumStep := sumBase - sumStep;
+
+  if sumBase == 42 && sumStep == 40 && sentinel == 7 then
+    0
+  else
+    1 / 0
+  fi
+else
+  1 / 0
+fi

@@ -237,11 +237,6 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
                     print(f"      {line}")
 
         if status == "FAIL":
-            if args.disassemble and compilation.disassembly is not None:
-                print("  lamac disassembly: |2")
-                for line in compilation.disassembly.decode("utf-8", errors="replace").splitlines():
-                    print(f"    {line}")
-
             try:
                 print_result("lamavm disassembly", reference.disassemble(source))
             except (OSError, RuntimeError) as error:

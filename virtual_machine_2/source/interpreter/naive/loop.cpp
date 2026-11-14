@@ -141,13 +141,27 @@ void op_swap() {
   stack_push(y);
 }
 
-void op_ld_glo() {
-  const auto index = (*pc++).as_i32.arg0;
-  LAMAVM_ASSERT_B(0, <=, index);
+box& op_glo_target(std::int32_t& index) {
+  index = (*pc++).as_i32.arg0;
 
-  auto value = stack[stack.size() - 1 - index - up->glo_base];
-  tracef("ld_glo {} = {}", index, unbox<std::int64_t>(value));
-  stack_push(value);
+  std::size_t glo_base = up->glo_base;
+  if (index < 0) {
+    const bc::symbol& s = symbols.at(std::string_view{c_str(-index - 1)});
+    LAMAVM_EXPECT_B(s.kind, ==, bc::symbol::kind::global);
+
+    glo_base = units[s.uidx].glo_base;
+
+    index = s.offset;
+  }
+
+  return stack[stack.size() - 1 - index - glo_base];
+}
+
+void op_ld_glo() {
+  std::int32_t index = 0;
+  auto& target = op_glo_target(index);
+  tracef("ld_glo {} = {}", index, unbox<std::int64_t>(target));
+  stack_push(target);
 }
 
 void op_ld_loc() {
@@ -166,13 +180,12 @@ void op_ld_arg() {
 }
 
 void op_st_glo() {
-  const auto index = (*pc++).as_i32.arg0;
-  LAMAVM_ASSERT_B(0, <=, index);
+  std::int32_t index = 0;
+  auto& target = op_glo_target(index);
 
   const auto value = stack_pop();
   stack_push(value);
 
-  auto& target = stack[stack.size() - 1 - index - up->glo_base];
   tracef("sd_glo {} := {}", index, unbox<std::int64_t>(value));
   target = value;
 }

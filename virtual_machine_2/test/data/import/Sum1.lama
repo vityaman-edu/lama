@@ -1,3 +1,5 @@
+public sumBase = 40, sumStep = 2;
+
 public fun sum(x, y) {
   x + y
 }
