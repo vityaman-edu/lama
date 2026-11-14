@@ -22,7 +22,7 @@ struct public_symbol {
 
 struct unit {
   std::vector<char> string_table;
-  std::vector<op::word_t> text;
+  std::vector<op::word_t> code_section;
   std::size_t globals_count = 0;
   std::vector<std::string_view> imports;
   std::unordered_map<std::string_view, public_symbol> public_symbols;

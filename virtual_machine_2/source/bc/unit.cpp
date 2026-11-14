@@ -155,9 +155,9 @@ void unit_parser::read_code_section() {
     const auto opcode = read<opcode_t>();
 
     word_by_bc.resize(bc_offset + 1, -1);
-    word_by_bc[bc_offset] = static_cast<std::int32_t>(u.text.size());
+    word_by_bc[bc_offset] = static_cast<std::int32_t>(u.code_section.size());
 
-    u.text.push_back({.as_handler_id = static_cast<op::handler_id_t>(opcode)});
+    u.code_section.push_back({.as_handler_id = static_cast<op::handler_id_t>(opcode)});
 
     if (opcode == opcode_t::op_eof) {
       LAMAVM_EXPECT_B(in.peek(), ==, std::char_traits<char>::eof());
@@ -228,13 +228,13 @@ void unit_parser::read_code_section() {
       const auto target = read<std::int32_t>();
       const auto n_captured = read<std::int32_t>();
       LAMAVM_EXPECT_B(0, <=, n_captured);
-      u.text.push_back({.as_i32 = {.arg0 = target, .arg1 = n_captured}});
+      u.code_section.push_back({.as_i32 = {.arg0 = target, .arg1 = n_captured}});
 
       for (std::int32_t i = 0; i < n_captured; ++i) {
         const auto kind = read<std::uint8_t>();
         const auto index = read<std::int32_t>();
         LAMAVM_EXPECT_B(kind, <=, 3U);
-        u.text.push_back({.as_i32 = {.arg0 = kind, .arg1 = index}});
+        u.code_section.push_back({.as_i32 = {.arg0 = kind, .arg1 = index}});
       }
 
       break;
@@ -251,7 +251,7 @@ void unit_parser::read_code_section() {
       const auto arg0 = read<std::int32_t>();
       const auto arg1 = i + 1 < operands_count ? read<std::int32_t>() : 0;
 
-      u.text.push_back({.as_i32 = {.arg0 = arg0, .arg1 = arg1}});
+      u.code_section.push_back({.as_i32 = {.arg0 = arg0, .arg1 = arg1}});
     }
   }
 }
@@ -265,20 +265,20 @@ void unit_parser::fixup_jump_targets() {
     return word;
   };
 
-  for (std::size_t i = 0; i < u.text.size(); ++i) {
-    const auto opcode = static_cast<opcode_t>(u.text[i].as_handler_id);
+  for (std::size_t i = 0; i < u.code_section.size(); ++i) {
+    const auto opcode = static_cast<opcode_t>(u.code_section[i].as_handler_id);
 
     switch (opcode) {
     case opcode_t::op_jmp:
     case opcode_t::op_cjmp_z:
     case opcode_t::op_cjmp_nz: {
-      auto& target = u.text[++i].as_i32.arg0;
+      auto& target = u.code_section[++i].as_i32.arg0;
       target = word_offset(target);
       break;
     }
     case opcode_t::op_call:
     case opcode_t::op_closure: {
-      auto& args = u.text[++i].as_i32;
+      auto& args = u.code_section[++i].as_i32;
 
       if (args.arg0 >= 0) {
         args.arg0 = word_offset(args.arg0);
@@ -330,7 +330,7 @@ void unit_parser::fixup_jump_targets() {
 
 std::size_t unit::size(const unit& u) {
   return (u.string_table.size() * sizeof(decltype(u.string_table)::value_type)) +
-         (u.text.size() * sizeof(decltype(u.text)::value_type)) +
+         (u.code_section.size() * sizeof(decltype(u.code_section)::value_type)) +
          (u.imports.size() * sizeof(decltype(u.imports)::value_type)) +
          (u.public_symbols.size() * sizeof(decltype(u.public_symbols)::value_type));
 }

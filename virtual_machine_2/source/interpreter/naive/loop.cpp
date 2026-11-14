@@ -20,33 +20,43 @@
 #include <limits>
 #include <span>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace lamavm::interpreter {
 
 namespace {
 
-std::span<const char> data;
-std::span<const op::word_t> text;
+struct uctx {
+  std::span<const char> data;
+  std::span<const op::word_t> text;
+  std::size_t glo_base = 0;
+};
+
+std::vector<uctx> units;
 std::vector<box> stack;
 
 const op::word_t* pc = nullptr;
 box* sp = nullptr;
 box* fp = nullptr;
+const uctx* up = nullptr;
 
 } // namespace
 
 namespace {
 
 struct frame {
+  static constexpr std::int64_t size = 5;
+
   std::int64_t n_args = 0;
   box* fp = nullptr;
   const op::word_t* pc = nullptr;
   box* sp = nullptr;
+  const uctx* up = nullptr;
 };
 
 const char* c_str(std::int32_t offset) {
-  return data.data() + offset;
+  return up->data.data() + offset;
 }
 
 void stack_push(box x) {
@@ -66,10 +76,12 @@ void stack_push_frame(frame f) {
   stack_push(box(f.fp));
   stack_push(box(f.pc));
   stack_push(box(f.sp));
+  stack_push(box(f.up));
   fp = fp1;
 }
 
 void stack_pop_frame() {
+  up = unbox<const uctx*>(fp[-4]);
   sp = unbox<box*>(fp[-3]);
   pc = unbox<const op::word_t*>(fp[-2]);
   fp = unbox<box*>(fp[-1]);
@@ -131,14 +143,14 @@ void op_ld_glo() {
   const auto index = (*pc++).as_i32.arg0;
   LAMAVM_ASSERT_B(0, <=, index);
 
-  auto value = stack[stack.size() - 1 - index];
+  auto value = stack[stack.size() - 1 - index - up->glo_base];
   tracef("ld_glo {} = {}", index, unbox<std::int64_t>(value));
   stack_push(value);
 }
 
 void op_ld_loc() {
   const auto index = (*pc++).as_i32.arg0;
-  const auto loc = fp[-4 - index];
+  const auto loc = fp[-frame::size - index];
   tracef("ld_loc {} = {}", index, unbox<std::int64_t>(loc));
   stack_push(loc);
 }
@@ -158,7 +170,7 @@ void op_st_glo() {
   const auto value = stack_pop();
   stack_push(value);
 
-  auto& target = stack[stack.size() - 1 - index];
+  auto& target = stack[stack.size() - 1 - index - up->glo_base];
   tracef("sd_glo {} := {}", index, unbox<std::int64_t>(value));
   target = value;
 }
@@ -168,7 +180,7 @@ void op_st_loc() {
   const auto value = stack_pop();
   stack_push(value);
 
-  auto& loc = fp[-4 - index];
+  auto& loc = fp[-frame::size - index];
   tracef("st_loc {} := {}", index, unbox<std::int64_t>(value));
   loc = value;
 }
@@ -187,7 +199,7 @@ void op_st_arg() {
 
 void op_jmp() {
   const auto target = (*pc++).as_i32.arg0;
-  pc = text.data() + target;
+  pc = up->text.data() + target;
 }
 
 void op_cjmp_z() {
@@ -195,7 +207,7 @@ void op_cjmp_z() {
   const auto value = stack_pop();
 
   if (unbox<std::int64_t>(value) == 0) {
-    pc = text.data() + target;
+    pc = up->text.data() + target;
   }
 }
 
@@ -204,17 +216,23 @@ void op_cjmp_nz() {
   const auto value = stack_pop();
 
   if (unbox<std::int64_t>(value) != 0) {
-    pc = text.data() + target;
+    pc = up->text.data() + target;
   }
 }
 
 void op_call() {
   const auto args = (*pc++).as_i32;
-  const auto target = args.arg0;
-  const auto n_args = args.arg1;
+  const std::int32_t target = args.arg0;
+  const std::int32_t n_args = args.arg1;
   LAMAVM_ASSERT_B(0, <=, target);
-  stack_push_frame({.n_args = n_args, .fp = fp, .pc = pc, .sp = sp + n_args});
-  pc = text.data() + target;
+  stack_push_frame({
+    .n_args = n_args,
+    .fp = fp,
+    .pc = pc,
+    .sp = sp + n_args,
+    .up = up,
+  });
+  pc = up->text.data() + target;
 }
 
 void op_begin() {
@@ -238,21 +256,19 @@ void op_line() {
   ++pc;
 }
 
-void op_eof() {
-  std::exit(0); // NOLINT(concurrency-mt-unsafe)
-}
-
-void step() {
-  const auto offset = pc - text.data();
+void step(bool& is_running) {
+  const auto offset = pc - up->text.data();
   const auto handler_id = (*pc++).as_handler_id;
-  tracef("step {} pc={}", handler_id, offset);
 
   const auto max = std::numeric_limits<std::underlying_type_t<bc::opcode_t>>::max();
   if (max < handler_id) {
     fatalf("unexpected handler overflow {:x}", handler_id);
   }
 
-  switch (static_cast<bc::opcode_t>(handler_id)) {
+  const auto handler_opcode = static_cast<bc::opcode_t>(handler_id);
+  tracef("step {} pc={}", handler_opcode, offset);
+
+  switch (handler_opcode) {
   case bc::opcode_t::op_add:
     binop<Ls__Infix_43>::operator()();
     return;
@@ -347,7 +363,7 @@ void step() {
     op_line();
     return;
   case bc::opcode_t::op_eof:
-    op_eof();
+    is_running = false;
     return;
   case bc::opcode_t::op_sexp:
   case bc::opcode_t::op_sta:
@@ -372,43 +388,71 @@ void step() {
     break;
   }
 
-  fatalf("unexpected handler {:x}", handler_id);
+  fatalf("unexpected handler {:x}", std::to_underlying(handler_opcode));
+}
+
+void exec(const uctx* up1) {
+  fp = sp;
+  pc = up1->text.data();
+  up = up1;
+
+  constexpr auto eof_id = static_cast<op::handler_id_t>(bc::opcode_t::op_eof);
+  LAMAVM_ASSERT_B(0U, <, up->text.size());
+  LAMAVM_ASSERT_B(up->text.back().as_handler_id, ==, eof_id);
+
+  stack_push(box(std::int64_t{0}));
+  stack_push(box(std::int64_t{0}));
+  stack_push_frame({
+    .n_args = 2,
+    .fp = fp,
+    .pc = up->text.data() + up->text.size() - 1,
+    .sp = sp,
+    .up = up,
+  });
+
+  for (bool is_running = true; is_running;) {
+    step(is_running);
+  }
 }
 
 } // namespace
 
-void run(const bc::units& units) {
+void run(const bc::units& units1) {
   static std::atomic_bool is_loaded = false;
   LAMAVM_EXPECT(!is_loaded.exchange(true));
 
-  data = unit.string_table;
-  text = unit.text;
+  std::size_t globals = 0;
+
+  units.reserve(units1.initialization_order.size());
+  for (const auto& it : units1.initialization_order) {
+    const auto& [name, unit] = *it;
+
+    units.push_back({
+      .data = unit.string_table,
+      .text = unit.code_section,
+      .glo_base = globals,
+    });
+
+    globals += unit.globals_count;
+  }
 
   constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(box);
   stack = std::vector<box>(stack_size);
 
-  pc = text.data();
   sp = stack.data() + stack.size();
-  fp = sp;
 
   gc::init();
   gc::set_bot(sp);
 
-  constexpr auto eof_id = static_cast<op::handler_id_t>(bc::opcode_t::op_eof);
-  LAMAVM_ASSERT_B(0U, <, text.size());
-  LAMAVM_ASSERT_B(text.back().as_handler_id, ==, eof_id);
-
-  for (std::size_t i = 0; i < unit.globals_count; ++i) {
+  for (std::size_t i = 0; i < globals; ++i) {
     stack_push(box(std::int64_t{0}));
   }
 
-  stack_push(box(std::int64_t{0}));
-  stack_push(box(std::int64_t{0}));
-  stack_push_frame(frame{.n_args = 2, .fp = fp, .pc = text.data() + text.size() - 1, .sp = sp});
-
-  for (;;) {
-    step();
+  for (const uctx& u : units) {
+    exec(&u);
   }
+
+  std::exit(0); // NOLINT(concurrency-mt-unsafe)
 }
 
 } // namespace lamavm::interpreter
