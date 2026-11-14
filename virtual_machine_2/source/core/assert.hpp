@@ -34,13 +34,34 @@
   LAMAVM_EXPECT_B(b, bc, c)
 
 #ifdef NDEBUG
-#define LAMAVM_ASSERT_C(c, m) (void)(0)             // NOLINT(cppcoreguidelines-macro-usage)
-#define LAMAVM_ASSERT(c) (void)(0)                  // NOLINT(cppcoreguidelines-macro-usage)
-#define LAMAVM_ASSERT_B(lhs, op, rhs) (void)(0)     // NOLINT(cppcoreguidelines-macro-usage)
-#define LAMAVM_ASSERT_BB(a, ab, b, bc, c) (void)(0) // NOLINT(cppcoreguidelines-macro-usage)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_ASSERT_C(c, m)                                                                      \
+  (void)(c);                                                                                       \
+  (void)(m) // NOLINT(cppcoreguidelines-macro-usage)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_ASSERT(c) (void)(c)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_ASSERT_B(lhs, op, rhs)                                                              \
+  (void)(lhs);                                                                                     \
+  (void)(rhs)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_ASSERT_BB(a, ab, b, bc, c)                                                          \
+  (void)(a);                                                                                       \
+  (void)(b);                                                                                       \
+  (void)(c)
+
 #else
+
 #define LAMAVM_ASSERT_C(c, m) LAMAVM_EXPECT_C(c, m)
+
 #define LAMAVM_ASSERT(c) LAMAVM_EXPECT(c)
+
 #define LAMAVM_ASSERT_B(lhs, op, rhs) LAMAVM_EXPECT_B(lhs, op, rhs)
+
 #define LAMAVM_ASSERT_BB(lhs, op, rhs) LAMAVM_EXPECT_BB(lhs, op, rhs)
+
 #endif

@@ -11,13 +11,14 @@
 #include "core/assert.hpp"
 #include "core/log.hpp"
 
-#include <cstdint>
-#include <cstdlib>
-#include <span>
-#include <vector>
-
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <limits>
+#include <span>
+#include <type_traits>
+#include <vector>
 
 namespace lamavm::interpreter {
 
@@ -316,112 +317,138 @@ void step() {
   const auto handler_id = (*ip++).as_handler_id;
   tracef("step {} ip={}", handler_id, offset);
 
-  switch (handler_id) {
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_add):
+  const auto max = std::numeric_limits<std::underlying_type_t<bc::opcode_t>>::max();
+  if (max < handler_id) {
+    fatalf("unexpected handler overflow {:x}", handler_id);
+  }
+
+  switch (static_cast<bc::opcode_t>(handler_id)) {
+  case bc::opcode_t::op_add:
     op_add();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_sub):
+  case bc::opcode_t::op_sub:
     op_sub();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_mul):
+  case bc::opcode_t::op_mul:
     op_mul();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_div):
+  case bc::opcode_t::op_div:
     op_div();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_mod):
+  case bc::opcode_t::op_mod:
     op_mod();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_lt):
+  case bc::opcode_t::op_lt:
     op_lt();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_le):
+  case bc::opcode_t::op_le:
     op_le();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_gt):
+  case bc::opcode_t::op_gt:
     op_gt();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_ge):
+  case bc::opcode_t::op_ge:
     op_ge();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_eq):
+  case bc::opcode_t::op_eq:
     op_eq();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_ne):
+  case bc::opcode_t::op_ne:
     op_ne();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_and):
+  case bc::opcode_t::op_and:
     op_and();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_or):
+  case bc::opcode_t::op_or:
     op_or();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_const):
+  case bc::opcode_t::op_const:
     op_const();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_string):
+  case bc::opcode_t::op_string:
     op_string();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_drop):
+  case bc::opcode_t::op_drop:
     op_drop();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_dup):
+  case bc::opcode_t::op_dup:
     op_dup();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_swap):
+  case bc::opcode_t::op_swap:
     op_swap();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_ld_glo):
+  case bc::opcode_t::op_ld_glo:
     op_ld_glo();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_ld_loc):
+  case bc::opcode_t::op_ld_loc:
     op_ld_loc();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_ld_arg):
+  case bc::opcode_t::op_ld_arg:
     op_ld_arg();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_st_glo):
+  case bc::opcode_t::op_st_glo:
     op_st_glo();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_st_loc):
+  case bc::opcode_t::op_st_loc:
     op_st_loc();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_st_arg):
+  case bc::opcode_t::op_st_arg:
     op_st_arg();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_jmp):
+  case bc::opcode_t::op_jmp:
     op_jmp();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_cjmp_z):
+  case bc::opcode_t::op_cjmp_z:
     op_cjmp_z();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_cjmp_nz):
+  case bc::opcode_t::op_cjmp_nz:
     op_cjmp_nz();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_call):
+  case bc::opcode_t::op_call:
     op_call();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_begin):
+  case bc::opcode_t::op_begin:
     op_begin();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_end):
+  case bc::opcode_t::op_end:
     op_end();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_line):
+  case bc::opcode_t::op_line:
     op_line();
     return;
-  case static_cast<op::handler_id_t>(bc::opcode_t::op_eof):
+  case bc::opcode_t::op_eof:
     op_eof();
     return;
-  default:
-    fatalf("unexpected handler {}", handler_id);
+  case bc::opcode_t::op_sexp:
+  case bc::opcode_t::op_sta:
+  case bc::opcode_t::op_elem:
+  case bc::opcode_t::op_ld_clo:
+  case bc::opcode_t::op_st_clo:
+  case bc::opcode_t::op_begin_closure:
+  case bc::opcode_t::op_closure:
+  case bc::opcode_t::op_callc:
+  case bc::opcode_t::op_tag:
+  case bc::opcode_t::op_array:
+  case bc::opcode_t::op_fail:
+  case bc::opcode_t::op_fail_keep:
+  case bc::opcode_t::op_patt_str_cmp:
+  case bc::opcode_t::op_patt_string:
+  case bc::opcode_t::op_patt_array:
+  case bc::opcode_t::op_patt_sexp:
+  case bc::opcode_t::op_patt_boxed:
+  case bc::opcode_t::op_patt_unboxed:
+  case bc::opcode_t::op_patt_closure:
+  case bc::opcode_t::op_barray:
+    break;
   }
+
+  fatalf("unexpected handler {:x}", handler_id);
 }
 
 } // namespace
 
 void run(const bc::unit& unit) {
-  [[maybe_unused]] static std::atomic_bool is_loaded = false;
+  static std::atomic_bool is_loaded = false;
   LAMAVM_EXPECT(!is_loaded.exchange(true));
 
   data = unit.string_table;
@@ -437,18 +464,16 @@ void run(const bc::unit& unit) {
   gc_init();
   gc_set_stack_bottom(sp);
 
+  constexpr auto eof_id = static_cast<op::handler_id_t>(bc::opcode_t::op_eof);
   LAMAVM_ASSERT_B(0U, <, text.size());
-  LAMAVM_ASSERT_B(
-    text.back().as_handler_id,
-    ==,
-    static_cast<op::handler_id_t>(bc::opcode_t::op_eof));
+  LAMAVM_ASSERT_B(text.back().as_handler_id, ==, eof_id);
 
   for (std::size_t i = 0; i < unit.globals_count; ++i) {
     stack_push(box(0));
   }
 
-  stack_push(box(static_cast<std::int64_t>(0)));
-  stack_push(box(static_cast<std::int64_t>(0)));
+  stack_push(box(0));
+  stack_push(box(0));
   stack_push_frame(frame{.n_args = 2, .fp = fp, .ip = text.data() + text.size() - 1, .sp = sp});
 
   for (;;) {
