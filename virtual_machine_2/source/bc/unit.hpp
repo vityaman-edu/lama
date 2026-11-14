@@ -1,32 +1,34 @@
 #pragma once
 
-#include "bc/layout.hpp"
+#include "op/word.hpp"
 
 #include <cstddef>
 #include <filesystem>
-#include <span>
+#include <istream>
+#include <unordered_map>
 #include <vector>
 
 namespace lamavm::bc {
 
-class unit final {
-public:
-  [[nodiscard]] const header_t& header() const;
-  [[nodiscard]] std::span<const char> string_table() const;
-  [[nodiscard]] std::span<const import_t> imports() const;
-  [[nodiscard]] std::span<const public_symbol_t> public_symbols() const;
-  [[nodiscard]] std::span<const std::uint8_t> code_section() const;
+struct public_symbol {
+  enum class kind : std::uint8_t {
+    function,
+    global,
+  };
 
-  [[nodiscard]] std::size_t size() const;
-  [[nodiscard]] const char* string(std::size_t offset) const;
+  kind kind;
+  std::int32_t offset;
+};
 
-  static unit parse(std::vector<std::byte> arena);
+struct unit {
+  std::vector<char> string_table;
+  std::vector<op::word_t> text;
+  std::size_t globals_count = 0;
+  std::vector<std::string_view> imports;
+  std::unordered_map<std::string_view, public_symbol> public_symbols;
+
+  static unit parse(std::istream& in);
   static unit parse(const std::filesystem::path& path);
-
-private:
-  explicit unit(std::vector<std::byte> arena);
-
-  std::vector<std::byte> arena;
 };
 
 } // namespace lamavm::bc

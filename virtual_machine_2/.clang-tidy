@@ -18,6 +18,7 @@ Checks: >-
   -portability-avoid-pragma-once,
   -readability-identifier-length,
   -fuchsia-default-arguments-calls,
+  -fuchsia-default-arguments-declarations,
   -fuchsia-statically-constructed-objects,
   -fuchsia-overloaded-operator,
 WarningsAsErrors: '*'

@@ -1,18 +1,19 @@
 #include "unit.hpp"
 
-#include "bc/limit.hpp"
 #include "layout.hpp"
+#include "limit.hpp"
 
 #include "core/assert.hpp"
 
+#include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <ios>
 #include <istream>
-#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -21,92 +22,263 @@ namespace lamavm::bc {
 
 using namespace std::string_view_literals;
 
-const header_t& unit::header() const {
-  return *reinterpret_cast<const header_t*>(arena.data());
+namespace {
+
+void read_bytes(std::istream& in, std::size_t& cursor, char* data, std::size_t size) {
+  LAMAVM_EXPECT_B(size, <=, static_cast<std::size_t>(max_packed_unit_size) - cursor);
+  in.read(data, static_cast<std::streamsize>(size));
+  cursor += size;
 }
 
-std::span<const char> unit::string_table() const {
-  return {
-    reinterpret_cast<const char*>(arena.data() + sizeof(header_t)),
-    static_cast<std::size_t>(header().string_table_size),
+template <typename T>
+T read(std::istream& in, std::size_t& cursor) {
+  T value; // NOLINT(cppcoreguidelines-pro-type-member-init)
+  read_bytes(in, cursor, reinterpret_cast<char*>(&value), sizeof(value));
+  return value;
+}
+
+void fix_targets(unit& u, const std::vector<std::int32_t>& word_by_bc) {
+  const auto word_offset = [&](std::int32_t offset) {
+    LAMAVM_EXPECT_B(0, <=, offset);
+    LAMAVM_EXPECT_B(static_cast<std::size_t>(offset), <, word_by_bc.size());
+    const auto word = word_by_bc[offset];
+    LAMAVM_EXPECT_B(0, <=, word);
+    return word;
   };
+
+  for (std::size_t i = 0; i < u.text.size(); ++i) {
+    const auto opcode = static_cast<opcode_t>(u.text[i].as_handler_id);
+
+    switch (opcode) {
+    case opcode_t::op_jmp:
+    case opcode_t::op_cjmp_z:
+    case opcode_t::op_cjmp_nz: {
+      auto& target = u.text[++i].as_i32.arg0;
+      target = word_offset(target);
+      break;
+    }
+    case opcode_t::op_call:
+    case opcode_t::op_closure: {
+      auto& args = u.text[++i].as_i32;
+
+      if (args.arg0 >= 0) {
+        args.arg0 = word_offset(args.arg0);
+      }
+
+      if (opcode == opcode_t::op_closure) {
+        i += args.arg1;
+      }
+
+      break;
+    }
+    case opcode_t::op_const:
+    case opcode_t::op_string:
+    case opcode_t::op_sexp:
+    case opcode_t::op_ld_glo:
+    case opcode_t::op_ld_loc:
+    case opcode_t::op_ld_arg:
+    case opcode_t::op_ld_clo:
+    case opcode_t::op_st_glo:
+    case opcode_t::op_st_loc:
+    case opcode_t::op_st_arg:
+    case opcode_t::op_st_clo:
+    case opcode_t::op_begin:
+    case opcode_t::op_callc:
+    case opcode_t::op_tag:
+    case opcode_t::op_array:
+    case opcode_t::op_fail:
+    case opcode_t::op_fail_keep:
+    case opcode_t::op_line:
+    case opcode_t::op_barray:
+      ++i;
+      break;
+    case opcode_t::op_begin_closure:
+      i += 2;
+      break;
+    default:
+      break;
+    }
+  }
+
+  for (auto& [name, symbol] : u.public_symbols) {
+    if (symbol.kind == public_symbol::kind::function) {
+      symbol.offset = word_offset(symbol.offset);
+    }
+  }
 }
 
-std::span<const import_t> unit::imports() const {
-  const auto offset = sizeof(header_t) + string_table().size_bytes();
-  return {
-    reinterpret_cast<const import_t*>(arena.data() + offset),
-    static_cast<std::size_t>(header().imports_count),
-  };
-}
+} // namespace
 
-std::span<const public_symbol_t> unit::public_symbols() const {
-  const auto offset = sizeof(header_t) + string_table().size_bytes() + imports().size_bytes();
-  return {
-    reinterpret_cast<const public_symbol_t*>(arena.data() + offset),
-    static_cast<std::size_t>(header().public_symbols_count),
-  };
-}
+unit unit::parse(std::istream& in) {
+  static_assert(std::endian::native == std::endian::little);
 
-std::span<const std::uint8_t> unit::code_section() const {
-  const auto offset = sizeof(header_t) +
-                      string_table().size_bytes() +
-                      imports().size_bytes() +
-                      public_symbols().size_bytes();
-  return {
-    reinterpret_cast<const std::uint8_t*>(arena.data() + offset),
-    arena.size() - offset,
-  };
-}
+  in.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
-std::size_t unit::size() const {
-  return arena.size();
-}
+  unit u;
 
-const char* unit::string(std::size_t offset) const {
-  return string_table().data() + offset;
-}
+  std::size_t cursor = 0;
+  const auto magic = read<std::array<char, 4>>(in, cursor);
+  const auto version = read<std::int32_t>(in, cursor);
+  const auto string_table_size = read<std::int32_t>(in, cursor);
+  const auto globals_count = read<std::int32_t>(in, cursor);
+  const auto imports_count = read<std::int32_t>(in, cursor);
+  const auto public_symbols_count = read<std::int32_t>(in, cursor);
 
-unit unit::parse(std::vector<std::byte> arena) {
-  unit u(std::move(arena));
-
-  LAMAVM_EXPECT_B(sizeof(header_t), <=, u.arena.size());
-  const auto& header = u.header();
-  const std::string_view header_magic(header.magic.data(), header.magic.size());
+  const std::string_view header_magic(magic.data(), magic.size());
   LAMAVM_EXPECT_B(header_magic, ==, "LaMa"sv);
-  LAMAVM_EXPECT_B(header.version, ==, 1);
-  LAMAVM_EXPECT_B(0, <=, header.string_table_size);
-  LAMAVM_EXPECT_BB(0, <=, header.globals_count, <=, max_globals_count);
-  LAMAVM_EXPECT_BB(0, <=, header.imports_count, <=, max_imports_count);
-  LAMAVM_EXPECT_BB(0, <=, header.public_symbols_count, <=, max_public_symbols_count);
-
-  const auto code_section = u.code_section();
-  const auto code_section_size = static_cast<std::int32_t>(code_section.size());
-
-  const auto code_offset = reinterpret_cast<const std::byte*>(code_section.data()) -
-                           reinterpret_cast<const std::byte*>(u.arena.data());
-  const auto arena_size = static_cast<std::ptrdiff_t>(u.arena.size());
-  LAMAVM_EXPECT_B(code_offset, <, arena_size);
-
-  const auto string_table = u.string_table();
-  const auto string_table_size = static_cast<std::int32_t>(string_table.size());
-
+  LAMAVM_EXPECT_B(version, ==, 1);
   LAMAVM_EXPECT_B(0, <, string_table_size);
-  LAMAVM_EXPECT_B(string_table.back(), ==, '\0');
+  LAMAVM_EXPECT_BB(0, <=, globals_count, <=, max_globals_count);
+  LAMAVM_EXPECT_BB(0, <=, imports_count, <=, max_imports_count);
+  LAMAVM_EXPECT_BB(0, <=, public_symbols_count, <=, max_public_symbols_count);
 
-  for (const import_t& i : u.imports()) {
-    LAMAVM_EXPECT_BB(0, <=, i.name_offset, <, string_table_size);
+  const auto metadata_size = cursor +
+                             (string_table_size * sizeof(char)) +
+                             (imports_count * sizeof(import_t)) +
+                             (public_symbols_count * sizeof(public_symbol_t));
+  LAMAVM_EXPECT_B(metadata_size, <, max_packed_unit_size);
+
+  u.globals_count = globals_count;
+
+  u.string_table.resize(string_table_size);
+  read_bytes(in, cursor, u.string_table.data(), u.string_table.size());
+  LAMAVM_EXPECT_B(u.string_table.back(), ==, '\0');
+
+  u.imports.reserve(imports_count);
+  for (std::int32_t i = 0; i < imports_count; ++i) {
+    const auto name_offset = read<std::int32_t>(in, cursor);
+
+    LAMAVM_EXPECT_BB(0, <=, name_offset, <, string_table_size);
+
+    u.imports.emplace_back(u.string_table.data() + name_offset);
   }
 
-  for (const public_symbol_t& s : u.public_symbols()) {
-    LAMAVM_EXPECT_BB(0, <=, s.name_offset, <=, string_table_size);
-    LAMAVM_EXPECT_BB(0, <=, s.code_offset, <=, code_section_size);
-    LAMAVM_EXPECT_BB(0, <=, s.flag, <=, 1);
+  u.public_symbols.reserve(public_symbols_count);
+  for (std::int32_t i = 0; i < public_symbols_count; ++i) {
+    const auto name_offset = read<std::int32_t>(in, cursor);
+    const auto code_offset = read<std::int32_t>(in, cursor);
+    const auto flag = read<std::uint8_t>(in, cursor);
+
+    LAMAVM_EXPECT_BB(0, <=, name_offset, <, string_table_size);
+    LAMAVM_EXPECT_B(0, <=, code_offset);
+    LAMAVM_EXPECT_B(flag, <=, 1U);
+
+    u.public_symbols.emplace(
+      u.string_table.data() + name_offset,
+      public_symbol{
+        .kind = static_cast<enum public_symbol::kind>(flag),
+        .offset = code_offset,
+      });
   }
 
-  LAMAVM_EXPECT_B(0U, <, code_section.size());
-  LAMAVM_EXPECT_B(code_section.back(), ==, std::uint8_t{0xFF});
+  std::vector<std::int32_t> word_by_bc;
 
+  for (;;) {
+    const auto bc_offset = cursor - metadata_size;
+    const auto opcode = read<opcode_t>(in, cursor);
+
+    word_by_bc.resize(bc_offset + 1, -1);
+    word_by_bc[bc_offset] = static_cast<std::int32_t>(u.text.size());
+
+    u.text.push_back({.as_handler_id = static_cast<op::handler_id_t>(opcode)});
+
+    if (opcode == opcode_t::op_eof) {
+      LAMAVM_EXPECT_B(in.peek(), ==, std::char_traits<char>::eof());
+      break;
+    }
+
+    std::size_t operands_count = 0;
+
+    switch (opcode) {
+    case opcode_t::op_add:
+    case opcode_t::op_sub:
+    case opcode_t::op_mul:
+    case opcode_t::op_div:
+    case opcode_t::op_mod:
+    case opcode_t::op_lt:
+    case opcode_t::op_le:
+    case opcode_t::op_gt:
+    case opcode_t::op_ge:
+    case opcode_t::op_eq:
+    case opcode_t::op_ne:
+    case opcode_t::op_and:
+    case opcode_t::op_or:
+    case opcode_t::op_sta:
+    case opcode_t::op_end:
+    case opcode_t::op_drop:
+    case opcode_t::op_dup:
+    case opcode_t::op_swap:
+    case opcode_t::op_elem:
+    case opcode_t::op_patt_str_cmp:
+    case opcode_t::op_patt_string:
+    case opcode_t::op_patt_array:
+    case opcode_t::op_patt_sexp:
+    case opcode_t::op_patt_boxed:
+    case opcode_t::op_patt_unboxed:
+    case opcode_t::op_patt_closure:
+      break;
+    case opcode_t::op_const:
+    case opcode_t::op_string:
+    case opcode_t::op_jmp:
+    case opcode_t::op_ld_glo:
+    case opcode_t::op_ld_loc:
+    case opcode_t::op_ld_arg:
+    case opcode_t::op_ld_clo:
+    case opcode_t::op_st_glo:
+    case opcode_t::op_st_loc:
+    case opcode_t::op_st_arg:
+    case opcode_t::op_st_clo:
+    case opcode_t::op_cjmp_z:
+    case opcode_t::op_cjmp_nz:
+    case opcode_t::op_callc:
+    case opcode_t::op_array:
+    case opcode_t::op_line:
+    case opcode_t::op_barray:
+      operands_count = 1;
+      break;
+    case opcode_t::op_sexp:
+    case opcode_t::op_begin:
+    case opcode_t::op_call:
+    case opcode_t::op_tag:
+    case opcode_t::op_fail:
+    case opcode_t::op_fail_keep:
+      operands_count = 2;
+      break;
+    case opcode_t::op_begin_closure:
+      operands_count = 3;
+      break;
+    case opcode_t::op_closure: {
+      const auto target = read<std::int32_t>(in, cursor);
+      const auto n_captured = read<std::int32_t>(in, cursor);
+      LAMAVM_EXPECT_B(0, <=, n_captured);
+      u.text.push_back({.as_i32 = {.arg0 = target, .arg1 = n_captured}});
+
+      for (std::int32_t i = 0; i < n_captured; ++i) {
+        const auto kind = read<std::uint8_t>(in, cursor);
+        const auto index = read<std::int32_t>(in, cursor);
+        LAMAVM_EXPECT_B(kind, <=, 3U);
+        u.text.push_back({.as_i32 = {.arg0 = kind, .arg1 = index}});
+      }
+
+      break;
+    }
+    case opcode_t::op_eof:
+      std::unreachable();
+    default:
+      LAMAVM_EXPECT_C(
+        false,
+        std::format("unknown bytecode opcode 0x{:02x}", std::to_underlying(opcode)));
+    }
+
+    for (std::size_t i = 0; i < operands_count; i += 2) {
+      const auto arg0 = read<std::int32_t>(in, cursor);
+      const auto arg1 = i + 1 < operands_count ? read<std::int32_t>(in, cursor) : 0;
+
+      u.text.push_back({.as_i32 = {.arg0 = arg0, .arg1 = arg1}});
+    }
+  }
+
+  fix_targets(u, word_by_bc);
   return u;
 }
 
@@ -115,19 +287,8 @@ unit unit::parse(const std::filesystem::path& path) {
 
   std::ifstream f;
   f.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-  f.open(path, std::ifstream::binary | std::ifstream::ate);
-
-  const auto size = static_cast<std::size_t>(f.tellg());
-  LAMAVM_EXPECT_B(size, <=, max_unit_size);
-
-  std::vector<std::byte> arena(size);
-  f.seekg(0);
-  f.read(reinterpret_cast<char*>(arena.data()), static_cast<std::streamsize>(arena.size()));
-  return parse(std::move(arena));
-}
-
-unit::unit(std::vector<std::byte> arena)
-  : arena(std::move(arena)) {
+  f.open(path, std::ifstream::binary);
+  return parse(f);
 }
 
 } // namespace lamavm::bc
