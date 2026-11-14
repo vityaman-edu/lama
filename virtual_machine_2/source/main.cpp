@@ -22,9 +22,7 @@ void main(int argc, char* argv[]) try {
   bc::units units = bc::units::from(args.bc_path);
   LAMAVM_EXPECT_B(units.initialization_order.size(), ==, 1U);
 
-  bc::unit main = units.initialization_order.front()->second;
-
-  interpreter::run(main);
+  interpreter::run(units);
 } catch (const std::ios_base::failure& e) {
   fatalf("io error: {}", e.code().message());
 } catch (const std::exception& e) {

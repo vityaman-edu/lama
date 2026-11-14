@@ -82,7 +82,7 @@ void unit_parser::read_bytes(char* data, std::size_t size) {
 
 template <typename T>
 T unit_parser::read() {
-  T value{}; // NOLINT(cppcoreguidelines-pro-type-member-init)
+  T value; // NOLINT(cppcoreguidelines-pro-type-member-init)
   read_bytes(reinterpret_cast<char*>(&value), sizeof(value));
   return value;
 }

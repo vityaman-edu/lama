@@ -1,9 +1,9 @@
 #pragma once
 
-#include "bc/unit.hpp"
+#include "bc/units.hpp"
 
 namespace lamavm::interpreter {
 
-[[noreturn]] void run(const bc::unit& unit);
+[[noreturn]] void run(const bc::units& units);
 
 } // namespace lamavm::interpreter
