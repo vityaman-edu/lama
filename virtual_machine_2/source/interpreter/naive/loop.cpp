@@ -28,11 +28,11 @@ namespace {
 
 std::span<const char> data;
 std::span<const op::word_t> text;
-std::vector<std::int64_t> stack;
+std::vector<box> stack;
 
 const op::word_t* ip = nullptr;
-std::int64_t* sp = nullptr;
-std::int64_t* fp = nullptr;
+box* sp = nullptr;
+box* fp = nullptr;
 
 } // namespace
 
@@ -40,47 +40,43 @@ namespace {
 
 struct frame {
   std::int64_t n_args = 0;
-  std::int64_t* fp = nullptr;
+  box* fp = nullptr;
   const op::word_t* ip = nullptr;
-  std::int64_t* sp = nullptr;
+  box* sp = nullptr;
 };
 
 const char* c_str(std::int32_t offset) {
   return data.data() + offset;
 }
 
-void stack_push(std::int64_t x) {
+void stack_push(box x) {
   --sp;
   *sp = x;
 }
 
-void stack_push(const void* x) {
-  stack_push(reinterpret_cast<std::int64_t>(x));
-}
-
-std::int64_t stack_pop() {
-  const std::int64_t x = *sp;
+box stack_pop() {
+  const box x = *sp;
   sp++;
   return x;
 }
 
 void stack_push_frame(frame f) {
   stack_push(box(f.n_args));
-  std::int64_t* fp1 = sp;
-  stack_push(f.fp);
-  stack_push(f.ip);
-  stack_push(f.sp);
+  box* fp1 = sp;
+  stack_push(box(f.fp));
+  stack_push(box(f.ip));
+  stack_push(box(f.sp));
   fp = fp1;
 }
 
 void stack_pop_frame() {
-  sp = reinterpret_cast<std::int64_t*>(fp[-3]);     // NOLINT(performance-no-int-to-ptr)
-  ip = reinterpret_cast<const op::word_t*>(fp[-2]); // NOLINT(performance-no-int-to-ptr)
-  fp = reinterpret_cast<std::int64_t*>(fp[-1]);     // NOLINT(performance-no-int-to-ptr)
+  sp = unbox<box*>(fp[-3]);
+  ip = unbox<const op::word_t*>(fp[-2]);
+  fp = unbox<box*>(fp[-1]);
 }
 
 std::int64_t stack_n_args() {
-  return unbox(fp[0]);
+  return unbox<std::int64_t>(fp[0]);
 }
 
 auto gc_call(auto f) {
@@ -110,7 +106,7 @@ void op_const() {
 void op_string() {
   const auto string_offset = (*ip++).as_i32.arg0;
   const char* str1 = c_str(string_offset);
-  const void* str2 = gc_call([&] { return Bstring(static_cast<const void*>(&str1)); });
+  const box str2 = gc_call([&] { return Bstring(box(static_cast<const void*>(&str1))); });
   stack_push(str2);
 }
 
@@ -136,14 +132,14 @@ void op_ld_glo() {
   LAMAVM_ASSERT_B(0, <=, index);
 
   auto value = stack[stack.size() - 1 - index];
-  tracef("ld_glo {} = {}", index, unbox(value));
+  tracef("ld_glo {} = {}", index, unbox<std::int64_t>(value));
   stack_push(value);
 }
 
 void op_ld_loc() {
   const auto index = (*ip++).as_i32.arg0;
   const auto loc = fp[-4 - index];
-  tracef("ld_loc {} = {}", index, unbox(loc));
+  tracef("ld_loc {} = {}", index, unbox<std::int64_t>(loc));
   stack_push(loc);
 }
 
@@ -151,7 +147,7 @@ void op_ld_arg() {
   const auto index = (*ip++).as_i32.arg0;
   const auto n_args = stack_n_args();
   const auto arg = fp[n_args - index];
-  tracef("ld_arg {} = {}", index, unbox(arg));
+  tracef("ld_arg {} = {}", index, unbox<std::int64_t>(arg));
   stack_push(arg);
 }
 
@@ -163,7 +159,7 @@ void op_st_glo() {
   stack_push(value);
 
   auto& target = stack[stack.size() - 1 - index];
-  tracef("sd_glo {} := {}", index, unbox(value));
+  tracef("sd_glo {} := {}", index, unbox<std::int64_t>(value));
   target = value;
 }
 
@@ -173,7 +169,7 @@ void op_st_loc() {
   stack_push(value);
 
   auto& loc = fp[-4 - index];
-  tracef("st_loc {} := {}", index, unbox(value));
+  tracef("st_loc {} := {}", index, unbox<std::int64_t>(value));
   loc = value;
 }
 
@@ -185,7 +181,7 @@ void op_st_arg() {
   stack_push(value);
 
   auto& arg = fp[n_args - index];
-  tracef("st_arg {} := {}", index, unbox(value));
+  tracef("st_arg {} := {}", index, unbox<std::int64_t>(value));
   arg = value;
 }
 
@@ -198,7 +194,7 @@ void op_cjmp_z() {
   const auto target = (*ip++).as_i32.arg0;
   const auto value = stack_pop();
 
-  if (unbox(value) == 0) {
+  if (unbox<std::int64_t>(value) == 0) {
     ip = text.data() + target;
   }
 }
@@ -207,7 +203,7 @@ void op_cjmp_nz() {
   const auto target = (*ip++).as_i32.arg0;
   const auto value = stack_pop();
 
-  if (unbox(value) != 0) {
+  if (unbox<std::int64_t>(value) != 0) {
     ip = text.data() + target;
   }
 }
@@ -228,12 +224,12 @@ void op_begin() {
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {
-    stack_push(static_cast<std::int64_t>(0));
+    stack_push(box{});
   }
 }
 
 void op_end() {
-  const std::int64_t x = stack_pop();
+  const box x = stack_pop();
   stack_pop_frame();
   stack_push(x);
 }
@@ -388,8 +384,8 @@ void run(const bc::unit& unit) {
   data = unit.string_table;
   text = unit.text;
 
-  constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(std::size_t);
-  stack = std::vector<int64_t>(stack_size);
+  constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(box);
+  stack = std::vector<box>(stack_size);
 
   ip = text.data();
   sp = stack.data() + stack.size();
@@ -403,11 +399,11 @@ void run(const bc::unit& unit) {
   LAMAVM_ASSERT_B(text.back().as_handler_id, ==, eof_id);
 
   for (std::size_t i = 0; i < unit.globals_count; ++i) {
-    stack_push(box(0));
+    stack_push(box(std::int64_t{0}));
   }
 
-  stack_push(box(0));
-  stack_push(box(0));
+  stack_push(box(std::int64_t{0}));
+  stack_push(box(std::int64_t{0}));
   stack_push_frame(frame{.n_args = 2, .fp = fp, .ip = text.data() + text.size() - 1, .sp = sp});
 
   for (;;) {
