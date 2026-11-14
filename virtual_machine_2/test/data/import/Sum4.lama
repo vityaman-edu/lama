@@ -1,0 +1,3 @@
+import Sum1;
+
+sum(42, 1)

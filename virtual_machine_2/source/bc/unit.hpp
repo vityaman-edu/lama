@@ -16,8 +16,8 @@ struct public_symbol {
     global,
   };
 
-  kind kind;
-  std::int32_t offset;
+  kind kind = kind::global;
+  std::int32_t offset = 0;
 };
 
 struct unit {

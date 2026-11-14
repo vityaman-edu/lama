@@ -19,7 +19,7 @@
     LAMAVM_EXPECT_C(                                                                               \
       lamavm_expect_lhs op lamavm_expect_rhs,                                                      \
       std::format(                                                                                 \
-        "{} {} {} ({} {} {})",                                                                     \
+        "{} {} {} ({} {} {}) is false",                                                            \
         #lhs,                                                                                      \
         #op,                                                                                       \
         #rhs,                                                                                      \

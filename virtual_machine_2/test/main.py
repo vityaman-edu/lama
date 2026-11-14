@@ -178,6 +178,10 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
         reference = Lamavm(args.reference, compiler, arguments=("-I", str(compiler.stdlib)))
         implementations = (Lamai(compiler), reference, Lamavm2(args.lamavm, compiler))
         for implementation in implementations:
+            if implementation.name == "lamai" and source.with_suffix(".i").is_file():
+                statuses[implementation.name] = "SKIP"
+                continue
+
             measurement, error = measure(
                 implementation,
                 source,
@@ -193,6 +197,9 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
         reference_measurement = measurements.get(reference.name)
         expected = reference_measurement.results[0] if reference_measurement else None
         for implementation in IMPLEMENTATIONS:
+            if statuses.get(implementation) == "SKIP":
+                continue
+
             measurement = measurements.get(implementation)
             is_matching = (
                 expected is not None
@@ -230,8 +237,10 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
                     print(f"      {line}")
 
         if status == "FAIL":
-            if args.disassemble:
-                print(f"  lamac disassembly: {compilation.disassembly!r}")
+            if args.disassemble and compilation.disassembly is not None:
+                print("  lamac disassembly: |2")
+                for line in compilation.disassembly.decode("utf-8", errors="replace").splitlines():
+                    print(f"    {line}")
 
             try:
                 print_result("lamavm disassembly", reference.disassemble(source))

@@ -1,6 +1,6 @@
 {
   "files.associations": {
-    "**/runtime/Std.i": "plaintext"
+    "**/*.i": "plaintext"
   },
 
   "clangd.arguments": [
