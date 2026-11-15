@@ -2,7 +2,8 @@
 
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/state.hpp"
-#include "interpreter/runtime/std.hpp"
+#include "interpreter/std/std.g.hpp"
+#include "interpreter/std/std.hpp"
 
 #include "op/word.hpp"
 

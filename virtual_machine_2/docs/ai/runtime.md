@@ -9,13 +9,17 @@ The runtime interface lives in
 | `box.hpp` / `box.cpp` | Tagged words and explicit integer/pointer conversion |
 | `state.hpp` / `state.cpp` | Singleton stack, unit contexts, registers, and frames |
 | `gc.hpp` / `gc.cpp` | C collector initialization and stack boundaries |
-| `std.hpp` / `std.cpp` | Explicit C++ wrappers for implemented Std exports and VM helpers |
+
+[`source/interpreter/std/`](../../source/interpreter/std/) contains the shared
+bridge helpers and handwritten internal wrappers in `std.hpp` / `std.cpp`.
+Its `std.py` catalogue generates the CALL wrappers and symbol table; clients
+include `interpreter/std/std.g.hpp` from the CMake build directory.
 
 The [Std inventory](std.md) lists native exports and their signatures. The
 [runtime bridge design](runtime-bridges.md) describes the generic bridge and
-explicit wrappers, together with the proposed symbol registry and unconditional
-GC synchronization before FFI calls. The registry and common synchronization
-entry remain future changes.
+generated and handwritten wrappers, together with the symbol registry and
+proposed unconditional GC synchronization before FFI calls. Bytecode call
+resolution and the common synchronization entry remain future changes.
 
 ## Word representation
 

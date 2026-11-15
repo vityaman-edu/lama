@@ -35,9 +35,39 @@ endif()
 
 add_subdirectory(contrib)
 
+find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
+
+set(LAMAVM_GENERATED_DIR "${PROJECT_BINARY_DIR}/generated")
+set(LAMAVM_STD_GENERATED_DIR "${LAMAVM_GENERATED_DIR}/interpreter/std")
+set(LAMAVM_STD_GENERATOR "${PROJECT_SOURCE_DIR}/source/interpreter/std/std.py")
+set(LAMAVM_STD_GENERATED_HEADER "${LAMAVM_STD_GENERATED_DIR}/std.g.hpp")
+set(LAMAVM_STD_GENERATED_SOURCE "${LAMAVM_STD_GENERATED_DIR}/std.g.cpp")
+
+add_custom_command(
+  OUTPUT
+  "${LAMAVM_STD_GENERATED_HEADER}"
+  "${LAMAVM_STD_GENERATED_SOURCE}"
+
+  COMMAND
+  Python3::Interpreter
+  "${LAMAVM_STD_GENERATOR}"
+  "${LAMAVM_STD_GENERATED_DIR}"
+
+  DEPENDS
+  "${LAMAVM_STD_GENERATOR}"
+
+  VERBATIM)
+
 file(GLOB_RECURSE LAMAVM_SOURCES CONFIGURE_DEPENDS source/*.c source/*.cpp)
-add_executable(lamavm2 ${LAMAVM_SOURCES})
-target_include_directories(lamavm2 PRIVATE "${PROJECT_SOURCE_DIR}/source")
+
+add_executable(lamavm2 ${LAMAVM_SOURCES}
+  "${LAMAVM_STD_GENERATED_HEADER}"
+  "${LAMAVM_STD_GENERATED_SOURCE}")
+
+target_include_directories(lamavm2 PRIVATE
+  "${PROJECT_SOURCE_DIR}/source"
+  "${LAMAVM_GENERATED_DIR}")
+
 target_include_directories(lamavm2 SYSTEM PRIVATE "${PROJECT_SOURCE_DIR}")
 target_compile_options(lamavm2 PRIVATE ${LAMAVM_CXX_FLAGS})
 target_compile_definitions(lamavm2 PRIVATE $<$<BOOL:${LAMAVM_TRACE}>:TRACE>)

@@ -1,6 +1,6 @@
 # Runtime bridges and symbol resolution
 
-Status: generic bridge and explicit wrapper enumeration applied on 2026-11-15.
+Status: generic bridge and Python wrapper generation applied on 2026-11-15.
 Common GC call entry and symbol resolution remain design decisions; those
 sections do not authorize source implementation. The [Std inventory](std.md)
 describes the existing native functions; [runtime values and state](runtime.md)
@@ -22,10 +22,10 @@ result requires a separate compile-time branch with no result bit-cast.
 The conversions preserve representations. They do not apply `BOX`, `UNBOX`,
 the integer constructor of `box`, or `unbox<T>`. Runtime arguments and results
 that encode integers are already tagged. Pointer bits also remain unchanged.
-All fixed-signature wrappers in [`std.cpp`](../../source/interpreter/runtime/std.cpp)
+All fixed-signature wrappers in [`std/`](../../source/interpreter/std/)
 delegate to this bridge, replacing `unop`, `binop`, and handwritten native conversions.
-The implementation remains private to that translation unit; public wrapper
-declarations in `std.hpp` retain their signatures. Its return type is `box` for
+The implementation lives in `std.hpp` under `lamavm::interpreter::detail`;
+clients include the generated `interpreter/std/std.g.hpp`. Its return type is `box` for
 non-void native results and `void` for native `void` results. The helper's
 parameter pack uses `std::conditional_t<true, box, T>...` to accept one `box`
 per native type.
@@ -35,22 +35,31 @@ and be trivially copyable. These are compile-time requirements, consistent
 with the [C++ bit-cast constraints](https://eel.is/c++draft/bit.cast). They do
 not establish runtime pointer validity or semantic argument types.
 
-## Explicit declarations and definitions
+## Generated declarations and definitions
 
-The boxed declarations in `std.hpp`, native declarations in `std.cpp`, and
-boxed definitions in `std.cpp` explicitly enumerate the same 71 functions in
-runtime definition order. They cover implemented Std exports and the existing
-VM helpers. Every parameter name matches its native definition, including
-`p` and `q` for binary operators, `args` for argument-slot pointers, and `s`
-for `LtagHash`. Native signatures preserve the runtime types, including
-`char*` rather than `const char*` for `LtagHash`.
+`std/std.py` declares the 39 functions currently available through CALL as
+flat Python lists: native return type, Std name, native name, then alternating
+native parameter types and names, with an optional final `...`.
+For example: `["void", "assert", "Lassert", "void*", "f", "char*", "s", "..."]`.
+CMake runs this script to produce `std.g.hpp` and `std.g.cpp` under each build
+directory's `generated/interpreter/std/`, and compiles the generated source.
+The script is an explicit build dependency; generated files are not source files
+maintained in the repository.
+
+The generated header declares boxed and span wrappers and an extern
+`std_symbols` table. The generated source declares native functions, defines
+the wrappers, and defines the table once. Return types, fixed parameter counts,
+and variadic flags are derived from the catalogue. Existing native signatures
+and parameter names are preserved.
 
 Each fixed native parameter becomes a `box` parameter. Non-void native results
 become `box` results; native `void` results remain `void`. Fixed-signature
-wrappers delegate to `bridge`. Declarations remain in the header and definitions
-in the matching `.cpp`; wrapper generation macros are not used.
-Functions flagged by Clang Tidy carry `NOLINT`, as requested, preserving native
-identifiers and the explicit C-style variadic stubs.
+wrappers delegate to `detail::bridge`.
+
+The 32 functions unavailable through CALL, including encoded operators,
+`Li__Infix_4343`, `Bmatch_failure`, and `failure`, are declared and defined
+manually in `std.hpp` and its matching `std.cpp`. They have only boxed wrappers,
+use the same helpers, and have neither span wrappers nor registry entries.
 
 Variadic native declarations preserve their fixed parameter types, names, and
 trailing `...`. Boxed declarations and definitions replace each fixed type with
@@ -65,9 +74,9 @@ implementation in the linked runtime and are not declared or wrapped here.
 
 ## Uniform reversed-span overloads
 
-Each boxed function also has a span overload. Value-returning overloads match
-`std_fn_t`, which is `box (*)(std::span<const box> rargs)`; void overloads match
-`std_fn_void_t`, which is `void (*)(std::span<const box> rargs)`. The overloads
+Each generated boxed function also has a span overload. Value-returning overloads match
+`std_fn_some_t`, which is `box (*)(std::span<const box> rargs)`; void overloads match
+`std_fn_none_t`, which is `void (*)(std::span<const box> rargs)`. The overloads
 are enumerated in the same order as the boxed functions. They call those
 existing boxed functions, preserving their native-parameter contract rather
 than interpreting logical bytecode arguments.
@@ -83,7 +92,7 @@ call.
 `core/functional.hpp` provides `function_traits` for fixed and C-style variadic
 function pointers, exposing `return_type`, `arity`, and `is_variadic`. Invocation
 infers this information from the selected boxed function pointer. Span wrappers
-call `invoke_std(rargs, name)` without repeating boxed parameter types. Thin
+call `detail::invoke_std(rargs, boxd::name)` without repeating boxed parameter types. Thin
 overloads select the boxed function from its overload set: zero-argument,
 fixed signatures starting with `box`, and variadic signatures starting with
 `box`. Count checks and argument expansion remain shared.
@@ -115,9 +124,9 @@ boundary must preserve that stack-scanning contract. Existing explicit
 
 ## Symbol registry and span adapters
 
-The `std_symbols` table is applied for the 55 implemented functions exported by
-`Std.i`. Keys use Std names, and entries select the corresponding `span`
-wrapper, its fixed boxed parameter count, and `vararg` for the five variadic
+The generated `std_symbols` table contains the 39 current CALL targets.
+Keys use Std names, and entries select the corresponding `span`
+wrapper, its fixed boxed parameter count, and `vararg` for the four variadic
 functions. Argument-array functions retain their current pointer-parameter
 contract, including one fixed parameter for `substring`. Internal VM helpers,
 the `sysargs` global, and the unavailable `enableGC` and `disableGC` functions
@@ -152,7 +161,7 @@ registry's container and exact entry representation also remain open. Runtime
 names must map to their intended native targets: for example, `compare` denotes
 `Lcompare`; bytecode names and native symbol names are distinct.
 
-The implemented `std_fn_t` and `std_fn_void_t` overloads consume
+The implemented `std_fn_some_t` and `std_fn_none_t` overloads consume
 `std::span<const box>` in reverse argument order and preserve `box` or `void`
 returns. Bytecode-level argument-array adapters still need writable storage.
 Any VM stack value produced after a returning native `void` function remains a
