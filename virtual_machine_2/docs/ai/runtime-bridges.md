@@ -1,18 +1,17 @@
 # Runtime bridges and symbol resolution
 
-Status: design decisions from 2026-11-15; not implemented. This document records
-the agreed interface and its remaining choices. It does not authorize source
-implementation. The [Std inventory](std.md) describes the existing native
+Status: generic bridge implemented on 2026-11-15. Macros, common GC call entry,
+and symbol resolution remain design decisions; those sections do not authorize
+source implementation. The [Std inventory](std.md) describes the existing native
 functions; [runtime values and state](runtime.md) describes the current wrappers
 and GC boundary.
 
 ## Generic bridge
 
-Use one generic function or struct named `bridge` to connect boxed C++ calls
+One generic function named `bridge` connects boxed C++ calls
 to native runtime functions. Its template inputs are the native return type,
 the compile-time-known native function pointer, and the native argument types.
-The conceptual template argument order is `bridge<R, Function, Args...>`; the
-choice between a function and a struct remains open.
+The template argument order is `bridge<R, Function, Args...>`.
 
 For each fixed argument, the bridge receives a `box` and uses `std::bit_cast`
 to obtain the corresponding native type. It calls the function through its
@@ -22,9 +21,12 @@ result requires a separate compile-time branch with no result bit-cast.
 The conversions preserve representations. They do not apply `BOX`, `UNBOX`,
 the integer constructor of `box`, or `unbox<T>`. Runtime arguments and results
 that encode integers are already tagged. Pointer bits also remain unchanged.
-The existing `unop`, `binop`, and handwritten native conversion bodies in
-[`std.cpp`](../../source/interpreter/runtime/std.cpp) are to be replaced by
-this one generic bridge.
+All wrappers in [`std.cpp`](../../source/interpreter/runtime/std.cpp) delegate
+to this bridge, replacing `unop`, `binop`, and handwritten native conversions.
+The implementation remains private to that translation unit; public wrapper
+declarations in `std.hpp` retain their signatures. Its return type is `box` for
+non-void native results and `void` for native `void` results. The parameter pack
+uses `std::conditional_t<true, box, T>...` to accept one `box` per native type.
 
 Every converted argument and non-void result must have the same size as `box`
 and be trivially copyable. These are compile-time requirements, consistent

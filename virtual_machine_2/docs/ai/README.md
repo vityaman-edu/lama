@@ -27,7 +27,7 @@ authorize implementation.
 | Topic | Guide | Status |
 |:--|:--|:--|
 | Packed layouts, alignment, storage, and object lifetime | [Packed memory](packed-memory.md) | General constraints |
-| Generic native bridges, macros, and runtime symbol resolution | [Runtime bridges](runtime-bridges.md) | Design decisions; not implemented |
+| Generic native bridges, macros, and runtime symbol resolution | [Runtime bridges](runtime-bridges.md) | Generic bridge implemented; macros and symbol resolution deferred |
 | Instruction warming and inline CALL operands | [Warm interpreter](warm-interpreter.md) | Design decision; not implemented |
 | Linking decoded modules into a self-contained program | [Linking](linking.md) | Future design |
 | Pointer enumeration and address rebasing | [Relocation](relocation.md) | Future mechanism |
