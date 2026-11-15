@@ -19,11 +19,19 @@ is absent. Compilation and generated files use a temporary directory per case.
 
 - Correctness compares exit code and stdout across every run against the first
   reference VM result. Stderr is diagnostic only and is never compared.
+- `FLAKY_STDOUT` lists cases compared by exit code alone, including reference
+  stability checks and failure diagnostics. It contains `regression/test803.lama`:
+  the nested function `g` shadows parameter `g`, so `write(g)` prints a closure
+  pointer interpreted as an integer, which varies between processes.
 - A matching positive exit code can be GOOD: agreement on failure is distinct
   from successful execution. Timeouts, signal termination, unstable results,
   or VM disagreements fail the case.
 - A sibling `.i` interface skips `lamai` without running or benchmarking it.
   Both VMs are still compared normally; a passing case remains GOOD.
+- `LAMAI_UNSUPPORTED` also skips `lamai` without running or benchmarking it.
+  It contains `regression/test111.lama`, whose `stringcat` builtin is absent
+  from `lamai`, and `regression/test803.lama`, whose closure argument to `write`
+  is rejected by `lamai`. Both VMs remain subject to comparison.
 - For cases where `lamai` runs, consistent agreement between both VMs on a
   positive exit code while every `lamai` run exits zero produces WARN for
   `lamai`. WARN does not make the test command fail.

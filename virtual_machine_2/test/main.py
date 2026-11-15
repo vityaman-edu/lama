@@ -17,6 +17,13 @@ KNOWN_FAILURES = {
     "regression/test054.lama": (2, b"Indirect assignment is not supported yet"),
     "regression/test110.lama": (2, b"Indirect assignment is not supported yet"),
 }
+LAMAI_UNSUPPORTED = [
+    "regression/test111.lama",
+    "regression/test803.lama",
+]
+FLAKY_STDOUT = [
+    "regression/test803.lama",
+]
 IMPLEMENTATIONS = ("lamai", "lamavm", "lamavm2")
 
 
@@ -36,8 +43,8 @@ def color_number(value: int | str) -> str:
     return color(str(value), "36")
 
 
-def signature(result: RunResult) -> tuple[int | None, bytes]:
-    return result.exit_code, result.stdout
+def signature(result: RunResult, name: str) -> tuple[int | None, bytes]:
+    return result.exit_code, b"" if name in FLAKY_STDOUT else result.stdout
 
 
 def print_result(name: str, result: RunResult) -> None:
@@ -125,13 +132,13 @@ def report(
         reference = measurements.get("lamavm")
         expected = reference.results[0] if reference else None
         expected_signature = (
-            signature(expected)
+            signature(expected, name)
             if expected is not None and expected.exit_code is not None and expected.exit_code >= 0
             else None
         )
         for implementation, measurement in measurements.items():
             for index, result in enumerate(measurement.results, 1):
-                output = signature(result)
+                output = signature(result, name)
                 if output != expected_signature:
                     print_result(f"{implementation} run {color_number(index)}", result)
                     break
@@ -178,7 +185,9 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
         reference = Lamavm(args.reference, compiler, arguments=("-I", str(compiler.stdlib)))
         implementations = (Lamai(compiler), reference, Lamavm2(args.lamavm, compiler))
         for implementation in implementations:
-            if implementation.name == "lamai" and source.with_suffix(".i").is_file():
+            if implementation.name == "lamai" and (
+                name in LAMAI_UNSUPPORTED or source.with_suffix(".i").is_file()
+            ):
                 statuses[implementation.name] = "SKIP"
                 continue
 
@@ -206,7 +215,10 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
                 and expected.exit_code is not None
                 and expected.exit_code >= 0
                 and measurement is not None
-                and all(signature(result) == signature(expected) for result in measurement.results)
+                and all(
+                    signature(result, name) == signature(expected, name)
+                    for result in measurement.results
+                )
             )
             statuses[implementation] = "GOOD" if is_matching else "FAIL"
 

@@ -37,10 +37,32 @@ across the C ABI. Constructing a box from the returned raw integer would box
 it a second time. `Bstring` takes a box containing a pointer to the string
 argument slot and returns the allocated string pointer as a box.
 
-The C runtime's [`BOX` macro](../../contrib/runtime/runtime_common.h) uses a
-signed left shift. Negative arithmetic results can therefore trigger UBSan in
-[`runtime.c`](../../contrib/runtime/runtime.c); the C++ wrappers preserve that
-runtime behavior.
+## Deferred UBSan failures
+
+The C runtime's [`BOX` macro](../../contrib/runtime/runtime_common.h) is
+`((((aint)(x)) << 1) | 1)`, where `aint` is signed. Boxing a negative integer
+triggers UBSan's `left shift of negative value` diagnostic in
+[`runtime.c`](../../contrib/runtime/runtime.c). The C++ wrappers preserve the
+runtime's tagged result; these failures occur inside the C runtime.
+
+The following fixtures expose the defect. Paths are relative to `test/data`;
+locations refer to `contrib/runtime/runtime.c` as checked on 2026-11-15.
+
+| Fixtures | First failing operation | Location |
+|:--|:--|:--|
+| `examples/StdIO.lama`, `regression/test006.lama` | `Lread` boxes -7 and -6 respectively | 1277 |
+| `examples/StdRegexp.lama` | `LregexpMatch` boxes the -1 mismatch result | 515 |
+| `examples/StdStrings.lama` | `LstringInt` boxes -42 | 618 |
+| `examples/StdValues.lama` | `Lcompare` boxes -1 | 641 |
+| `regression/test004.lama` | Subtraction boxes -10 | 178 |
+| `regression/test005.lama`, `regression/test007.lama`, `regression/test008.lama`, `regression/test012.lama` | Subtraction boxes -1 | 178 |
+| `regression/test094.lama` | Subtraction boxes -2 | 178 |
+
+Reproduce with `make lamavm2-san` followed by
+`./scripts/test.sh san --runs=2`. Sanitizers halt at the first offending
+operation, so later operations in each fixture remain unchecked. These runtime
+defects are deferred and remain visible as sanitizer test failures; the
+runner's comparison exceptions do not suppress them.
 
 ## Stack and frames
 
