@@ -5,10 +5,20 @@
 
 #include "bc/units.hpp"
 
+#include "core/compiler.hpp"
+
 #include "op/word.hpp"
 
 #include <span>
 #include <vector>
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_DISPATCH_JUMP() LAMAVM_MUSTTAIL return pc->as_handler_fn()
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_DISPATCH()                                                                          \
+  ++pc;                                                                                            \
+  LAMAVM_DISPATCH_JUMP()
 
 namespace lamavm::interpreter {
 

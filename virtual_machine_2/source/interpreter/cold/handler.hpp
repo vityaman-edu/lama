@@ -33,5 +33,6 @@ void op_call();
 void op_begin();
 void op_end();
 void op_line();
+void op_eof();
 
 } // namespace lamavm::interpreter::cold
