@@ -125,22 +125,6 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::opcode_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{:x}", static_cast<unsigned int>(x));
 }
 
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_begin_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{} {} {}", x.opcode, x.n_args, x.n_locals);
-}
-
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_const_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.value);
-}
-
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_end_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
-}
-
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_eof_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
-}
-
 LAMAVM_FORMAT_DEFINE(lamavm::bc::op_add_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
 }
@@ -193,6 +177,10 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_or_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
 }
 
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_const_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.value);
+}
+
 LAMAVM_FORMAT_DEFINE(lamavm::bc::op_string_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.string_offset);
 }
@@ -201,12 +189,8 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_jmp_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
 }
 
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_cjmp_z_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
-}
-
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_cjmp_nz_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_end_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
 }
 
 LAMAVM_FORMAT_DEFINE(lamavm::bc::op_drop_t, x, ctx) {
@@ -221,8 +205,8 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_swap_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
 }
 
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_call_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{} {} {}", x.opcode, x.target, x.n_args);
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ld_glo_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.index);
 }
 
 LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ld_loc_t, x, ctx) {
@@ -230,6 +214,10 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ld_loc_t, x, ctx) {
 }
 
 LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ld_arg_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.index);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_st_glo_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.index);
 }
 
@@ -241,15 +229,27 @@ LAMAVM_FORMAT_DEFINE(lamavm::bc::op_st_arg_t, x, ctx) {
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.index);
 }
 
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_ld_glo_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.index);
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_cjmp_z_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
 }
 
-LAMAVM_FORMAT_DEFINE(lamavm::bc::op_st_glo_t, x, ctx) {
-  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.index);
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_cjmp_nz_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, x.target);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_begin_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {} {}", x.opcode, x.n_args, x.n_locals);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_call_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{} {} {}", x.opcode, x.target, x.n_args);
 }
 
 LAMAVM_FORMAT_DEFINE(lamavm::bc::op_line_t, x, ctx) {
   const auto line = x.line;
   return LAMAVM_FORMAT_DERIVE(ctx, "{} {}", x.opcode, line);
+}
+
+LAMAVM_FORMAT_DEFINE(lamavm::bc::op_eof_t, x, ctx) {
+  return LAMAVM_FORMAT_DERIVE(ctx, "{}", x.opcode);
 }

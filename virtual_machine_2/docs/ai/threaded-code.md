@@ -14,13 +14,22 @@ transition; its input must still contain IDs, not already installed pointers.
 
 IDs wider than the bytecode opcode type fail with an overflow diagnostic.
 Unknown and unsupported opcodes are rejected before execution, including in
-unreachable code. Handler decoding assumes parser-produced layout and does
-not add operand, stack, or control-flow validation.
+unreachable code. Recognized but unimplemented instructions fail with
+`fatalf("unsupported {}", opcode)`. Handler decoding assumes parser-produced
+layout and does not add operand, stack, or control-flow validation.
 
 Supported operations are the 13 arithmetic/comparison/boolean BINOP forms,
-CONST, STRING, DROP, DUP, SWAP, LD/ST for globals, locals and arguments, JMP,
+CONST, STRING, SEXP, DROP, DUP, SWAP, LD/ST for globals, locals and arguments, JMP,
 CJMP_Z, CJMP_NZ, CALL, BEGIN, END, LINE, and EOF. LINE consumes its operand and
 has no execution effect. Other opcodes remain unsupported.
+
+`bc::opcode_t` in `source/bc/layout.hpp` defines the order for opcode switch
+cases, handler declarations and definitions, and packed-layout declarations
+and formatters. Keep shared case bodies only across adjacent cases in that
+order. Declare and define every cold handler, including unimplemented
+instructions. Unimplemented handler definitions call
+`fatalf("unsupported {}", bc::opcode_t::op_xxx)`. The decoding switch also
+rejects these instructions before execution.
 
 ## Dispatch contract
 

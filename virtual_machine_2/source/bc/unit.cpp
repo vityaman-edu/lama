@@ -181,23 +181,25 @@ void unit_parser::read_code_section() {
     case opcode_t::op_ne:
     case opcode_t::op_and:
     case opcode_t::op_or:
+      break;
+    case opcode_t::op_const:
+    case opcode_t::op_string:
+      operands_count = 1;
+      break;
+    case opcode_t::op_sexp:
+      operands_count = 2;
+      break;
     case opcode_t::op_sta:
+      break;
+    case opcode_t::op_jmp:
+      operands_count = 1;
+      break;
     case opcode_t::op_end:
     case opcode_t::op_drop:
     case opcode_t::op_dup:
     case opcode_t::op_swap:
     case opcode_t::op_elem:
-    case opcode_t::op_patt_str_cmp:
-    case opcode_t::op_patt_string:
-    case opcode_t::op_patt_array:
-    case opcode_t::op_patt_sexp:
-    case opcode_t::op_patt_boxed:
-    case opcode_t::op_patt_unboxed:
-    case opcode_t::op_patt_closure:
       break;
-    case opcode_t::op_const:
-    case opcode_t::op_string:
-    case opcode_t::op_jmp:
     case opcode_t::op_ld_glo:
     case opcode_t::op_ld_loc:
     case opcode_t::op_ld_arg:
@@ -208,18 +210,9 @@ void unit_parser::read_code_section() {
     case opcode_t::op_st_clo:
     case opcode_t::op_cjmp_z:
     case opcode_t::op_cjmp_nz:
-    case opcode_t::op_callc:
-    case opcode_t::op_array:
-    case opcode_t::op_line:
-    case opcode_t::op_barray:
       operands_count = 1;
       break;
-    case opcode_t::op_sexp:
     case opcode_t::op_begin:
-    case opcode_t::op_call:
-    case opcode_t::op_tag:
-    case opcode_t::op_fail:
-    case opcode_t::op_fail_keep:
       operands_count = 2;
       break;
     case opcode_t::op_begin_closure:
@@ -240,6 +233,35 @@ void unit_parser::read_code_section() {
 
       break;
     }
+
+    case opcode_t::op_callc:
+      operands_count = 1;
+      break;
+    case opcode_t::op_call:
+    case opcode_t::op_tag:
+      operands_count = 2;
+      break;
+    case opcode_t::op_array:
+      operands_count = 1;
+      break;
+    case opcode_t::op_fail:
+    case opcode_t::op_fail_keep:
+      operands_count = 2;
+      break;
+    case opcode_t::op_line:
+      operands_count = 1;
+      break;
+    case opcode_t::op_patt_str_cmp:
+    case opcode_t::op_patt_string:
+    case opcode_t::op_patt_array:
+    case opcode_t::op_patt_sexp:
+    case opcode_t::op_patt_boxed:
+    case opcode_t::op_patt_unboxed:
+    case opcode_t::op_patt_closure:
+      break;
+    case opcode_t::op_barray:
+      operands_count = 1;
+      break;
     case opcode_t::op_eof:
       std::unreachable();
     default:
@@ -270,30 +292,17 @@ void unit_parser::fixup_jump_targets() {
     const auto opcode = static_cast<opcode_t>(u.code_section[i].as_handler_id);
 
     switch (opcode) {
-    case opcode_t::op_jmp:
-    case opcode_t::op_cjmp_z:
-    case opcode_t::op_cjmp_nz: {
+    case opcode_t::op_const:
+    case opcode_t::op_string:
+    case opcode_t::op_sexp:
+      ++i;
+      break;
+    case opcode_t::op_jmp: {
       auto& target = u.code_section[++i].as_i32.arg0;
       target = word_offset(target);
       break;
     }
-    case opcode_t::op_call:
-    case opcode_t::op_closure: {
-      auto& args = u.code_section[++i].as_i32;
 
-      if (args.arg0 >= 0) {
-        args.arg0 = word_offset(args.arg0);
-      }
-
-      if (opcode == opcode_t::op_closure) {
-        i += args.arg1;
-      }
-
-      break;
-    }
-    case opcode_t::op_const:
-    case opcode_t::op_string:
-    case opcode_t::op_sexp:
     case opcode_t::op_ld_glo:
     case opcode_t::op_ld_loc:
     case opcode_t::op_ld_arg:
@@ -302,8 +311,45 @@ void unit_parser::fixup_jump_targets() {
     case opcode_t::op_st_loc:
     case opcode_t::op_st_arg:
     case opcode_t::op_st_clo:
+      ++i;
+      break;
+    case opcode_t::op_cjmp_z:
+    case opcode_t::op_cjmp_nz: {
+      auto& target = u.code_section[++i].as_i32.arg0;
+      target = word_offset(target);
+      break;
+    }
+
     case opcode_t::op_begin:
+      ++i;
+      break;
+    case opcode_t::op_begin_closure:
+      i += 2;
+      break;
+    case opcode_t::op_closure: {
+      auto& args = u.code_section[++i].as_i32;
+
+      if (args.arg0 >= 0) {
+        args.arg0 = word_offset(args.arg0);
+      }
+
+      i += args.arg1;
+      break;
+    }
+
     case opcode_t::op_callc:
+      ++i;
+      break;
+    case opcode_t::op_call: {
+      auto& args = u.code_section[++i].as_i32;
+
+      if (args.arg0 >= 0) {
+        args.arg0 = word_offset(args.arg0);
+      }
+
+      break;
+    }
+
     case opcode_t::op_tag:
     case opcode_t::op_array:
     case opcode_t::op_fail:
@@ -311,9 +357,6 @@ void unit_parser::fixup_jump_targets() {
     case opcode_t::op_line:
     case opcode_t::op_barray:
       ++i;
-      break;
-    case opcode_t::op_begin_closure:
-      i += 2;
       break;
     default:
       break;

@@ -6,6 +6,7 @@
 
 #include "op/word.hpp"
 
+#include "bc/layout.hpp"
 #include "bc/units.hpp"
 
 #include "core/assert.hpp"
@@ -159,6 +160,25 @@ void op_sexp() {
   LAMAVM_DISPATCH();
 }
 
+void op_sta() {
+  fatalf("unsupported {}", bc::opcode_t::op_sta);
+}
+
+void op_jmp() {
+  const auto target = (*++pc).as_i32.arg0;
+  pc = up->text.data() + target;
+
+  LAMAVM_DISPATCH_JUMP();
+}
+
+void op_end() {
+  const box x = stack_pop();
+  stack_pop_frame();
+  stack_push(x);
+
+  LAMAVM_DISPATCH_JUMP();
+}
+
 void op_drop() {
   stack_pop();
 
@@ -180,6 +200,10 @@ void op_swap() {
   stack_push(y);
 
   LAMAVM_DISPATCH();
+}
+
+void op_elem() {
+  fatalf("unsupported {}", bc::opcode_t::op_elem);
 }
 
 void op_ld_glo() {
@@ -208,6 +232,10 @@ void op_ld_arg() {
   stack_push(arg);
 
   LAMAVM_DISPATCH();
+}
+
+void op_ld_clo() {
+  fatalf("unsupported {}", bc::opcode_t::op_ld_clo);
 }
 
 void op_st_glo() {
@@ -249,11 +277,8 @@ void op_st_arg() {
   LAMAVM_DISPATCH();
 }
 
-void op_jmp() {
-  const auto target = (*++pc).as_i32.arg0;
-  pc = up->text.data() + target;
-
-  LAMAVM_DISPATCH_JUMP();
+void op_st_clo() {
+  fatalf("unsupported {}", bc::opcode_t::op_st_clo);
 }
 
 void op_cjmp_z() {
@@ -278,6 +303,31 @@ void op_cjmp_nz() {
   }
 
   LAMAVM_DISPATCH_JUMP();
+}
+
+void op_begin() {
+  const auto args = (*++pc).as_i32;
+  const auto n_args = args.arg0;
+  const auto n_locals = args.arg1;
+  LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
+
+  for (std::int32_t i = 0; i < n_locals; ++i) {
+    stack_push(box{});
+  }
+
+  LAMAVM_DISPATCH();
+}
+
+void op_begin_closure() {
+  fatalf("unsupported {}", bc::opcode_t::op_begin_closure);
+}
+
+void op_closure() {
+  fatalf("unsupported {}", bc::opcode_t::op_closure);
+}
+
+void op_callc() {
+  fatalf("unsupported {}", bc::opcode_t::op_callc);
 }
 
 void op_call() {
@@ -307,31 +357,58 @@ void op_call() {
   LAMAVM_DISPATCH_JUMP();
 }
 
-void op_begin() {
-  const auto args = (*++pc).as_i32;
-  const auto n_args = args.arg0;
-  const auto n_locals = args.arg1;
-  LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
-
-  for (std::int32_t i = 0; i < n_locals; ++i) {
-    stack_push(box{});
-  }
-
-  LAMAVM_DISPATCH();
+void op_tag() {
+  fatalf("unsupported {}", bc::opcode_t::op_tag);
 }
 
-void op_end() {
-  const box x = stack_pop();
-  stack_pop_frame();
-  stack_push(x);
+void op_array() {
+  fatalf("unsupported {}", bc::opcode_t::op_array);
+}
 
-  LAMAVM_DISPATCH_JUMP();
+void op_fail() {
+  fatalf("unsupported {}", bc::opcode_t::op_fail);
+}
+
+void op_fail_keep() {
+  fatalf("unsupported {}", bc::opcode_t::op_fail_keep);
 }
 
 void op_line() {
   ++pc;
 
   LAMAVM_DISPATCH();
+}
+
+void op_patt_str_cmp() {
+  fatalf("unsupported {}", bc::opcode_t::op_patt_str_cmp);
+}
+
+void op_patt_string() {
+  fatalf("unsupported {}", bc::opcode_t::op_patt_string);
+}
+
+void op_patt_array() {
+  fatalf("unsupported {}", bc::opcode_t::op_patt_array);
+}
+
+void op_patt_sexp() {
+  fatalf("unsupported {}", bc::opcode_t::op_patt_sexp);
+}
+
+void op_patt_boxed() {
+  fatalf("unsupported {}", bc::opcode_t::op_patt_boxed);
+}
+
+void op_patt_unboxed() {
+  fatalf("unsupported {}", bc::opcode_t::op_patt_unboxed);
+}
+
+void op_patt_closure() {
+  fatalf("unsupported {}", bc::opcode_t::op_patt_closure);
+}
+
+void op_barray() {
+  fatalf("unsupported {}", bc::opcode_t::op_barray);
 }
 
 void op_eof() {

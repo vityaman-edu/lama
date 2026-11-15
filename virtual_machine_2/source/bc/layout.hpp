@@ -88,25 +88,6 @@ enum class opcode_t : std::uint8_t {
   op_eof = 0xFF,
 };
 
-struct [[gnu::packed]] op_begin_t {
-  opcode_t opcode;
-  std::int32_t n_args;
-  std::int32_t n_locals;
-};
-
-struct [[gnu::packed]] op_const_t {
-  opcode_t opcode;
-  std::int32_t value;
-};
-
-struct [[gnu::packed]] op_end_t {
-  opcode_t opcode;
-};
-
-struct [[gnu::packed]] op_eof_t {
-  opcode_t opcode;
-};
-
 struct [[gnu::packed]] op_add_t {
   opcode_t opcode;
 };
@@ -159,6 +140,11 @@ struct [[gnu::packed]] op_or_t {
   opcode_t opcode;
 };
 
+struct [[gnu::packed]] op_const_t {
+  opcode_t opcode;
+  std::int32_t value;
+};
+
 struct [[gnu::packed]] op_string_t {
   opcode_t opcode;
   std::int32_t string_offset;
@@ -169,14 +155,8 @@ struct [[gnu::packed]] op_jmp_t {
   std::int32_t target;
 };
 
-struct [[gnu::packed]] op_cjmp_z_t {
+struct [[gnu::packed]] op_end_t {
   opcode_t opcode;
-  std::int32_t target;
-};
-
-struct [[gnu::packed]] op_cjmp_nz_t {
-  opcode_t opcode;
-  std::int32_t target;
 };
 
 struct [[gnu::packed]] op_drop_t {
@@ -191,10 +171,9 @@ struct [[gnu::packed]] op_swap_t {
   opcode_t opcode;
 };
 
-struct [[gnu::packed]] op_call_t {
+struct [[gnu::packed]] op_ld_glo_t {
   opcode_t opcode;
-  std::int32_t target;
-  std::int32_t n_args;
+  std::int32_t index;
 };
 
 struct [[gnu::packed]] op_ld_loc_t {
@@ -203,6 +182,11 @@ struct [[gnu::packed]] op_ld_loc_t {
 };
 
 struct [[gnu::packed]] op_ld_arg_t {
+  opcode_t opcode;
+  std::int32_t index;
+};
+
+struct [[gnu::packed]] op_st_glo_t {
   opcode_t opcode;
   std::int32_t index;
 };
@@ -217,14 +201,26 @@ struct [[gnu::packed]] op_st_arg_t {
   std::int32_t index;
 };
 
-struct [[gnu::packed]] op_ld_glo_t {
+struct [[gnu::packed]] op_cjmp_z_t {
   opcode_t opcode;
-  std::int32_t index;
+  std::int32_t target;
 };
 
-struct [[gnu::packed]] op_st_glo_t {
+struct [[gnu::packed]] op_cjmp_nz_t {
   opcode_t opcode;
-  std::int32_t index;
+  std::int32_t target;
+};
+
+struct [[gnu::packed]] op_begin_t {
+  opcode_t opcode;
+  std::int32_t n_args;
+  std::int32_t n_locals;
+};
+
+struct [[gnu::packed]] op_call_t {
+  opcode_t opcode;
+  std::int32_t target;
+  std::int32_t n_args;
 };
 
 struct [[gnu::packed]] op_line_t {
@@ -232,13 +228,13 @@ struct [[gnu::packed]] op_line_t {
   std::int32_t line;
 };
 
+struct [[gnu::packed]] op_eof_t {
+  opcode_t opcode;
+};
+
 static_assert(ctype<header_t>);
 static_assert(ctype<import_t>);
 static_assert(ctype<public_symbol_t>);
-static_assert(ctype<op_begin_t>);
-static_assert(ctype<op_const_t>);
-static_assert(ctype<op_end_t>);
-static_assert(ctype<op_eof_t>);
 static_assert(ctype<op_add_t>);
 static_assert(ctype<op_sub_t>);
 static_assert(ctype<op_mul_t>);
@@ -252,31 +248,31 @@ static_assert(ctype<op_eq_t>);
 static_assert(ctype<op_ne_t>);
 static_assert(ctype<op_and_t>);
 static_assert(ctype<op_or_t>);
+static_assert(ctype<op_const_t>);
 static_assert(ctype<op_string_t>);
 static_assert(ctype<op_jmp_t>);
-static_assert(ctype<op_cjmp_z_t>);
-static_assert(ctype<op_cjmp_nz_t>);
+static_assert(ctype<op_end_t>);
 static_assert(ctype<op_drop_t>);
 static_assert(ctype<op_dup_t>);
 static_assert(ctype<op_swap_t>);
-static_assert(ctype<op_call_t>);
+static_assert(ctype<op_ld_glo_t>);
 static_assert(ctype<op_ld_loc_t>);
 static_assert(ctype<op_ld_arg_t>);
+static_assert(ctype<op_st_glo_t>);
 static_assert(ctype<op_st_loc_t>);
 static_assert(ctype<op_st_arg_t>);
-static_assert(ctype<op_ld_glo_t>);
-static_assert(ctype<op_st_glo_t>);
+static_assert(ctype<op_cjmp_z_t>);
+static_assert(ctype<op_cjmp_nz_t>);
+static_assert(ctype<op_begin_t>);
+static_assert(ctype<op_call_t>);
 static_assert(ctype<op_line_t>);
+static_assert(ctype<op_eof_t>);
 
 } // namespace lamavm::bc
 
 LAMAVM_FORMAT_DECLARE(lamavm::bc::import_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::public_symbol_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::opcode_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_begin_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_const_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_end_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_eof_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_add_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_sub_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_mul_t, x, ctx);
@@ -290,18 +286,22 @@ LAMAVM_FORMAT_DECLARE(lamavm::bc::op_eq_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_ne_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_and_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_or_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_const_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_string_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_jmp_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_cjmp_z_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_cjmp_nz_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_end_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_drop_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_dup_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_swap_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_call_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_ld_glo_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_ld_loc_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_ld_arg_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_st_glo_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_st_loc_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_st_arg_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_ld_glo_t, x, ctx);
-LAMAVM_FORMAT_DECLARE(lamavm::bc::op_st_glo_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_cjmp_z_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_cjmp_nz_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_begin_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_call_t, x, ctx);
 LAMAVM_FORMAT_DECLARE(lamavm::bc::op_line_t, x, ctx);
+LAMAVM_FORMAT_DECLARE(lamavm::bc::op_eof_t, x, ctx);
