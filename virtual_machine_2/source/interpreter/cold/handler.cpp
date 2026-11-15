@@ -374,7 +374,12 @@ void op_tag() {
 }
 
 void op_array() {
-  fatalf("unsupported {}", bc::opcode_t::op_array);
+  const auto n_elements = (*++pc).as_i32.arg0;
+  const box value = stack_pop();
+  tracef("array {}", n_elements);
+  stack_push(Barray_patt(value, box(n_elements)));
+
+  LAMAVM_DISPATCH();
 }
 
 void op_fail() {

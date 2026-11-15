@@ -31,6 +31,7 @@ void* Bsexp(aint* args, aint bn);   // NOLINT
 aint Btag(void* d, aint t, aint n); // NOLINT
 void* Belem(void* p, aint i);       // NOLINT
 void* Barray(aint* args, aint bn);  // NOLINT
+aint Barray_patt(void* d, aint n);  // NOLINT
 }
 
 } // namespace cc
@@ -137,6 +138,13 @@ box Barray(box args, box bn) {
   aint* args1 = std::bit_cast<aint*>(args);
   const aint bn1 = std::bit_cast<aint>(bn);
   const void* r = cc::Barray(args1, bn1);
+  return std::bit_cast<box>(r);
+}
+
+box Barray_patt(box d, box n) {
+  void* d1 = std::bit_cast<void*>(d);
+  const aint n1 = std::bit_cast<aint>(n);
+  const aint r = cc::Barray_patt(d1, n1);
   return std::bit_cast<box>(r);
 }
 

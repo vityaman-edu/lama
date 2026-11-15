@@ -12,7 +12,10 @@ So... Human asked you to add another operation (let's name it OP) implementation
 For example, an OP can be SEXP, ADD, etc.
 
 Do it step-by-step. Stop after each step, waiting for user comments (OK means continue).
+
 Wait using a prompt with option OK (second with own response will be added implicitly).
+
+Also there is a YOLO mode. It means you should report, but not stopping after each step. Not YOLO by default.
 
 ## Step 1. See the OP specification
 

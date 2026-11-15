@@ -23,5 +23,6 @@ namespace lamavm::interpreter {
 /* pure  */ box Btag(box d, box t, box n);    // NOLINT
 /* pure  */ box Belem(box p, box i);          // NOLINT
 /* alloc */ box Barray(box args, box bn);     // NOLINT
+/* pure  */ box Barray_patt(box d, box n);    // NOLINT
 
 } // namespace lamavm::interpreter
