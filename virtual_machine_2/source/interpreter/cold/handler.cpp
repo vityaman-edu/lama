@@ -420,7 +420,18 @@ void op_patt_closure() {
 }
 
 void op_barray() {
-  fatalf("unsupported {}", bc::opcode_t::op_barray);
+  const auto n_elements = (*++pc).as_i32.arg0;
+  tracef("barray {}", n_elements);
+
+  box* args = sp;
+  std::reverse(args, args + n_elements);
+
+  const box array = gc_call([&] { return Barray(box(args), box(n_elements)); });
+
+  sp += n_elements;
+  stack_push(array);
+
+  LAMAVM_DISPATCH();
 }
 
 void op_eof() {

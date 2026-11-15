@@ -85,6 +85,7 @@ enum class opcode_t : std::uint8_t {
   op_patt_closure = 0x66,
 
   op_barray = 0x74,
+
   op_eof = 0xFF,
 };
 

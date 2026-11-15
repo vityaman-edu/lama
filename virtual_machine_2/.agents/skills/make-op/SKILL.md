@@ -12,17 +12,17 @@ So... Human asked you to add another operation (let's name it OP) implementation
 For example, an OP can be SEXP, ADD, etc.
 
 Do it step-by-step. Stop after each step, waiting for user comments (OK means continue).
+Wait using a prompt with option OK (second with own response will be added implicitly).
 
 ## Step 1. See the OP specification
 
 See the `virtual_machine/SPEC.md`.
 Find and read the OP in the `SPEC.md`.
-Report the markdown section link.
+Report the markdown section link and summarise it in the chat.
+
+For example:
 
 > Found an OP in the SPEC.md: <link>.
-
-Then summarise it in the chat. For example:
-
 > **BEGIN_CLOSURE**
 > Enter a closure body and allocate local slots
 > `BEGIN_CLOSURE:64 n_args:32 n_locals:32 n_captured:32`

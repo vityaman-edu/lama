@@ -114,8 +114,9 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_patt_boxed:
   case bc::opcode_t::op_patt_unboxed:
   case bc::opcode_t::op_patt_closure:
-  case bc::opcode_t::op_barray:
     fatalf("unsupported {}", opcode);
+  case bc::opcode_t::op_barray:
+    return cold::op_barray;
   case bc::opcode_t::op_eof:
     return cold::op_eof;
   }
