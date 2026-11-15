@@ -1,0 +1,12 @@
+import Std;
+
+var t = time(), r = random(7), f = fopen("/dev/null", "r");
+fclose(f);
+fwrite("/dev/null", "abc");
+
+if time() >= t && r >= 0 && r < 7 && random(1) == 0 &&
+   getEnv("LAMAVM2_TEST_ABSENT_ENV_94D376") == 0 &&
+   system("exit 0") == 0 && system("exit 7") != 0 &&
+   fexists("/dev/null") == 1 &&
+   fexists("/dev/null/absent") == 0 && compare(fread("/dev/null"), "") == 0
+then write(1) else 1 / 0 fi

@@ -1,0 +1,19 @@
+import Std;
+
+var a = makeArray(3), b = clone(a), s = clone("abc"), xs = {10, 20};
+b[0] := 42;
+s[0] := 122;
+
+if length(a) == 3 && length(makeArray(0)) == 0 &&
+   a[0] == 0 && a[1] == 0 && a[2] == 0 && b[0] == 42 &&
+   compare(s, "zbc") == 0 && clone(-7) == -7 &&
+   fst([10, 20]) == 10 && snd(Pair(10, 20)) == 20 &&
+   hd(xs) == 10 && hd(tl(xs)) == 20 && tl(tl(xs)) == 0 &&
+   compare([1, 2], [1, 2]) == 0 && compare(1, 2) < 0 &&
+   compare(2, 1) > 0 && flatCompare(7, 7) == 0 &&
+   flatCompare(1, 2) < 0 && flatCompare(2, 1) > 0 &&
+   hash([1, 2]) == hash([1, 2]) &&
+   compareTags(Leaf, Leaf(1)) == 0 &&
+   compareTags(Leaf, Other) != 0 && tagHash("Leaf") == tagHash("Leaf") &&
+   kindOf(1) == kindOf(2) && kindOf("a") != kindOf([1])
+then write(1) else 1 / 0 fi

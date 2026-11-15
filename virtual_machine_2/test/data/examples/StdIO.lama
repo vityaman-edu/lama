@@ -1,0 +1,7 @@
+import Std;
+
+var n = read();
+write(n);
+write(read());
+write(compare(readLine(), "hello world"));
+write(readLine())

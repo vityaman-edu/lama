@@ -1,0 +1,19 @@
+import Std;
+
+var s = makeString(3);
+s[0] := 97;
+s[1] := 98;
+s[2] := 99;
+
+if length(s) == 3 &&
+   compare(s, "abc") == 0 &&
+   stringInt("-42") == -42 &&
+   compare(string(42), "42") == 0 &&
+   compare(substring("abcdef", 2, 3), "cde") == 0 &&
+   compare(substring("abc", 3, 0), "") == 0 &&
+   compare(stringcat({"ab", "", "cd"}), "abcd") == 0 &&
+   matchSubString("abcdef", "cd", 2) == 1 &&
+   matchSubString("abcdef", "cd", 1) == 0 &&
+   uppercase(97) == 65 && lowercase(90) == 122 &&
+   uppercase(48) == 48 && lowercase(48) == 48
+then write(1) else 1 / 0 fi
