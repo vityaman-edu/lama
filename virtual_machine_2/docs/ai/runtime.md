@@ -9,12 +9,13 @@ The runtime interface lives in
 | `box.hpp` / `box.cpp` | Tagged words and explicit integer/pointer conversion |
 | `state.hpp` / `state.cpp` | Singleton stack, unit contexts, registers, and frames |
 | `gc.hpp` / `gc.cpp` | C collector initialization and stack boundaries |
-| `std.hpp` / `std.cpp` | C++ wrappers for C runtime arithmetic and string allocation |
+| `std.hpp` / `std.cpp` | Explicit C++ wrappers for implemented Std exports and VM helpers |
 
 The [Std inventory](std.md) lists native exports and their signatures. The
-[runtime bridge design](runtime-bridges.md) records the proposed generic bridge,
-type-only macros, symbol registry, and unconditional GC synchronization before
-FFI calls. These are future changes, separate from the implementation below.
+[runtime bridge design](runtime-bridges.md) describes the generic bridge and
+explicit wrappers, together with the proposed symbol registry and unconditional
+GC synchronization before FFI calls. The registry and common synchronization
+entry remain future changes.
 
 ## Word representation
 

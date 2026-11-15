@@ -1,10 +1,10 @@
 # Runtime bridges and symbol resolution
 
-Status: generic bridge implemented on 2026-11-15. Macros, common GC call entry,
-and symbol resolution remain design decisions; those sections do not authorize
-source implementation. The [Std inventory](std.md) describes the existing native
-functions; [runtime values and state](runtime.md) describes the current wrappers
-and GC boundary.
+Status: generic bridge and explicit wrapper enumeration applied on 2026-11-15.
+Common GC call entry and symbol resolution remain design decisions; those
+sections do not authorize source implementation. The [Std inventory](std.md)
+describes the existing native functions; [runtime values and state](runtime.md)
+describes the current wrappers and GC boundary.
 
 ## Generic bridge
 
@@ -21,8 +21,8 @@ result requires a separate compile-time branch with no result bit-cast.
 The conversions preserve representations. They do not apply `BOX`, `UNBOX`,
 the integer constructor of `box`, or `unbox<T>`. Runtime arguments and results
 that encode integers are already tagged. Pointer bits also remain unchanged.
-All wrappers in [`std.cpp`](../../source/interpreter/runtime/std.cpp) delegate
-to this bridge, replacing `unop`, `binop`, and handwritten native conversions.
+All fixed-signature wrappers in [`std.cpp`](../../source/interpreter/runtime/std.cpp)
+delegate to this bridge, replacing `unop`, `binop`, and handwritten native conversions.
 The implementation remains private to that translation unit; public wrapper
 declarations in `std.hpp` retain their signatures. Its return type is `box` for
 non-void native results and `void` for native `void` results. The parameter pack
@@ -33,65 +33,33 @@ and be trivially copyable. These are compile-time requirements, consistent
 with the [C++ bit-cast constraints](https://eel.is/c++draft/bit.cast). They do
 not establish runtime pointer validity or semantic argument types.
 
-## Declaration and definition macros
+## Explicit declarations and definitions
 
-Use exactly these two public macros, without an effect parameter:
+The boxed declarations in `std.hpp`, native declarations in `std.cpp`, and
+boxed definitions in `std.cpp` explicitly enumerate the same 71 functions in
+runtime definition order. They cover implemented Std exports and the existing
+VM helpers. Every parameter name matches its native definition, including
+`p` and `q` for binary operators, `args` for argument-slot pointers, and `s`
+for `LtagHash`. Native signatures preserve the runtime types, including
+`char*` rather than `const char*` for `LtagHash`.
 
-```cpp
-LAMAVM_RUNTIME_FUNCTION_DECLARE(r, n, ...)
-LAMAVM_RUNTIME_FUNCTION_DEFINE(r, n, ...)
-```
+Each fixed native parameter becomes a `box` parameter. Non-void native results
+become `box` results; native `void` results remain `void`. Fixed-signature
+wrappers delegate to `bridge`. Declarations remain in the header and definitions
+in the matching `.cpp`; wrapper generation macros are not used.
+Functions flagged by Clang Tidy carry `NOLINT`, as requested, preserving native
+identifiers and the explicit C-style variadic stubs.
 
-`r` is the native return type. `n` is the exact native symbol name, including
-case. The remaining macro arguments are native parameter types only. The
-generated parameter names are `arg0`, `arg1`, and so on. Zero-argument functions
-have an empty type list.
+Variadic native declarations preserve their fixed parameter types, names, and
+trailing `...`. Boxed declarations and definitions replace each fixed type with
+`box` and retain `...`. The five variadic boxed definitions (`failure`,
+`Lassert`, `Bsprintf`, `Bprintf`, and `Bfprintf`) call `fatalf` with an unsupported
+variadic call diagnostic. They do not forward arguments or call native code.
 
-`DECLARE` invocations document meaningful parameter names in comments after
-the types. These comments are explicitly requested documentation; they are not
-input to macro expansion. `DEFINE` invocations repeat only the types.
-
-```cpp
-LAMAVM_RUNTIME_FUNCTION_DECLARE(void*, Bstring, aint* /* args */)
-LAMAVM_RUNTIME_FUNCTION_DECLARE(void*, Barray, aint* /* args */, aint /* bn */)
-LAMAVM_RUNTIME_FUNCTION_DECLARE(aint, Ls__Infix_43, void* /* left */, void* /* right */)
-LAMAVM_RUNTIME_FUNCTION_DECLARE(aint, Ltime)
-
-LAMAVM_RUNTIME_FUNCTION_DEFINE(void*, Bstring, aint*)
-LAMAVM_RUNTIME_FUNCTION_DEFINE(void*, Barray, aint*, aint)
-LAMAVM_RUNTIME_FUNCTION_DEFINE(aint, Ls__Infix_43, void*, void*)
-LAMAVM_RUNTIME_FUNCTION_DEFINE(aint, Ltime)
-```
-
-Both `Bstring` and `Barray` return `void *` in the runtime. `BString` and
-`BArray` are not their symbol spellings.
-
-The responsibilities are split between the header and implementation:
-
-| Macro | Generated interface |
-|:--|:--|
-| `DECLARE` | Boxed function declaration in `lamavm::interpreter` |
-| `DEFINE` | Native declaration under `extern "C"` in `lamavm::interpreter::cc`, and the boxed function definition delegating to `bridge` |
-
-Native code remains supplied by the statically linked C runtime. The macro
-declares that native function; it does not generate its implementation. Native
-declarations must match the runtime's actual signatures.
-
-Each fixed native parameter becomes a `box` parameter in the public wrapper.
-For example, the boxed declaration corresponding to `Barray` is conceptually:
-
-```cpp
-box Barray(box arg0, box arg1);
-```
-
-Non-void native returns become `box` returns. Native `void` returns remain
-`void` in the boxed wrapper; the result convention for bytecode calls is a
-separate decision below. Keep ordinary handwritten headers declaration-only
-and wrapper definitions in the matching `.cpp`. Any template definition must
-be available where it is instantiated.
-
-There are no `alloc` or `pure` annotations in the proposed declarations,
-definitions, bridge, or runtime symbol registry.
+The formatted-output wrappers use the ordinary C targets `Bsprintf`, `Bprintf`,
+and `Bfprintf`, rather than the `L` assembly entry points. `failure` uses the
+ordinary C target of the same name. `LenableGC` and `LdisableGC` have no
+implementation in the linked runtime and are not declared or wrapped here.
 
 ## GC synchronization
 
@@ -111,7 +79,7 @@ boundary must preserve that stack-scanning contract. Existing explicit
 ## Symbol registry and span adapters
 
 Resolve a runtime function name through an explicit name-to-call registry.
-Registry entries refer to generated adapters with a common callable interface.
+Registry entries refer to adapters with a common callable interface.
 Each adapter's target function and native signature are known at compile time.
 Fixed-signature invocation therefore requires neither libffi nor `dlsym`.
 
@@ -164,7 +132,7 @@ also need to remain distinct from the functions exported by `Std.i`.
 
 The registry must describe or select the appropriate logical calling shape.
 How these special adapters are declared and generated remains undecided; the
-type-only macros do not encode their logical arity.
+native signatures do not encode their logical arity.
 
 Argument-array functions can register slots as GC roots and rewrite them after
 objects move. Their storage must therefore support those writes. A const span
@@ -175,17 +143,9 @@ updates must be specified before implementing these adapters.
 
 ## Variadic functions
 
-Keep `...` in declaration descriptions, for example:
-
-```cpp
-LAMAVM_RUNTIME_FUNCTION_DECLARE(void, Bprintf, char* /* format */, ...)
-```
-
-The fixed parameter becomes `box`; the trailing ellipsis remains `...`.
-Variadic forwarding and executable span adapters are deferred. A macro cannot
-implement forwarding merely by repeating `...`, and a fixed-signature bridge
-cannot infer a runtime argument pack. These declarations do not establish
-working variadic definitions or callable registry entries.
+The explicit variadic wrappers currently fail through `fatalf`, as described
+above. Native variadic forwarding and executable span adapters remain deferred.
+A fixed-signature bridge cannot infer a runtime argument pack.
 
 `printf`, `fprintf`, `sprintf`, `assert`, and `failure` require this later
 decision. On x86-64, their assembly entry points also have additional calling
@@ -193,7 +153,7 @@ requirements; see the [native signature inventory](std.md#variadic-functions).
 
 ## Runtime validation boundary
 
-Correct declarations, generated adapters, and exact argument counts establish
+Correct declarations, adapters, and exact argument counts establish
 the native call shape. They do not prove that a LaMa word is a valid string,
 array, external handle, or pointer. Bit-casting supplies no such validation.
 The runtime's current checks do not make arbitrary bytecode memory-safe.

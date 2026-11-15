@@ -7,8 +7,8 @@ against [`runtime.c`](../../contrib/runtime/runtime.c),
 [`printf.S`](../../contrib/runtime/printf.S) on 2026-11-15. They describe the
 64-bit C runtime; they do not imply that VM2 already supports every entry.
 
-The [runtime bridge design](runtime-bridges.md) describes the agreed C++ wrapper
-macros and proposed runtime-call adapters. This inventory supplies native
+The [runtime bridge design](runtime-bridges.md) describes explicit C++ wrappers
+and proposed runtime-call adapters. This inventory supplies native
 signatures; argument-array and variadic adapter details remain separate design
 questions.
 
