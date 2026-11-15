@@ -1,0 +1,8 @@
+fun make(x) {
+  var y = 2;
+  fun f() { x + y }
+  f
+}
+
+var f = make(40);
+if f() == 42 then 0 else 1 / 0 fi

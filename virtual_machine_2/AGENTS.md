@@ -24,11 +24,11 @@ Force Spec Driven Development. Write code only when it is applied.
 
 Keep everything clean, clear, elegant, minimal.
 
-Do not leave comments in source code (except namespace comments).
+Agents do not leave comments in source code (except namespace comments).
 
-Do not disable Clang Tidy rules unless user asked.
+Agents do not disable Clang Tidy rules unless user asked.
 
-Speak english.
+Agents speak english.
 
 ## Code Style
 

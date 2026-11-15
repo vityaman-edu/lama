@@ -1,0 +1,6 @@
+import Sum1;
+
+var f = sum;
+var sentinel = 100;
+
+if f(40, 2) == 42 && sentinel == 100 then 0 else 1 / 0 fi

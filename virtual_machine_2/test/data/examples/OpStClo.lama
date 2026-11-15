@@ -1,0 +1,7 @@
+fun make(x) {
+  fun next() { x := x + 1 }
+  next
+}
+
+var f = make(40);
+if f() == 41 && f() == 42 then 0 else 1 / 0 fi

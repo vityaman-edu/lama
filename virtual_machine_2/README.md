@@ -112,11 +112,11 @@ Call to the external bytecode file.
 
 ### Clojure
 
-- BEGIN_CLOJURE
 - CLOSURE
-- CALLC
+- BEGIN_CLOJURE
 - ST_CLO
 - LD_CLO
+- CALLC
 
 ### Pattern Matching
 

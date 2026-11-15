@@ -1,0 +1,6 @@
+import ClosureFactory;
+
+var sentinel = 100;
+var f = makeClosure(38);
+
+if f(2) == 42 && f(3) == 45 && sentinel == 100 then 0 else 1 / 0 fi

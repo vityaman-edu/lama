@@ -58,7 +58,7 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_sexp:
     return cold::op_sexp;
   case bc::opcode_t::op_sta:
-    fatalf("unsupported {}", opcode);
+    return cold::op_sta;
   case bc::opcode_t::op_jmp:
     return cold::op_jmp;
   case bc::opcode_t::op_end:
@@ -78,7 +78,7 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_ld_arg:
     return cold::op_ld_arg;
   case bc::opcode_t::op_ld_clo:
-    fatalf("unsupported {}", opcode);
+    return cold::op_ld_clo;
   case bc::opcode_t::op_st_glo:
     return cold::op_st_glo;
   case bc::opcode_t::op_st_loc:
@@ -86,7 +86,7 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_st_arg:
     return cold::op_st_arg;
   case bc::opcode_t::op_st_clo:
-    fatalf("unsupported {}", opcode);
+    return cold::op_st_clo;
   case bc::opcode_t::op_cjmp_z:
     return cold::op_cjmp_z;
   case bc::opcode_t::op_cjmp_nz:
@@ -94,9 +94,11 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_begin:
     return cold::op_begin;
   case bc::opcode_t::op_begin_closure:
+    return cold::op_begin_closure;
   case bc::opcode_t::op_closure:
+    return cold::op_closure;
   case bc::opcode_t::op_callc:
-    fatalf("unsupported {}", opcode);
+    return cold::op_callc;
   case bc::opcode_t::op_call:
     return cold::op_call;
   case bc::opcode_t::op_tag:
@@ -104,18 +106,25 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_array:
     return cold::op_array;
   case bc::opcode_t::op_fail:
+    return cold::op_fail;
   case bc::opcode_t::op_fail_keep:
-    fatalf("unsupported {}", opcode);
+    return cold::op_fail_keep;
   case bc::opcode_t::op_line:
     return cold::op_line;
   case bc::opcode_t::op_patt_str_cmp:
+    return cold::op_patt_str_cmp;
   case bc::opcode_t::op_patt_string:
+    return cold::op_patt_string;
   case bc::opcode_t::op_patt_array:
+    return cold::op_patt_array;
   case bc::opcode_t::op_patt_sexp:
+    return cold::op_patt_sexp;
   case bc::opcode_t::op_patt_boxed:
+    return cold::op_patt_boxed;
   case bc::opcode_t::op_patt_unboxed:
+    return cold::op_patt_unboxed;
   case bc::opcode_t::op_patt_closure:
-    fatalf("unsupported {}", opcode);
+    return cold::op_patt_closure;
   case bc::opcode_t::op_barray:
     return cold::op_barray;
   case bc::opcode_t::op_eof:

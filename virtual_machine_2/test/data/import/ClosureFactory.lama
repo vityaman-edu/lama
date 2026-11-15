@@ -1,0 +1,9 @@
+public closureBase = 2;
+
+public fun makeClosure(x) {
+  fun next(y) {
+    x := x + y;
+    x + closureBase
+  }
+  next
+}

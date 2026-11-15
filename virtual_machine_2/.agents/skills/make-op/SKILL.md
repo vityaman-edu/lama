@@ -22,6 +22,7 @@ Also there is a YOLO mode. It means you should report, but not stopping after ea
 See the `virtual_machine/SPEC.md`.
 Find and read the OP in the `SPEC.md`.
 Report the markdown section link and summarise it in the chat.
+Use line reference, rather than an anchor.
 
 For example:
 

@@ -1,0 +1,11 @@
+fun make(x) {
+  fun f(y) {
+    var z;
+    z := x + y;
+    z
+  }
+  f
+}
+
+var f = make(40);
+if f(2) == 42 then 0 else 1 / 0 fi

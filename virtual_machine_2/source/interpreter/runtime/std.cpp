@@ -25,13 +25,14 @@ aint Ls__Infix_3361(void* x, void* y); // NOLINT
 aint Ls__Infix_3838(void* x, void* y); // NOLINT
 aint Ls__Infix_3333(void* x, void* y); // NOLINT
 
-void* Bstring(aint* args);          // NOLINT
-aint LtagHash(const char* s);       // NOLINT
-void* Bsexp(aint* args, aint bn);   // NOLINT
-aint Btag(void* d, aint t, aint n); // NOLINT
-void* Belem(void* p, aint i);       // NOLINT
-void* Barray(aint* args, aint bn);  // NOLINT
-aint Barray_patt(void* d, aint n);  // NOLINT
+void* Bstring(aint* args);           // NOLINT
+aint LtagHash(const char* s);        // NOLINT
+void* Bsexp(aint* args, aint bn);    // NOLINT
+aint Btag(void* d, aint t, aint n);  // NOLINT
+void* Belem(void* p, aint i);        // NOLINT
+void* Barray(aint* args, aint bn);   // NOLINT
+aint Barray_patt(void* d, aint n);   // NOLINT
+void* Bclosure(aint* args, aint bn); // NOLINT
 }
 
 } // namespace cc
@@ -145,6 +146,13 @@ box Barray_patt(box d, box n) {
   void* d1 = std::bit_cast<void*>(d);
   const aint n1 = std::bit_cast<aint>(n);
   const aint r = cc::Barray_patt(d1, n1);
+  return std::bit_cast<box>(r);
+}
+
+box Bclosure(box args, box bn) {
+  aint* args1 = std::bit_cast<aint*>(args);
+  const aint bn1 = std::bit_cast<aint>(bn);
+  const void* r = cc::Bclosure(args1, bn1);
   return std::bit_cast<box>(r);
 }
 
