@@ -1,14 +1,15 @@
 #include "loop.hpp"
 
-#include "bc/units.hpp"
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/gc.hpp"
+#include "interpreter/runtime/state.hpp"
 #include "interpreter/runtime/std.hpp"
 
 #include "op/handler.hpp"
 #include "op/word.hpp"
 
 #include "bc/layout.hpp"
+#include "bc/units.hpp"
 
 #include "core/assert.hpp"
 #include "core/log.hpp"
@@ -17,33 +18,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <limits>
-#include <span>
-#include <string_view>
-#include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace lamavm::interpreter {
-
-namespace {
-
-struct uctx {
-  std::span<const char> data;
-  std::span<const op::word_t> text;
-  std::size_t glo_base = 0;
-};
-
-bc::symbol::index symbols;
-std::vector<uctx> units;
-std::vector<box> stack;
-
-const op::word_t* pc = nullptr;
-box* sp = nullptr;
-box* fp = nullptr;
-const uctx* up = nullptr;
-
-} // namespace
 
 namespace {
 

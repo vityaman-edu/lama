@@ -172,3 +172,8 @@ TODO
 
 - Span that has end only at DEBUG and checks range bounds
 - Strong Alias Box for stack content and Std functions args
+- HotSpot. Replace opcodes with handlers. Handlers are naive.
+  When execution threshold is exceeded, intruction is specialized.
+- JIT. Take the function, somehow to turn interpreter into
+  native code. Somehow get LLVM IR from interpreter handlers.
+- When the function code is specialized, no need to put `up` on stack.
