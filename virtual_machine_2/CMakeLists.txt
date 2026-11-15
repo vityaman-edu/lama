@@ -25,6 +25,7 @@ set(LAMAVM_CXX_FLAGS -Wall -Wextra -Wpedantic -Werror)
 option(LAMAVM_TRACE "Enable VM trace logging" OFF)
 
 include(cmake/Cxxopts.cmake)
+include(cmake/Libffi.cmake)
 include(cmake/Sanitizer.cmake)
 include(cmake/Library.cmake)
 
@@ -71,4 +72,8 @@ target_include_directories(lamavm2 PRIVATE
 target_include_directories(lamavm2 SYSTEM PRIVATE "${PROJECT_SOURCE_DIR}")
 target_compile_options(lamavm2 PRIVATE ${LAMAVM_CXX_FLAGS})
 target_compile_definitions(lamavm2 PRIVATE $<$<BOOL:${LAMAVM_TRACE}>:TRACE>)
-target_link_libraries(lamavm2 PRIVATE lama_runtime cxxopts::cxxopts)
+target_link_libraries(lamavm2
+  PRIVATE
+  lama_runtime
+  cxxopts::cxxopts
+  libffi::libffi)

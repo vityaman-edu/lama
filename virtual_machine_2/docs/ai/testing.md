@@ -39,6 +39,24 @@ reference VM disassembly. Compiler disassembly is not printed, even with
 `--disassemble`; that option still requests and reads the compiler listing.
 `--show-stderr` prints the first run's stderr for each measured implementation.
 
+## Variadic runtime fixtures
+
+Applied test specification: `examples/StdVararg*` covers `assert`, `printf`,
+`sprintf`, and `fprintf`. Each fixture has an `I,Std;` interface to select
+VM-only comparison because the source interpreter lacks these native builtins.
+
+- `Assert` checks true conditions, including a non-unit truth value, with
+  empty and mixed variadic tails; reaching its final output proves continuation.
+- `AssertFail` checks that a false condition exits with code 255 before any
+  subsequent output. Stderr remains diagnostic only.
+- `Printf` exercises an empty format, literal percent signs, signed integers,
+  strings, characters, dynamic width and precision, and enough mixed arguments
+  to exceed register argument capacity.
+- `Sprintf` checks returned strings for empty, literal, mixed, dynamic-width,
+  and many-argument calls against explicit expected values.
+- `Fprintf` writes empty, literal, mixed, and many-argument calls to a file in
+  the harness's temporary directory, closes it, and checks the exact contents.
+
 ## Import fixtures
 
 Keep `.lama` sources and sibling `.i` interfaces together. The bytecode compiler

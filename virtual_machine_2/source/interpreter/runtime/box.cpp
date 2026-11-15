@@ -27,4 +27,8 @@ box::operator void*() const {
   return std::bit_cast<void*>(underlying);
 }
 
+bool box::is_ptr() const {
+  return !UNBOXED(underlying);
+}
+
 } // namespace lamavm::interpreter

@@ -1,0 +1,13 @@
+import Std;
+
+var f = fopen("StdVarargFprintf.out", "w");
+fprintf(f, "");
+fprintf(f, "literal %%\n");
+fprintf(f, "%s %d %c %s\n", "mixed", -42, 65, "end");
+fprintf(f, "[%*d] [%.*s]\n", 5, -7, 3, "abcdef");
+fprintf(f, "%d %s %d %s %d %s %d %s\n", -1, "a", 0, "b", 3, "c", 4, "d");
+fclose(f);
+
+if compare(fread("StdVarargFprintf.out"),
+           "literal %\nmixed -42 A end\n[   -7] [abc]\n-1 a 0 b 3 c 4 d\n") == 0
+then write(1) else 1 / 0 fi

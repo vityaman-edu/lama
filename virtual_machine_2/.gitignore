@@ -13,3 +13,4 @@ __pycache__/
 
 !/test/data/examples/OpFail.i
 !/test/data/examples/OpFailKeep.i
+!/test/data/examples/StdVararg*.i

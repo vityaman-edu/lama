@@ -63,34 +63,30 @@ def generate(output_dir: Path) -> None:
         is_variadic = parameters[-1:] == ["..."]
         fixed_parameters = parameters[:-1] if is_variadic else parameters
         arguments = list(zip(fixed_parameters[::2], fixed_parameters[1::2], strict=True))
-        boxed_result = "void" if result == "void" else "box"
         native_parameters = [f"{kind} {name}" for kind, name in arguments]
         boxed_parameters = [f"box {name}" for _, name in arguments]
-        definition_parameters = [
-            f"{'[[maybe_unused]] ' if is_variadic else ''}box {name}" for _, name in arguments
-        ]
         if is_variadic:
             native_parameters.append("...")
-            boxed_parameters.append("...")
-            definition_parameters.append("...")
 
         native_declarations.append(f"{result} {native_name}({', '.join(native_parameters)});")
-        boxed_declarations.append(f"{boxed_result} {native_name}({', '.join(boxed_parameters)});")
         span_signature = f"box {native_name}(std::span<box> rargs)"
         span_declarations.append(f"{span_signature};")
 
-        if is_variadic:
-            body = f'detail::unsupported_variadic("{native_name}");'
-        else:
+        if not is_variadic:
+            boxed_declarations.append(f"box {native_name}({', '.join(boxed_parameters)});")
             values = ", ".join(name for _, name in arguments)
             body = f"return detail::bridge<cc::{native_name}>({values});"
+            if result == "void":
+                body = f"detail::bridge<cc::{native_name}>({values});\n  return box{{}};"
 
-        boxed_definitions.append(
-            f"{boxed_result} {native_name}({', '.join(definition_parameters)}) {{\n  {body}\n}}"
-        )
+            boxed_definitions.append(
+                f"box {native_name}({', '.join(boxed_parameters)}) {{\n  {body}\n}}"
+            )
+
         invoke = "invoke_array_std" if std_name in ARRAY_ARITIES else "invoke_std"
-        span_call = f"detail::{invoke}(rargs, boxd::{native_name})"
-        span_body = f"{span_call};\n  return box{{}};" if result == "void" else f"return {span_call};"
+        target_namespace = "cc" if is_variadic else "boxd"
+        span_call = f"detail::{invoke}(rargs, {target_namespace}::{native_name})"
+        span_body = f"return {span_call};"
         span_definitions.append(f"{span_signature} {{\n  {span_body}\n}}")
         tail = ", std_fn_symbol::tail_kind::vararg" if is_variadic else ""
         arity = ARRAY_ARITIES.get(std_name, len(arguments))

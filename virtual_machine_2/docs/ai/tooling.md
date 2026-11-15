@@ -19,6 +19,22 @@ selected mode, then points `lamavm2` at that binary. `LAMAVM_BUILD_JOBS` control
 build parallelism and defaults to two. [The test wrapper](testing.md) selects
 the release or sanitized binary explicitly.
 
+## External dependencies
+
+CMake downloads pinned upstream dependencies into the build directory.
+`cmake/Cxxopts.cmake` provides `cxxopts::cxxopts` through FetchContent.
+`cmake/Libffi.cmake` builds the SHA-256-pinned libffi 3.8.1 release with
+ExternalProject and exposes its static archive and system headers through
+`libffi::libffi`. Both targets are private dependencies of `lamavm2`.
+Libffi headers are available as `<contrib/libffi/ffi.h>` through a build-local
+include tree; the target also provides the include path for `ffitarget.h`.
+
+Libffi uses its upstream Autotools build and requires GNU Make. The release
+archive includes `configure`, so Autotools need not be installed. Its build and
+installation stay inside the CMake build directory. It uses the selected C
+compiler and build-type flags; on macOS it targets x86-64 with the selected SDK.
+Adding the dependency does not change VM call behavior.
+
 ## C++ checks
 
 `check-cpp.sh` builds release, checks formatting, and runs Clang Tidy on source

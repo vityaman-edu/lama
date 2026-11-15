@@ -1,0 +1,6 @@
+import Std;
+
+assert(1, "true");
+assert(2, "%s %d %s", "positive", 42, "condition");
+assert(-1, "%d %s %d %s %d %s %d %s", -1, "a", 0, "b", 3, "c", 4, "d");
+write(1)

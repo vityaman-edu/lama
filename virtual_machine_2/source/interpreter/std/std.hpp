@@ -9,7 +9,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -30,9 +29,13 @@ struct std_fn_symbol {
 
 namespace detail {
 
-[[noreturn]] void unsupported_variadic(std::string_view name);
-
 box invoke_array_std(std::span<box> rargs, box (*f)(box));
+
+box invoke_variadic_std(
+  std::span<const box> rargs,
+  void (*f)(),
+  std::size_t head,
+  bool is_void_result);
 
 template <auto f, typename R, typename... T>
 std::conditional_t<std::is_void_v<R>, void, box>
@@ -50,49 +53,44 @@ auto bridge(T... args) {
 }
 
 template <typename F, std::size_t... i>
-function_traits<F>::return_type invoke_std_impl(
+box invoke_std_impl(
   std::span<const box> rargs,
   F f,
   [[maybe_unused]] std::index_sequence<i...> indices) {
-  if constexpr (std::is_void_v<typename function_traits<F>::return_type>) {
-    f(rargs[rargs.size() - 1 - i]...);
-  } else {
-    return f(rargs[rargs.size() - 1 - i]...);
-  }
+  static_assert(std::is_same_v<typename function_traits<F>::return_type, box>);
+  return f(rargs[rargs.size() - 1 - i]...);
 }
 
 template <typename F>
-function_traits<F>::return_type invoke_std_impl(std::span<const box> rargs, F f) {
+box invoke_std_impl(std::span<const box> rargs, F f) {
   using traits = function_traits<F>;
-  if constexpr (traits::is_variadic) {
-    LAMAVM_ASSERT(rargs.size() >= traits::arity);
-  } else {
-    LAMAVM_ASSERT(rargs.size() == traits::arity);
-  }
-
+  static_assert(!traits::is_variadic);
+  LAMAVM_ASSERT(rargs.size() == traits::arity);
   return invoke_std_impl(rargs, f, std::make_index_sequence<traits::arity>{});
 }
 
-template <typename R>
-R invoke_std(std::span<const box> rargs, R (*f)()) {
+box invoke_std(std::span<const box> rargs, box (*f)());
+
+template <typename... T>
+box invoke_std(std::span<const box> rargs, box (*f)(box, T...)) {
   return invoke_std_impl(rargs, f);
 }
 
 template <typename R, typename... T>
-R invoke_std(std::span<const box> rargs, R (*f)(box, T...)) {
-  return invoke_std_impl(rargs, f);
-}
-
-template <typename R, typename... T>
-R invoke_std(std::span<const box> rargs, R (*f)(box, T..., ...)) {
-  return invoke_std_impl(rargs, f);
+box invoke_std(std::span<const box> rargs, R (*f)(T..., ...)) {
+  static_assert((std::is_pointer_v<T> && ...));
+  static_assert(std::is_void_v<R> || std::is_pointer_v<R>);
+  return invoke_variadic_std(
+    rargs,
+    reinterpret_cast<void (*)()>(f),
+    sizeof...(T),
+    std::is_void_v<R>);
 }
 
 } // namespace detail
 
 namespace boxd {
 
-[[noreturn]] void failure(box s, ...);
 box Ls__Infix_58(box args);                               // NOLINT
 box Ls__Infix_3333(box p, box q);                         // NOLINT
 box Ls__Infix_3838(box p, box q);                         // NOLINT

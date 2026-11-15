@@ -2,13 +2,19 @@
 
 #include "interpreter/runtime/box.hpp"
 
+#include "core/assert.hpp"
 #include "core/log.hpp"
 
+#include <contrib/libffi/ffi.h>
 #include <contrib/runtime/runtime_common.h>
 
 #include <algorithm>
+#include <bit>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <span>
-#include <string_view>
+#include <vector>
 
 namespace lamavm::interpreter {
 
@@ -16,7 +22,6 @@ namespace cc {
 
 extern "C" {
 
-[[noreturn]] void failure(char* s, ...);
 void* Ls__Infix_58(void** args);                                // NOLINT
 aint Ls__Infix_3333(void* p, void* q);                          // NOLINT
 aint Ls__Infix_3838(void* p, void* q);                          // NOLINT
@@ -54,23 +59,72 @@ void* Li__Infix_4343(aint* args);                               // NOLINT
 
 namespace detail {
 
+box invoke_std(std::span<const box> rargs, box (*f)()) {
+  return invoke_std_impl(rargs, f);
+}
+
 box invoke_array_std(std::span<box> rargs, box (*f)(box)) {
   std::ranges::reverse(rargs);
   return f(box(rargs.data()));
 }
 
-[[noreturn]] void unsupported_variadic(std::string_view name) {
-  fatalf("unsupported variadic runtime function: {}", name);
+box invoke_variadic_std(
+  std::span<const box> rargs,
+  void (*f)(),
+  std::size_t head,
+  bool is_void_result) {
+  LAMAVM_EXPECT(rargs.size() >= head);
+  LAMAVM_EXPECT(rargs.size() <= std::numeric_limits<unsigned int>::max());
+
+  // T O D O: so each vararg call is super-costly?!
+  std::vector<std::int64_t> ints(rargs.size());
+  std::vector<void*> ptrs(rargs.size());
+  std::vector<void*> args(rargs.size());
+  std::vector<ffi_type*> ts(rargs.size());
+
+  for (std::size_t i = 0; i < head; ++i) {
+    const auto arg = rargs[rargs.size() - 1 - i];
+
+    ptrs[i] = std::bit_cast<void*>(arg);
+    ts[i] = &ffi_type_pointer;
+    args[i] = static_cast<void*>(&ptrs[i]);
+  }
+
+  for (std::size_t i = head; i < rargs.size(); ++i) {
+    const auto arg = rargs[rargs.size() - 1 - i];
+
+    if (arg.is_ptr()) {
+      ptrs[i] = static_cast<void*>(arg);
+      ts[i] = &ffi_type_pointer;
+      args[i] = static_cast<void*>(&ptrs[i]);
+    } else {
+      ints[i] = static_cast<std::int64_t>(arg);
+      ts[i] = &ffi_type_sint64;
+      args[i] = &ints[i];
+    }
+  }
+
+  ffi_cif cif;
+  const auto status = ffi_prep_cif_var(
+    &cif,
+    FFI_DEFAULT_ABI,
+    static_cast<unsigned int>(head),
+    static_cast<unsigned int>(rargs.size()),
+    is_void_result ? &ffi_type_void : &ffi_type_pointer,
+    ts.data());
+
+  if (status != FFI_OK) {
+    fatalf("FFI prep failed: status={}", static_cast<int>(status));
+  }
+
+  const void* result = nullptr;
+  ffi_call(&cif, f, is_void_result ? nullptr : static_cast<void*>(&result), args.data());
+  return is_void_result ? box{} : std::bit_cast<box>(result);
 }
 
 } // namespace detail
 
 namespace boxd {
-
-// NOLINTNEXTLINE(modernize-avoid-variadic-functions)
-[[noreturn]] void failure([[maybe_unused]] box s, ...) {
-  detail::unsupported_variadic("failure");
-}
 
 box Ls__Infix_58(box args) {
   return detail::bridge<cc::Ls__Infix_58>(args);

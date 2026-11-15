@@ -1,0 +1,11 @@
+import Std;
+
+var s = sprintf("%d %s %d %s %d %s %d %s", -1, "a", 0, "b", 3, "c", 4, "d");
+
+if compare(sprintf(""), "") == 0 &&
+   compare(sprintf("literal %%"), "literal %") == 0 &&
+   compare(sprintf("%d", -42), "-42") == 0 &&
+   compare(sprintf("%s %d %c %s", "mixed", 0, 65, "end"), "mixed 0 A end") == 0 &&
+   compare(sprintf("[%*d] [%.*s]", 5, -7, 3, "abcdef"), "[   -7] [abc]") == 0 &&
+   compare(s, "-1 a 0 b 3 c 4 d") == 0
+then write(1) else 1 / 0 fi

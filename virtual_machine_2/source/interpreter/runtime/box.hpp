@@ -14,6 +14,8 @@ public:
   explicit operator std::int64_t() const;
   explicit operator void*() const;
 
+  [[nodiscard]] bool is_ptr() const;
+
 private:
   std::int64_t underlying = 0;
 };

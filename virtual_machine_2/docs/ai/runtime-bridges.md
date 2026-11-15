@@ -52,31 +52,31 @@ the wrappers, and defines the table once. Return types, fixed parameter counts,
 and variadic flags are derived from the catalogue. Existing native signatures
 and parameter names are preserved.
 
-Each fixed native parameter becomes a `box` parameter. Non-void native results
-become `box` results; native `void` results remain `void`. Fixed-signature
-wrappers delegate to `detail::bridge`.
+Each fixed native parameter becomes a `box` parameter. Every generated boxed
+wrapper returns `box`: non-void native results preserve their representation,
+and native `void` calls return `box{}` after invocation. Fixed-signature wrappers
+delegate to `detail::bridge`, which still supports native `void` calls.
 
-The 32 functions unavailable through CALL, including encoded operators,
-`Li__Infix_4343`, `Bmatch_failure`, and `failure`, are declared and defined
+The 31 fixed-signature functions unavailable through CALL, including encoded
+operators, `Li__Infix_4343`, and `Bmatch_failure`, are declared and defined
 manually in `std.hpp` and its matching `std.cpp`. They have only boxed wrappers,
 use the same helpers, and have neither span wrappers nor registry entries.
 
-Variadic native declarations preserve their fixed parameter types, names, and
-trailing `...`. Boxed declarations and definitions replace each fixed type with
-`box` and retain `...`. The five variadic boxed definitions (`failure`,
-`Lassert`, `Bsprintf`, `Bprintf`, and `Bfprintf`) call `fatalf` with an unsupported
-variadic call diagnostic. They do not forward arguments or call native code.
+Applied variadic call specification: native declarations preserve their fixed
+parameter types, names, and trailing `...`. Variadic span adapters call the
+`extern "C"` targets directly through libffi; no boxed variadic wrappers are
+generated. The unused manual boxed `failure` stub is removed. `failure` remains
+outside the CALL registry.
 
 The formatted-output wrappers use the ordinary C targets `Bsprintf`, `Bprintf`,
-and `Bfprintf`, rather than the `L` assembly entry points. `failure` uses the
-ordinary C target of the same name. `LenableGC` and `LdisableGC` have no
-implementation in the linked runtime and are not declared or wrapped here.
+and `Bfprintf`, rather than the `L` assembly entry points. `LenableGC` and
+`LdisableGC` have no implementation in the linked runtime and are not declared
+or wrapped here.
 
 ## Uniform reversed-span overloads
 
-Each generated boxed function also has a span overload. Value-returning overloads match
-`std_fn_some_t`, which is `box (*)(std::span<const box> rargs)`; void overloads match
-`std_fn_none_t`, which is `void (*)(std::span<const box> rargs)`. The overloads
+Each generated boxed function also has a span overload returning `box`, matching
+`std_fn_some_t`, which is `box (*)(std::span<box> rargs)`. The overloads
 are enumerated in the same order as the boxed functions. They call those
 existing boxed functions, preserving their native-parameter contract rather
 than interpreting logical bytecode arguments.
@@ -86,21 +86,35 @@ types to select the original overloads.
 The span views reversed stack arguments. Boxed parameter `i` receives
 `rargs[rargs.size() - 1 - i]`. A shared invocation helper uses `LAMAVM_ASSERT`
 to require exactly the fixed arity before expanding the call. The checks follow
-the macro's existing build-mode behavior. The shared helper preserves the boxed
-function's `box` or `void` return type, with a compile-time branch for the void
-call.
+the macro's existing build-mode behavior. The shared helper requires and returns
+the boxed function's `box` result for fixed-signature calls.
 `core/functional.hpp` provides `function_traits` for fixed and C-style variadic
 function pointers, exposing `return_type`, `arity`, and `is_variadic`. Invocation
 infers this information from the selected boxed function pointer. Span wrappers
 call `detail::invoke_std(rargs, boxd::name)` without repeating boxed parameter types. Thin
-overloads select the boxed function from its overload set: zero-argument,
-fixed signatures starting with `box`, and variadic signatures starting with
-`box`. Count checks and argument expansion remain shared.
+overloads select boxed zero-argument or fixed signatures starting with `box`.
+The variadic overload instead accepts the native function pointer. Count checks
+and argument expansion remain shared for fixed-signature calls.
 
-For variadic boxed functions, the helper asserts at least the fixed argument
-count and passes the fixed arguments in the same reversed order. The boxed
-function then reports its existing unsupported-call diagnostic. Variadic
-forwarding remains unimplemented.
+For variadic native functions, `invoke_std` forwards the entire reversed span
+through libffi. It requires at least `sizeof...(T)` arguments and a total
+count representable as `unsigned int`, prepares `ffi_prep_cif_var` with that
+fixed count, and invokes the native function through `ffi_call`. Preparation
+failures terminate with a diagnostic. These checks also apply in release builds.
+
+Fixed arguments retain their `box` representation and use `ffi_type_pointer`,
+matching the native fixed pointer parameters on the supported x86-64 ABI.
+Trailing arguments use `box::is_ptr()`, defined as
+`!UNBOXED(underlying)`, to distinguish pointers from tagged integers. Pointer
+arguments preserve their addresses and use `ffi_type_pointer`; integer arguments
+are unboxed through the integer conversion and use `ffi_type_sint64`. Mutable
+integer and pointer storage and argument-address arrays live until the call
+completes. Fixed tagged arguments, including `assert`'s condition, stay tagged.
+
+The template accepts native pointer fixed parameters and a pointer or `void`
+result. Pointer results preserve their returned bits in `box`. Native `void`
+calls use `ffi_type_void` and return `box{}` without reading a native result.
+Libffi setup lives in `std.cpp`.
 
 Argument-storage functions retain their boxed pointer parameters: for example,
 the `Lsubstring` span overload takes one box containing an argument-slot pointer,
@@ -126,11 +140,12 @@ boundary must preserve that stack-scanning contract. Existing explicit
 
 The generated `std_symbols` table contains the 39 current CALL targets.
 Keys use Std names, and entries select the corresponding `span`
-wrapper, its fixed boxed parameter count, and `vararg` for the four variadic
+wrapper, its fixed parameter count, and `vararg` for the four variadic
 functions. Argument-array functions retain their current pointer-parameter
 contract, including one fixed parameter for `substring`. Internal VM helpers,
 the `sysargs` global, and the unavailable `enableGC` and `disableGC` functions
-are excluded. Direct boxed calls and span-wrapper targets use `boxd::`.
+are excluded. Fixed-signature span-wrapper targets use `boxd::`; variadic
+targets use `cc::` directly.
 This table does not apply bytecode call resolution or logical argument-array
 adaptation; those remain design decisions below.
 
@@ -161,11 +176,12 @@ registry's container and exact entry representation also remain open. Runtime
 names must map to their intended native targets: for example, `compare` denotes
 `Lcompare`; bytecode names and native symbol names are distinct.
 
-The implemented `std_fn_some_t` and `std_fn_none_t` overloads consume
-`std::span<const box>` in reverse argument order and preserve `box` or `void`
-returns. Bytecode-level argument-array adapters still need writable storage.
-Any VM stack value produced after a returning native `void` function remains a
-separate decision; the low-level bridge does not invent a native return value.
+The implemented span overloads consume `std::span<box>` in reverse argument
+order and return `box`. A native `void` CALL target produces `box{}` through
+its generated boxed wrapper for fixed-signature calls, or directly through
+libffi for variadic calls. The internal manual wrappers, including
+`Bmatch_failure`, have no span adapters and retain their native
+return convention through the low-level bridge.
 
 ## Argument-array functions
 
@@ -198,13 +214,11 @@ updates must be specified before implementing these adapters.
 
 ## Variadic functions
 
-The explicit variadic wrappers currently fail through `fatalf`, as described
-above. Native variadic forwarding and executable span adapters remain deferred.
-A fixed-signature bridge cannot infer a runtime argument pack.
-
-`printf`, `fprintf`, `sprintf`, `assert`, and `failure` require this later
-decision. On x86-64, their assembly entry points also have additional calling
-requirements; see the [native signature inventory](std.md#variadic-functions).
+`printf`, `fprintf`, `sprintf`, and `assert` use the direct span-to-native
+libffi adapters described above. They target the ordinary C functions rather
+than assembly entry points with compiler-specific calling conventions; see the
+[native signature inventory](std.md#variadic-functions). `failure` remains
+outside the CALL registry.
 
 ## Runtime validation boundary
 

@@ -1,0 +1,4 @@
+import Std;
+
+assert(0, "expected assertion failure\n");
+write(1)
