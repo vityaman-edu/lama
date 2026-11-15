@@ -18,5 +18,7 @@ namespace lamavm::interpreter {
 /* pure  */ box Ls__Infix_3838(box x, box y); // NOLINT
 /* pure  */ box Ls__Infix_3333(box x, box y); // NOLINT
 /* alloc */ box Bstring(box x);               // NOLINT
+/* pure  */ box LtagHash(box x);              // NOLINT
+/* alloc */ box Bsexp(box args, box bn);      // NOLINT
 
 } // namespace lamavm::interpreter

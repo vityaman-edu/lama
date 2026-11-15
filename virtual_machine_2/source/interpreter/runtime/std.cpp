@@ -25,7 +25,9 @@ aint Ls__Infix_3361(void* x, void* y); // NOLINT
 aint Ls__Infix_3838(void* x, void* y); // NOLINT
 aint Ls__Infix_3333(void* x, void* y); // NOLINT
 
-void* Bstring(aint* args); // NOLINT
+void* Bstring(aint* args);        // NOLINT
+aint LtagHash(const char* s);     // NOLINT
+void* Bsexp(aint* args, aint bn); // NOLINT
 }
 
 } // namespace cc
@@ -95,9 +97,22 @@ box Ls__Infix_3333(box x, box y) {
 }
 
 box Bstring(box x) {
-  aint* x1 = unbox<aint*>(x);
+  aint* x1 = std::bit_cast<aint*>(x);
   const void* r = cc::Bstring(x1);
-  return box(r);
+  return std::bit_cast<box>(r);
+}
+
+box LtagHash(box x) {
+  const char* x1 = std::bit_cast<const char*>(x);
+  const aint r = cc::LtagHash(x1);
+  return std::bit_cast<box>(r);
+}
+
+box Bsexp(box args, box bn) {
+  aint* args1 = std::bit_cast<aint*>(args);
+  aint bn1 = std::bit_cast<aint>(bn);
+  void* r = cc::Bsexp(args1, bn1);
+  return std::bit_cast<box>(r);
 }
 
 } // namespace lamavm::interpreter

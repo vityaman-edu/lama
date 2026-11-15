@@ -11,6 +11,7 @@
 #include "core/assert.hpp"
 #include "core/log.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -137,6 +138,23 @@ void op_string() {
   const char* str1 = c_str(string_offset);
   const box str2 = gc_call([&] { return Bstring(box(static_cast<const void*>(&str1))); });
   stack_push(str2);
+
+  LAMAVM_DISPATCH();
+}
+
+void op_sexp() {
+  const auto& arg = (*++pc).as_i32;
+  const std::int32_t tag_offset = arg.arg0;
+  const std::int32_t n_fields = arg.arg1;
+
+  box* args = --sp;
+  args[0] = LtagHash(box(c_str(tag_offset)));
+  std::reverse(args, args + n_fields + 1);
+
+  box sexp = gc_call([&] { return Bsexp(box(args), box(n_fields + 1)); });
+
+  sp += n_fields + 1;
+  stack_push(sexp);
 
   LAMAVM_DISPATCH();
 }

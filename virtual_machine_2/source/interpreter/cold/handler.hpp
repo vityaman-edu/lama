@@ -17,6 +17,7 @@ void op_and();
 void op_or();
 void op_const();
 void op_string();
+void op_sexp();
 void op_drop();
 void op_dup();
 void op_swap();

@@ -1,7 +1,6 @@
 #include "decode.hpp"
 
 #include "bc/layout.hpp"
-#include "core/assert.hpp"
 #include "core/log.hpp"
 #include "interpreter/cold/handler.hpp"
 #include "op/handler.hpp"
@@ -91,6 +90,7 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_eof:
     return cold::op_eof;
   case bc::opcode_t::op_sexp:
+    return cold::op_sexp;
   case bc::opcode_t::op_sta:
   case bc::opcode_t::op_elem:
   case bc::opcode_t::op_ld_clo:
@@ -110,7 +110,7 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_patt_unboxed:
   case bc::opcode_t::op_patt_closure:
   case bc::opcode_t::op_barray:
-    break;
+    fatalf("unexpected handler {}", handler_opcode);
   }
 
   fatalf("unexpected handler {:x}", std::to_underlying(handler_opcode));
@@ -127,19 +127,34 @@ void decode(std::span<op::word_t> text) {
     switch (opcode) {
     case bc::opcode_t::op_const:
     case bc::opcode_t::op_string:
+    case bc::opcode_t::op_sexp:
     case bc::opcode_t::op_ld_glo:
     case bc::opcode_t::op_ld_loc:
     case bc::opcode_t::op_ld_arg:
+    case bc::opcode_t::op_ld_clo:
     case bc::opcode_t::op_st_glo:
     case bc::opcode_t::op_st_loc:
     case bc::opcode_t::op_st_arg:
+    case bc::opcode_t::op_st_clo:
     case bc::opcode_t::op_jmp:
     case bc::opcode_t::op_cjmp_z:
     case bc::opcode_t::op_cjmp_nz:
     case bc::opcode_t::op_call:
     case bc::opcode_t::op_begin:
+    case bc::opcode_t::op_callc:
+    case bc::opcode_t::op_tag:
+    case bc::opcode_t::op_array:
+    case bc::opcode_t::op_fail:
+    case bc::opcode_t::op_fail_keep:
     case bc::opcode_t::op_line:
-      ++i;
+    case bc::opcode_t::op_barray:
+      i += 1;
+      break;
+    case bc::opcode_t::op_begin_closure:
+      i += 2;
+      break;
+    case bc::opcode_t::op_closure:
+      i += 1 + text[i + 1].as_i32.arg1;
       break;
     case bc::opcode_t::op_add:
     case bc::opcode_t::op_sub:
@@ -154,24 +169,13 @@ void decode(std::span<op::word_t> text) {
     case bc::opcode_t::op_ne:
     case bc::opcode_t::op_and:
     case bc::opcode_t::op_or:
-    case bc::opcode_t::op_sexp:
     case bc::opcode_t::op_sta:
     case bc::opcode_t::op_end:
     case bc::opcode_t::op_drop:
     case bc::opcode_t::op_dup:
     case bc::opcode_t::op_swap:
     case bc::opcode_t::op_eof:
-      break;
     case bc::opcode_t::op_elem:
-    case bc::opcode_t::op_ld_clo:
-    case bc::opcode_t::op_st_clo:
-    case bc::opcode_t::op_begin_closure:
-    case bc::opcode_t::op_closure:
-    case bc::opcode_t::op_callc:
-    case bc::opcode_t::op_tag:
-    case bc::opcode_t::op_array:
-    case bc::opcode_t::op_fail:
-    case bc::opcode_t::op_fail_keep:
     case bc::opcode_t::op_patt_str_cmp:
     case bc::opcode_t::op_patt_string:
     case bc::opcode_t::op_patt_array:
@@ -179,8 +183,7 @@ void decode(std::span<op::word_t> text) {
     case bc::opcode_t::op_patt_boxed:
     case bc::opcode_t::op_patt_unboxed:
     case bc::opcode_t::op_patt_closure:
-    case bc::opcode_t::op_barray:
-      LAMAVM_UNEXPECTEDLY("unsupported opcode {}", opcode);
+      break;
     }
   }
 }

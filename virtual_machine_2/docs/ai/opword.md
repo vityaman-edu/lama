@@ -27,6 +27,20 @@ and initializes `arg1` to zero. CLOSURE adds one word per capture designation.
 | BEGIN | 9 bytes | 2 words / 16 bytes |
 | CALL | 9 bytes | 2 words / 16 bytes |
 
+Handler decoding advances by the following total word counts, including the
+handler word, and leaves operand words unchanged:
+
+| Instructions | Total words |
+|:--|--:|
+| BINOP forms, STA, END, DROP, DUP, SWAP, ELEM, PATT forms, EOF | 1 |
+| CONST, STRING, SEXP, JMP, LD/ST forms, CJMP forms, BEGIN, CALLC, CALL, TAG, ARRAY, FAIL, FAIL_KEEP, LINE, BARRAY | 2 |
+| BEGIN_CLOSURE | 3 |
+| CLOSURE | 2 + n_captured |
+
+For CLOSURE, `n_captured` is `arg1` of the first operand word. Each capture
+designation occupies one additional word. These counts describe the parsed
+layout; unsupported handlers are still rejected during handler decoding.
+
 The union is a storage representation. Parsing and handler decoding establish
 which member consumers read; its existence does not make arbitrary member
 reinterpretation valid. The source checks `ctype<word_t>` and equal sizes of
