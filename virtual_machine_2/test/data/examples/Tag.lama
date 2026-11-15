@@ -1,0 +1,14 @@
+fun is_leaf(x) {
+  case x of
+    Leaf -> 1
+  | _ -> 0
+  esac
+}
+
+if is_leaf(Leaf) == 1 &&
+   is_leaf(Other) == 0 &&
+   is_leaf(Leaf(1)) == 0 &&
+   is_leaf(Leaf(1, 2)) == 0 &&
+   is_leaf(42) == 0 &&
+   is_leaf("text") == 0
+then 0 else 1 / 0 fi

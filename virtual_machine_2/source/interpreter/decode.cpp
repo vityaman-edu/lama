@@ -100,6 +100,7 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_call:
     return cold::op_call;
   case bc::opcode_t::op_tag:
+    return cold::op_tag;
   case bc::opcode_t::op_array:
   case bc::opcode_t::op_fail:
   case bc::opcode_t::op_fail_keep:

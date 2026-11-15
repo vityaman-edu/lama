@@ -20,8 +20,14 @@ layout and does not add operand, stack, or control-flow validation.
 
 Supported operations are the 13 arithmetic/comparison/boolean BINOP forms,
 CONST, STRING, SEXP, DROP, DUP, SWAP, LD/ST for globals, locals and arguments, JMP,
-CJMP_Z, CJMP_NZ, CALL, BEGIN, END, LINE, and EOF. LINE consumes its operand and
+CJMP_Z, CJMP_NZ, CALL, BEGIN, END, TAG, LINE, and EOF. LINE consumes its operand and
 has no execution effect. Other opcodes remain unsupported.
+
+TAG occupies two words: the handler and packed `tag_offset`, `n_fields`
+operands. It resolves the tag in the current unit with `LtagHash`, consumes
+one value, and pushes the boxed result of `Btag(value, tag_hash, BOX(n_fields))`.
+The result is true only for an S-expression with both the expected tag and
+arity. The operation does not allocate and leaves stack depth unchanged.
 
 `bc::opcode_t` in `source/bc/layout.hpp` defines the order for opcode switch
 cases, handler declarations and definitions, and packed-layout declarations

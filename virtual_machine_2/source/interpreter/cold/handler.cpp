@@ -353,12 +353,19 @@ void op_call() {
   }
 
   pc = up->text.data() + target;
-
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_tag() {
-  fatalf("unsupported {}", bc::opcode_t::op_tag);
+  const auto& arg = (*++pc).as_i32;
+  const std::int32_t tag_offset = arg.arg0;
+  const std::int32_t n_fields = arg.arg1;
+
+  const box tag_hash = LtagHash(box(c_str(tag_offset)));
+  const box value = stack_pop();
+  stack_push(Btag(value, tag_hash, box(n_fields)));
+
+  LAMAVM_DISPATCH();
 }
 
 void op_array() {
