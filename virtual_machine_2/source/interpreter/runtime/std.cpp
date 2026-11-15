@@ -33,11 +33,27 @@ void* Belem(void* p, aint i);        // NOLINT
 void* Barray(aint* args, aint bn);   // NOLINT
 aint Barray_patt(void* d, aint n);   // NOLINT
 void* Bclosure(aint* args, aint bn); // NOLINT
+aint Bstring_patt(void* x, void* y); // NOLINT
+aint Bstring_tag_patt(void* x);      // NOLINT
+aint Barray_tag_patt(void* x);       // NOLINT
+aint Bsexp_tag_patt(void* x);        // NOLINT
+aint Bboxed_patt(void* x);           // NOLINT
+aint Bunboxed_patt(void* x);         // NOLINT
+aint Bclosure_tag_patt(void* x);     // NOLINT
+
+void Bmatch_failure(void* v, char* fname, aint line, aint col); // NOLINT
 }
 
 } // namespace cc
 
 namespace {
+
+template <auto f>
+box unop(box x) {
+  auto* const x1 = std::bit_cast<void*>(x);
+  const auto r = f(x1);
+  return std::bit_cast<box>(r);
+}
 
 template <auto f>
 box binop(box x, box y) {
@@ -154,6 +170,42 @@ box Bclosure(box args, box bn) {
   const aint bn1 = std::bit_cast<aint>(bn);
   const void* r = cc::Bclosure(args1, bn1);
   return std::bit_cast<box>(r);
+}
+
+box Bstring_patt(box x, box y) {
+  return binop<cc::Bstring_patt>(x, y);
+}
+
+box Bstring_tag_patt(box x) {
+  return unop<cc::Bstring_tag_patt>(x);
+}
+
+box Barray_tag_patt(box x) {
+  return unop<cc::Barray_tag_patt>(x);
+}
+
+box Bsexp_tag_patt(box x) {
+  return unop<cc::Bsexp_tag_patt>(x);
+}
+
+box Bboxed_patt(box x) {
+  return unop<cc::Bboxed_patt>(x);
+}
+
+box Bunboxed_patt(box x) {
+  return unop<cc::Bunboxed_patt>(x);
+}
+
+box Bclosure_tag_patt(box x) {
+  return unop<cc::Bclosure_tag_patt>(x);
+}
+
+void Bmatch_failure(box v, box fname, box line, box col) {
+  void* v1 = std::bit_cast<void*>(v);
+  char* fname1 = std::bit_cast<char*>(fname);
+  const aint line1 = std::bit_cast<aint>(line);
+  const aint col1 = std::bit_cast<aint>(col);
+  cc::Bmatch_failure(v1, fname1, line1, col1);
 }
 
 } // namespace lamavm::interpreter

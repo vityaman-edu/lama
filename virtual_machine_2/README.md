@@ -114,9 +114,9 @@ Call to the external bytecode file.
 
 - CLOSURE
 - BEGIN_CLOJURE
+- CALLC
 - ST_CLO
 - LD_CLO
-- CALLC
 
 ### Pattern Matching
 

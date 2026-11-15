@@ -48,6 +48,12 @@ dependency closure into the same output directory. It caches a successful
 compilation before visiting dependencies, allowing cycles to reach VM loading.
 Imports without sibling sources are left to the configured library path.
 
+`examples/OpFail` and `examples/OpFailKeep` also have interfaces to select VM-only
+comparison. Both VMs report pattern-match failure with exit code 255, while
+`lamai` raises an OCaml exception and exits with code 2. These fixtures exercise
+the failure instructions and expect matching failure, rather than successful
+execution.
+
 | Fixtures | Purpose |
 |:--|:--|
 | `Leaf`, `Left`, `Right`, `Diamond`, `Reverse` | Shared dependencies and differing import orders |

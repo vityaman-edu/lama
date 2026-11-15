@@ -1,0 +1,13 @@
+fun is_match(x) {
+  case x of
+    #sexp -> 1
+  | _ -> 0
+  esac
+}
+
+if is_match(Node) == 1 &&
+   is_match(Node(1)) == 1 &&
+   is_match(42) == 0 &&
+   is_match("text") == 0 &&
+   is_match([]) == 0
+then 0 else 1 / 0 fi

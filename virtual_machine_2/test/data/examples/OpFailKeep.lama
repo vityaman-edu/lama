@@ -1,0 +1,3 @@
+case Node("text", [1, 2]) of
+  Other -> 0
+esac

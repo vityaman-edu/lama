@@ -23,6 +23,7 @@
 namespace lamavm::interpreter {
 
 struct uctx {
+  const char* name = nullptr;
   std::span<const char> data;
   std::span<const op::word_t> text;
   std::size_t glo_base = 0;

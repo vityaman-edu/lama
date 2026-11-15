@@ -1,0 +1,15 @@
+fun is_match(x) {
+  case x of
+    "text" -> 1
+  | _ -> 0
+  esac
+}
+
+if is_match("text") == 1 &&
+   is_match("other") == 0 &&
+   is_match("tex") == 0 &&
+   is_match("") == 0 &&
+   is_match(42) == 0 &&
+   is_match([]) == 0 &&
+   is_match(Node(1)) == 0
+then 0 else 1 / 0 fi

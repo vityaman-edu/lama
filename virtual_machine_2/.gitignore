@@ -10,3 +10,6 @@ lamavm
 lamavm2
 __pycache__/
 .ruff_cache/
+
+!/test/data/examples/OpFail.i
+!/test/data/examples/OpFailKeep.i

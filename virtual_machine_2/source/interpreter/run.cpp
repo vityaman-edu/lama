@@ -59,6 +59,7 @@ void run(bc::units units1) {
     decode(unit.code_section);
 
     units.push_back({
+      .name = name.c_str(),
       .data = unit.string_table,
       .text = unit.code_section,
       .glo_base = globals,

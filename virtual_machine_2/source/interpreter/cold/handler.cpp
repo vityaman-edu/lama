@@ -25,6 +25,15 @@ namespace lamavm::interpreter::cold {
 namespace {
 
 template <auto f>
+class unop {
+public:
+  static void operator()() {
+    const auto x = stack_pop();
+    stack_push(f(x));
+  }
+};
+
+template <auto f>
 class binop {
 public:
   static void operator()() {
@@ -490,11 +499,20 @@ void op_array() {
 }
 
 void op_fail() {
-  fatalf("unsupported {}", bc::opcode_t::op_fail);
+  const auto args = (*++pc).as_i32;
+  const auto line = args.arg0;
+  const auto col = args.arg1;
+  const box value = stack_pop();
+  tracef("fail {}:{}:{}", up->name, line, col);
+  Bmatch_failure(value, box(up->name), box(line), box(col));
 }
 
 void op_fail_keep() {
-  fatalf("unsupported {}", bc::opcode_t::op_fail_keep);
+  const auto args = (*++pc).as_i32;
+  const auto line = args.arg0;
+  const auto col = args.arg1;
+  tracef("fail_keep {}:{}:{}", up->name, line, col);
+  Bmatch_failure(*sp, box(up->name), box(line), box(col));
 }
 
 void op_line() {
@@ -504,31 +522,45 @@ void op_line() {
 }
 
 void op_patt_str_cmp() {
-  fatalf("unsupported {}", bc::opcode_t::op_patt_str_cmp);
+  binop<Bstring_patt>::operator()();
+
+  LAMAVM_DISPATCH();
 }
 
 void op_patt_string() {
-  fatalf("unsupported {}", bc::opcode_t::op_patt_string);
+  unop<Bstring_tag_patt>::operator()();
+
+  LAMAVM_DISPATCH();
 }
 
 void op_patt_array() {
-  fatalf("unsupported {}", bc::opcode_t::op_patt_array);
+  unop<Barray_tag_patt>::operator()();
+
+  LAMAVM_DISPATCH();
 }
 
 void op_patt_sexp() {
-  fatalf("unsupported {}", bc::opcode_t::op_patt_sexp);
+  unop<Bsexp_tag_patt>::operator()();
+
+  LAMAVM_DISPATCH();
 }
 
 void op_patt_boxed() {
-  fatalf("unsupported {}", bc::opcode_t::op_patt_boxed);
+  unop<Bboxed_patt>::operator()();
+
+  LAMAVM_DISPATCH();
 }
 
 void op_patt_unboxed() {
-  fatalf("unsupported {}", bc::opcode_t::op_patt_unboxed);
+  unop<Bunboxed_patt>::operator()();
+
+  LAMAVM_DISPATCH();
 }
 
 void op_patt_closure() {
-  fatalf("unsupported {}", bc::opcode_t::op_patt_closure);
+  unop<Bclosure_tag_patt>::operator()();
+
+  LAMAVM_DISPATCH();
 }
 
 void op_barray() {

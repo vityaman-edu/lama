@@ -25,5 +25,14 @@ namespace lamavm::interpreter {
 /* alloc */ box Barray(box args, box bn);     // NOLINT
 /* pure  */ box Barray_patt(box d, box n);    // NOLINT
 /* alloc */ box Bclosure(box args, box bn);   // NOLINT
+/* pure  */ box Bstring_patt(box x, box y);   // NOLINT
+/* pure  */ box Bstring_tag_patt(box x);      // NOLINT
+/* pure  */ box Barray_tag_patt(box x);       // NOLINT
+/* pure  */ box Bsexp_tag_patt(box x);        // NOLINT
+/* pure  */ box Bboxed_patt(box x);           // NOLINT
+/* pure  */ box Bunboxed_patt(box x);         // NOLINT
+/* pure  */ box Bclosure_tag_patt(box x);     // NOLINT
+
+void Bmatch_failure(box v, box fname, box line, box col); // NOLINT
 
 } // namespace lamavm::interpreter
