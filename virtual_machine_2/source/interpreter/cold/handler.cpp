@@ -23,7 +23,7 @@ namespace lamavm::interpreter::cold {
 
 namespace {
 
-template <auto f>
+template <box (*f)(box)>
 class unop {
 public:
   static void operator()() {
@@ -32,7 +32,7 @@ public:
   }
 };
 
-template <auto f>
+template <box (*f)(box, box)>
 class binop {
 public:
   static void operator()() {
@@ -74,79 +74,79 @@ box& op_clo_target(std::int32_t index) {
 } // namespace
 
 void op_add() {
-  binop<Ls__Infix_43>::operator()();
+  binop<boxd::Ls__Infix_43>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_sub() {
-  binop<Ls__Infix_45>::operator()();
+  binop<boxd::Ls__Infix_45>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_mul() {
-  binop<Ls__Infix_42>::operator()();
+  binop<boxd::Ls__Infix_42>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_div() {
-  binop<Ls__Infix_47>::operator()();
+  binop<boxd::Ls__Infix_47>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_mod() {
-  binop<Ls__Infix_37>::operator()();
+  binop<boxd::Ls__Infix_37>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_lt() {
-  binop<Ls__Infix_60>::operator()();
+  binop<boxd::Ls__Infix_60>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_le() {
-  binop<Ls__Infix_6061>::operator()();
+  binop<boxd::Ls__Infix_6061>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_gt() {
-  binop<Ls__Infix_62>::operator()();
+  binop<boxd::Ls__Infix_62>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_ge() {
-  binop<Ls__Infix_6261>::operator()();
+  binop<boxd::Ls__Infix_6261>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_eq() {
-  binop<Ls__Infix_6161>::operator()();
+  binop<boxd::Ls__Infix_6161>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_ne() {
-  binop<Ls__Infix_3361>::operator()();
+  binop<boxd::Ls__Infix_3361>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_and() {
-  binop<Ls__Infix_3838>::operator()();
+  binop<boxd::Ls__Infix_3838>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_or() {
-  binop<Ls__Infix_3333>::operator()();
+  binop<boxd::Ls__Infix_3333>::operator()();
 
   LAMAVM_DISPATCH();
 }
@@ -161,7 +161,7 @@ void op_const() {
 void op_string() {
   const auto string_offset = (*++pc).as_i32.arg0;
   const char* str1 = c_str(string_offset);
-  const box str2 = gc_call([&] { return Bstring(box(static_cast<const void*>(&str1))); });
+  const box str2 = gc_call([&] { return boxd::Bstring(box(static_cast<const void*>(&str1))); });
   stack_push(str2);
 
   LAMAVM_DISPATCH();
@@ -173,10 +173,10 @@ void op_sexp() {
   const std::int32_t n_fields = arg.arg1;
 
   box* args = --sp;
-  args[0] = LtagHash(box(c_str(tag_offset)));
+  args[0] = boxd::LtagHash(box(c_str(tag_offset)));
   std::reverse(args, args + n_fields + 1);
 
-  const box sexp = gc_call([&] { return Bsexp(box(args), box(n_fields + 1)); });
+  const box sexp = gc_call([&] { return boxd::Bsexp(box(args), box(n_fields + 1)); });
 
   sp += n_fields + 1;
   stack_push(sexp);
@@ -193,7 +193,7 @@ void op_sta() {
     unbox<void*>(aggregate),
     unbox<std::int64_t>(index),
     unbox<std::int64_t>(value));
-  Bsta(aggregate, index, value);
+  boxd::Bsta(aggregate, index, value);
   stack_push(value);
 
   LAMAVM_DISPATCH();
@@ -241,7 +241,7 @@ void op_elem() {
   const box index = stack_pop();
   const box aggregate = stack_pop();
   tracef("elem {}[{}]", unbox<void*>(aggregate), unbox<std::int64_t>(index));
-  stack_push(Belem(aggregate, index));
+  stack_push(boxd::Belem(aggregate, index));
 
   LAMAVM_DISPATCH();
 }
@@ -431,7 +431,7 @@ void op_closure() {
   stack_push(box(target_up));
   stack_push(box(target));
 
-  const box cj = gc_call([&] { return Bclosure(box(sp), box(1 + n_captured)); });
+  const box cj = gc_call([&] { return boxd::Bclosure(box(sp), box(1 + n_captured)); });
 
   sp += 1 + 1 + n_captured;
 
@@ -492,9 +492,9 @@ void op_tag() {
   const std::int32_t tag_offset = arg.arg0;
   const std::int32_t n_fields = arg.arg1;
 
-  const box tag_hash = LtagHash(box(c_str(tag_offset)));
+  const box tag_hash = boxd::LtagHash(box(c_str(tag_offset)));
   const box value = stack_pop();
-  stack_push(Btag(value, tag_hash, box(n_fields)));
+  stack_push(boxd::Btag(value, tag_hash, box(n_fields)));
 
   LAMAVM_DISPATCH();
 }
@@ -503,7 +503,7 @@ void op_array() {
   const auto n_elements = (*++pc).as_i32.arg0;
   const box value = stack_pop();
   tracef("array {}", n_elements);
-  stack_push(Barray_patt(value, box(n_elements)));
+  stack_push(boxd::Barray_patt(value, box(n_elements)));
 
   LAMAVM_DISPATCH();
 }
@@ -514,7 +514,7 @@ void op_fail() {
   const auto col = args.arg1;
   const box value = stack_pop();
   tracef("fail {}:{}:{}", up->name, line, col);
-  Bmatch_failure(value, box(up->name), box(line), box(col));
+  boxd::Bmatch_failure(value, box(up->name), box(line), box(col));
 }
 
 void op_fail_keep() {
@@ -522,7 +522,7 @@ void op_fail_keep() {
   const auto line = args.arg0;
   const auto col = args.arg1;
   tracef("fail_keep {}:{}:{}", up->name, line, col);
-  Bmatch_failure(*sp, box(up->name), box(line), box(col));
+  boxd::Bmatch_failure(*sp, box(up->name), box(line), box(col));
 }
 
 void op_line() {
@@ -532,43 +532,43 @@ void op_line() {
 }
 
 void op_patt_str_cmp() {
-  binop<Bstring_patt>::operator()();
+  binop<boxd::Bstring_patt>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_patt_string() {
-  unop<Bstring_tag_patt>::operator()();
+  unop<boxd::Bstring_tag_patt>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_patt_array() {
-  unop<Barray_tag_patt>::operator()();
+  unop<boxd::Barray_tag_patt>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_patt_sexp() {
-  unop<Bsexp_tag_patt>::operator()();
+  unop<boxd::Bsexp_tag_patt>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_patt_boxed() {
-  unop<Bboxed_patt>::operator()();
+  unop<boxd::Bboxed_patt>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_patt_unboxed() {
-  unop<Bunboxed_patt>::operator()();
+  unop<boxd::Bunboxed_patt>::operator()();
 
   LAMAVM_DISPATCH();
 }
 
 void op_patt_closure() {
-  unop<Bclosure_tag_patt>::operator()();
+  unop<boxd::Bclosure_tag_patt>::operator()();
 
   LAMAVM_DISPATCH();
 }
@@ -580,7 +580,7 @@ void op_barray() {
   box* args = sp;
   std::reverse(args, args + n_elements);
 
-  const box array = gc_call([&] { return Barray(box(args), box(n_elements)); });
+  const box array = gc_call([&] { return boxd::Barray(box(args), box(n_elements)); });
 
   sp += n_elements;
   stack_push(array);

@@ -9,9 +9,10 @@ describes the current wrappers and GC boundary.
 ## Generic bridge
 
 One generic function named `bridge` connects boxed C++ calls
-to native runtime functions. Its template inputs are the native return type,
-the compile-time-known native function pointer, and the native argument types.
-The template argument order is `bridge<R, Function, Args...>`.
+to native runtime functions. Its only explicit template argument is the
+compile-time-known native function pointer: `bridge<Function>(args...)`.
+A typed helper deduces the native return type and parameter types from that
+pointer, so boxed wrappers do not repeat the native signature.
 
 For each fixed argument, the bridge receives a `box` and uses `std::bit_cast`
 to obtain the corresponding native type. It calls the function through its
@@ -25,8 +26,9 @@ All fixed-signature wrappers in [`std.cpp`](../../source/interpreter/runtime/std
 delegate to this bridge, replacing `unop`, `binop`, and handwritten native conversions.
 The implementation remains private to that translation unit; public wrapper
 declarations in `std.hpp` retain their signatures. Its return type is `box` for
-non-void native results and `void` for native `void` results. The parameter pack
-uses `std::conditional_t<true, box, T>...` to accept one `box` per native type.
+non-void native results and `void` for native `void` results. The helper's
+parameter pack uses `std::conditional_t<true, box, T>...` to accept one `box`
+per native type.
 
 Every converted argument and non-void result must have the same size as `box`
 and be trivially copyable. These are compile-time requirements, consistent
@@ -61,6 +63,41 @@ and `Bfprintf`, rather than the `L` assembly entry points. `failure` uses the
 ordinary C target of the same name. `LenableGC` and `LdisableGC` have no
 implementation in the linked runtime and are not declared or wrapped here.
 
+## Uniform reversed-span overloads
+
+Each boxed function also has a span overload. Value-returning overloads match
+`std_fn_t`, which is `box (*)(std::span<const box> rargs)`; void overloads match
+`std_fn_void_t`, which is `void (*)(std::span<const box> rargs)`. The overloads
+are enumerated in the same order as the boxed functions. They call those
+existing boxed functions, preserving their native-parameter contract rather
+than interpreting logical bytecode arguments.
+The opcode unary/binary helper templates use explicit boxed function-pointer
+types to select the original overloads.
+
+The span views reversed stack arguments. Boxed parameter `i` receives
+`rargs[rargs.size() - 1 - i]`. A shared invocation helper uses `LAMAVM_ASSERT`
+to require exactly the fixed arity before expanding the call. The checks follow
+the macro's existing build-mode behavior. The shared helper preserves the boxed
+function's `box` or `void` return type, with a compile-time branch for the void
+call.
+`core/functional.hpp` provides `function_traits` for fixed and C-style variadic
+function pointers, exposing `return_type`, `arity`, and `is_variadic`. Invocation
+infers this information from the selected boxed function pointer. Span wrappers
+call `invoke_std(rargs, name)` without repeating boxed parameter types. Thin
+overloads select the boxed function from its overload set: zero-argument,
+fixed signatures starting with `box`, and variadic signatures starting with
+`box`. Count checks and argument expansion remain shared.
+
+For variadic boxed functions, the helper asserts at least the fixed argument
+count and passes the fixed arguments in the same reversed order. The boxed
+function then reports its existing unsupported-call diagnostic. Variadic
+forwarding remains unimplemented.
+
+Argument-storage functions retain their boxed pointer parameters: for example,
+the `Lsubstring` span overload takes one box containing an argument-slot pointer,
+and `Barray` takes that pointer and its boxed count. These overloads do not
+prepare argument arrays, synchronize GC state, or implement a symbol registry.
+
 ## GC synchronization
 
 Synchronize GC state before every FFI call, regardless of the callee. FFI here
@@ -77,6 +114,16 @@ boundary must preserve that stack-scanning contract. Existing explicit
 `gc_call` sites remain the current implementation until the design is applied.
 
 ## Symbol registry and span adapters
+
+The `std_symbols` table is applied for the 55 implemented functions exported by
+`Std.i`. Keys use Std names, and entries select the corresponding `span`
+wrapper, its fixed boxed parameter count, and `vararg` for the five variadic
+functions. Argument-array functions retain their current pointer-parameter
+contract, including one fixed parameter for `substring`. Internal VM helpers,
+the `sysargs` global, and the unavailable `enableGC` and `disableGC` functions
+are excluded. Direct boxed calls and span-wrapper targets use `boxd::`.
+This table does not apply bytecode call resolution or logical argument-array
+adaptation; those remain design decisions below.
 
 Resolve a runtime function name through an explicit name-to-call registry.
 Registry entries refer to adapters with a common callable interface.
@@ -105,12 +152,11 @@ registry's container and exact entry representation also remain open. Runtime
 names must map to their intended native targets: for example, `compare` denotes
 `Lcompare`; bytecode names and native symbol names are distinct.
 
-The original proposed input is `std::span<const box>` containing `n_args`
-elements. It suffices for reading separate fixed arguments, but the complete
-adapter interface remains open because argument-array calls need writable
-storage. The uniform return convention also remains open, particularly the VM
-value produced after a returning native `void` function. The low-level bridge
-must not invent that result by reading a nonexistent native return value.
+The implemented `std_fn_t` and `std_fn_void_t` overloads consume
+`std::span<const box>` in reverse argument order and preserve `box` or `void`
+returns. Bytecode-level argument-array adapters still need writable storage.
+Any VM stack value produced after a returning native `void` function remains a
+separate decision; the low-level bridge does not invent a native return value.
 
 ## Argument-array functions
 

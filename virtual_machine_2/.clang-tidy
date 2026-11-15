@@ -23,6 +23,7 @@ Checks: >-
   -fuchsia-statically-constructed-objects,
   -fuchsia-overloaded-operator,
   -cert-dcl50-cpp,
+  -cert-err58-cpp,
 WarningsAsErrors: '*'
 CheckOptions:
   - key: readability-identifier-naming.NamespaceCase
