@@ -1,76 +1,48 @@
-# Dependency closure and linking
+# Linking decoded modules
 
-Status: design discussion for
-[`source/bc/closure.cpp`](../../source/bc/closure.cpp). The proposed opword
-pipeline is not implemented.
-
-## Goal
-
-Load `Main.bc` and all its bytecode dependencies and produce one self-contained
-program. Later processing should not need to load imports or resolve bytecode
-module dependencies.
-
-Combining modules and resolving their references is linking. This does not
-require replacing individual call sites with copies of function bodies.
-Host/runtime calls still require resolved native targets and a calling
-convention; dependency closure does not turn them into generated native code.
+Status: future design. The current [loader](units.md) builds a dependency closure
+and public-symbol index, retains separate buffers, and resolves external CALL
+and global operands during cold execution.
 
 ## Representation boundaries
 
-- Keep the file representation compact and independent of runtime addresses.
-- Read header and metadata fields into ordinary values as needed.
-- Build a symbol-name index where repeated lookup occurs during linking.
-- Decode instructions into the proposed [opword representation](opword.md).
-- Make the resulting program own all storage its resolved pointers reference.
-
-An `unordered_map` is useful for repeated name resolution, but is not required
-for metadata that is only traversed. Once references are resolved, execution
-need not perform symbol-name lookup. A temporary linker index can be discarded
-unless exports, diagnostics, or another concrete feature still needs it.
-
-The program can retain the original string buffers or own copied string storage.
-One owning program does not require every string to occupy one allocation.
-
-## Independent decoding
-
-Decoding each module independently, then merging decoded word arrays, is a
-reasonable construction pipeline. The reference VM does this in `decode` and
-`link_program` in [converter.c](../../../virtual_machine/converter.c).
-
-Two conceptual states were discussed:
+Keep serialized bytecode compact and independent of runtime addresses. Decode
+each module independently, then establish final storage and resolve references.
+The reference VM's [converter](../../../virtual_machine/converter.c) illustrates
+separate decoding and linking phases.
 
 | State | Reference representation |
 |:--|:--|
-| Relocatable module | Local indices or offsets and unresolved symbols |
-| Executable program | Resolved code, string, and global references |
+| Relocatable module | Local indices/offsets and unresolved symbols |
+| Executable program | References resolved for its chosen execution layout |
 
-Symbolic relocation records can represent unresolved targets. After all targets
-are resolved to pointers, moving unchanged code can instead use instruction-aware
-pointer enumeration and region rebasing. Separate records are not required just
-to identify pointer operands when the decoder already knows them. See
-[relocation](relocation.md).
+Disk byte offsets and decoded word positions are different coordinates.
+Branches, calls, closure targets, and exported functions must refer to decoded
+instruction boundaries. The current parser already converts local targets.
 
-Disk byte offsets and decoded word positions are different coordinates. Branches,
-calls, closure targets, and exported function addresses need translation to the
-corresponding decoded instruction boundaries.
+A program must own all storage its references use. One owning program need not
+put every unit or string into a single allocation. Stable separate allocations
+can avoid relocation while still supporting optimization or generated handlers.
 
-## Packed intermediate output
+## Resolution and movement
 
-The original idea was to concatenate packed sections and update their offsets.
-That remains useful if a self-contained `.bc` file is an intended output.
+A symbol-name index supports repeated resolution. It can be discarded only when
+execution and other required features no longer need it; cold execution currently
+does. The [warm CALL decision](warm-interpreter.md) uses unit indices and word
+offsets rather than resolved native pointers.
 
-For execution alone, constructing a packed merged unit and then decoding it is
-an optional intermediate step. The proposed alternative is to link the decoded
-modules directly into the execution representation.
+Symbol resolution establishes target identity. [Pointer relocation](relocation.md)
+translates already-known addresses when storage moves; these are separate tasks.
+Instruction-aware traversal can identify pointer operands if each handler's
+layout is known. Unresolved symbolic targets may still require fixup records.
 
-## Open decisions
+## Remaining design choices
 
-- Is the output a serializable linked bytecode unit, an executable program,
-  or are both required?
-- When are external symbols resolved relative to module layout and merging?
-- How are module initialization order and exported entry points represented?
-- Which storage remains owned by the final program?
-- Is executable storage initially fixed, with runtime movement deferred?
+- Whether a serializable linked `.bc` file is needed in addition to execution.
+- Whether to merge unit storage or retain stable buffers and unit coordinates.
+- When to resolve each external reference relative to warming and final layout.
+- Which exports, symbol metadata, and initialization entry points must survive.
 
-The separation between module construction and execution leaves room for later
-optimization or JIT work without requiring live-code relocation now.
+Concatenating packed sections is useful for producing a linked file, but is an
+optional intermediate step for execution. Linking resolves module references;
+it does not inline function bodies or turn C runtime calls into generated code.

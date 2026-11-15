@@ -1,23 +1,35 @@
-# VM design notes
+# VM knowledge
 
-Notes from the discussion on 2026-11-14. These record requirements, findings,
-proposals, and open questions. They do not apply the proposed designs or replace
-the existing implementation specifications.
+This directory is for durable project knowledge only. Do not store temporary
+notes, task plans, implementation checklists, review transcripts, or test-run
+reports here. Consolidate lasting conclusions into the relevant topic and remove
+superseded documents. Keep the index complete when adding or removing a topic.
 
-| Topic | Note | Status |
+Implementation descriptions were checked against the source on 2026-11-15.
+Design decisions below remain separate from implemented behavior and do not
+authorize implementation.
+
+## Current implementation
+
+| Topic | Guide |
+|:--|:--|
+| Serialized bytecode, stream parsing, and target conversion | [Bytecode](bytecode.md) |
+| Dependency loading, initialization order, and symbol index | [Units](units.md) |
+| Instruction words and operand coordinates | [Opword representation](opword.md) |
+| Handler decoding, dispatch, calls, and supported operations | [Cold threaded interpreter](threaded-code.md) |
+| Tagged values, stack frames, GC, and C runtime boundary | [Runtime](runtime.md) |
+| Differential runner, import fixtures, and result interpretation | [Testing](testing.md) |
+| Build, sanitizers, formatting, and lint entry points | [Tooling](tooling.md) |
+
+## Memory and future designs
+
+| Topic | Guide | Status |
 |:--|:--|:--|
-| Writable byte storage | [Buffer](buffer.md) | Design postponed |
-| Packed layouts, alignment, and object lifetime | [Packed memory](packed-memory.md) | Explanation and compiler checks |
-| Memory interpretation in `unit::parse` | [Unit memory review](unit-memory-review.md) | Findings, reproductions, and fix status |
-| Aligned instruction words and dispatch | [Opword representation](opword.md) | Proposed execution representation |
-| Independent decoding and dependency closure | [Linking](linking.md) | Proposed construction pipeline |
-| Pointer rebasing and region lookup | [Relocation](relocation.md) | Proposed mechanism and constraints |
-
-The earlier [decoder specification](decode.md) and
-[execution integration specification](execution-decode.md) describe the existing
-packed-instruction implementation. The new execution and linking proposals have
-not superseded them.
+| Packed layouts, alignment, storage, and object lifetime | [Packed memory](packed-memory.md) | General constraints |
+| Instruction warming and inline CALL operands | [Warm interpreter](warm-interpreter.md) | Design decision; not implemented |
+| Linking decoded modules into a self-contained program | [Linking](linking.md) | Future design |
+| Pointer enumeration and address rebasing | [Relocation](relocation.md) | Future mechanism |
 
 The reference VM's [format specification](../../../virtual_machine/SPEC.md)
-defines the serialized bytecode. Its C implementation is a reference to inspect,
-not a guarantee that every validation check is correct.
+defines serialized bytecode. Its C implementation is a useful comparison, but
+does not establish that either VM validates every malformed input correctly.

@@ -1,42 +1,54 @@
 # Cold threaded interpreter
 
-Apply the requested iterative-to-threaded rewrite:
+The execution path is implemented in
+[`interpreter/decode.cpp`](../../source/interpreter/decode.cpp),
+[`interpreter/cold/handler.cpp`](../../source/interpreter/cold/handler.cpp), and
+[`interpreter/run.cpp`](../../source/interpreter/run.cpp).
 
-- Decode each unit's mutable word text once before execution. Replace handler
-  IDs containing bytecode opcodes with the corresponding cold handler pointers.
-  Preserve operand words and integer targets. Skip packed operand words using
-  the parser's instruction layout. Retain the existing overflow, unsupported,
-  and unknown-opcode diagnostics, including hexadecimal formatting.
-- Keep unsupported opcodes unsupported. Decode now rejects them before execution,
-  including in unreachable code. Input text has the layout produced by the unit
-  parser; this change does not add operand or control-flow validation.
-- At handler entry, `pc` points at its handler word. Operand reads advance it to
-  the operand word. `LAMAVM_DISPATCH` advances `pc`, then invokes
-  `LAMAVM_DISPATCH_JUMP`; jump dispatch calls the current handler with a required
-  tail call. Taken jumps, calls, restored return addresses, and initial entry use
-  jump dispatch. Conditional fall-through must also point at the next handler.
-- Save CALL's next handler word as its return address. END restores the frame
-  and dispatches to that address. EOF returns without dispatching, ending the
-  chain and allowing the outer initialization loop to execute the next unit.
-- Use parameterless internal `exec()` with the global current-unit pointer so
-  its signature matches the handlers for required tail calls. Use Clang's
-  `[[clang::musttail]]` spelling, supported by the configured compiler, through
-  `LAMAVM_MUSTTAIL` in `core/compiler.hpp` with its paired `compiler.cpp`.
+## Handler decoding
 
-Validate release and ASan/UBSan builds, examples and imports, all supported
-handler mappings and operand preservation, both conditional outcomes, invalid
-handler diagnostics, and a long chain exercising bounded native-stack usage.
-Check formatting, focused Clang Tidy, and whitespace without adding suppressions.
+Before any unit executes, `decode(span<op::word_t>)` replaces handler IDs with
+cold handler function pointers in place. It skips operand words according to
+instruction layout, leaving integer operands unchanged. Decode is a one-time
+transition; its input must still contain IDs, not already installed pointers.
 
-## Validation
+IDs wider than the bytecode opcode type fail with an overflow diagnostic.
+Unknown and unsupported opcodes are rejected before execution, including in
+unreachable code. Handler decoding assumes parser-produced layout and does
+not add operand, stack, or control-flow validation.
 
-- Release and ASan/UBSan builds passed, including the compiler macro extraction.
-- All nine examples and eleven import cases passed in both configurations, with
-  twenty runs per implementation and case.
-- A temporary harness checked all 32 supported handler mappings, unchanged
-  operand words, all 13 arithmetic handlers, both outcomes of both conditional
-  branches, JMP, stack operations, LINE, and a 2,000,002-handler chain in release
-  and ASan/UBSan configurations.
-- Separate processes confirmed exact hexadecimal overflow, unknown-opcode, and
-  unsupported-opcode diagnostics in both configurations.
-- Formatting, focused Clang Tidy, and whitespace checks passed.
+Supported operations are the 13 arithmetic/comparison/boolean BINOP forms,
+CONST, STRING, DROP, DUP, SWAP, LD/ST for globals, locals and arguments, JMP,
+CJMP_Z, CJMP_NZ, CALL, BEGIN, END, LINE, and EOF. LINE consumes its operand and
+has no execution effect. Other opcodes remain unsupported.
+
+## Dispatch contract
+
+At handler entry, `pc` points at the handler word. Operand reads advance it to
+an operand word. `LAMAVM_DISPATCH` increments `pc` and dispatches;
+`LAMAVM_DISPATCH_JUMP` dispatches through the current `pc` without incrementing.
+Taken jumps and both conditional outcomes arrange `pc` at the next handler.
+
+Handlers have the parameterless `void()` signature and access singleton
+[runtime state](runtime.md). Dispatch uses `LAMAVM_MUSTTAIL`, defined as
+`[[clang::musttail]]` in `core/compiler.hpp`. Matching signatures and required
+tail calls prevent one native stack frame per executed instruction.
+
+## Calls and unit context
+
+CALL saves the next handler address, frame/stack pointers, argument count, and
+caller unit context. A nonnegative target is a word offset in the current unit;
+a negative target resolves a public function and selects its declaring unit.
+END restores the caller state and dispatches at the saved return address.
+
+Global loads and stores resolve negative operands as public globals and use the
+declaring unit's global base. STRING uses the current unit's string table.
+Unit context therefore matters independently of whether an instruction is warm.
+
+EOF returns from the handler chain. The outer initialization loop then starts
+the next unit; after all bodies finish, `run` exits the process with status zero.
+An atomic guard permits only one runtime load per process.
+
+Cold execution does not provide comprehensive bounds checking. Per-instruction
+promotion and the narrower inline CALL layout are described in the
+[unimplemented warm design](warm-interpreter.md).
