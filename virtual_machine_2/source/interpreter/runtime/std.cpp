@@ -25,21 +25,22 @@ aint Ls__Infix_3361(void* x, void* y); // NOLINT
 aint Ls__Infix_3838(void* x, void* y); // NOLINT
 aint Ls__Infix_3333(void* x, void* y); // NOLINT
 
-void* Bstring(aint* args);           // NOLINT
-aint LtagHash(const char* s);        // NOLINT
-void* Bsexp(aint* args, aint bn);    // NOLINT
-aint Btag(void* d, aint t, aint n);  // NOLINT
-void* Belem(void* p, aint i);        // NOLINT
-void* Barray(aint* args, aint bn);   // NOLINT
-aint Barray_patt(void* d, aint n);   // NOLINT
-void* Bclosure(aint* args, aint bn); // NOLINT
-aint Bstring_patt(void* x, void* y); // NOLINT
-aint Bstring_tag_patt(void* x);      // NOLINT
-aint Barray_tag_patt(void* x);       // NOLINT
-aint Bsexp_tag_patt(void* x);        // NOLINT
-aint Bboxed_patt(void* x);           // NOLINT
-aint Bunboxed_patt(void* x);         // NOLINT
-aint Bclosure_tag_patt(void* x);     // NOLINT
+void* Bstring(aint* args);            // NOLINT
+aint LtagHash(const char* s);         // NOLINT
+void* Bsexp(aint* args, aint bn);     // NOLINT
+aint Btag(void* d, aint t, aint n);   // NOLINT
+void* Belem(void* p, aint i);         // NOLINT
+void* Bsta(void* x, aint i, void* v); // NOLINT
+void* Barray(aint* args, aint bn);    // NOLINT
+aint Barray_patt(void* d, aint n);    // NOLINT
+void* Bclosure(aint* args, aint bn);  // NOLINT
+aint Bstring_patt(void* x, void* y);  // NOLINT
+aint Bstring_tag_patt(void* x);       // NOLINT
+aint Barray_tag_patt(void* x);        // NOLINT
+aint Bsexp_tag_patt(void* x);         // NOLINT
+aint Bboxed_patt(void* x);            // NOLINT
+aint Bunboxed_patt(void* x);          // NOLINT
+aint Bclosure_tag_patt(void* x);      // NOLINT
 
 void Bmatch_failure(void* v, char* fname, aint line, aint col); // NOLINT
 }
@@ -148,6 +149,14 @@ box Belem(box p, box i) {
   void* p1 = std::bit_cast<void*>(p);
   const aint i1 = std::bit_cast<aint>(i);
   const void* r = cc::Belem(p1, i1);
+  return std::bit_cast<box>(r);
+}
+
+box Bsta(box x, box i, box v) {
+  void* x1 = std::bit_cast<void*>(x);
+  const aint i1 = std::bit_cast<aint>(i);
+  void* v1 = std::bit_cast<void*>(v);
+  const void* r = cc::Bsta(x1, i1, v1);
   return std::bit_cast<box>(r);
 }
 

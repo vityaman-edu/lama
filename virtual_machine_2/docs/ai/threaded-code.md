@@ -13,15 +13,17 @@ instruction layout, leaving integer operands unchanged. Decode is a one-time
 transition; its input must still contain IDs, not already installed pointers.
 
 IDs wider than the bytecode opcode type fail with an overflow diagnostic.
-Unknown and unsupported opcodes are rejected before execution, including in
-unreachable code. Recognized but unimplemented instructions fail with
-`fatalf("unsupported {}", opcode)`. Handler decoding assumes parser-produced
-layout and does not add operand, stack, or control-flow validation.
+Unknown handler IDs are rejected before execution, including in unreachable
+code. Handler decoding assumes parser-produced layout and does not add operand,
+stack, or control-flow validation.
 
-Supported operations are the 13 arithmetic/comparison/boolean BINOP forms,
-CONST, STRING, SEXP, DROP, DUP, SWAP, LD/ST for globals, locals and arguments, JMP,
-CJMP_Z, CJMP_NZ, CALL, BEGIN, END, TAG, LINE, and EOF. LINE consumes its operand and
-has no execution effect. Other opcodes remain unsupported.
+All 52 opcode forms have handler implementations, including STA, aggregate
+operations, closures, and pattern predicates. LINE consumes its operand and
+has no execution effect. Handler coverage does not imply complete specification
+conformance; see [deferred defects](deferred-defects.md).
+
+STA pops the value, index, and aggregate, calls the non-allocating runtime
+`Bsta`, and pushes the stored value. Its stack effect is three values to one.
 
 TAG occupies two words: the handler and packed `tag_offset`, `n_fields`
 operands. It resolves the tag in the current unit with `LtagHash`, consumes
@@ -33,9 +35,8 @@ arity. The operation does not allocate and leaves stack depth unchanged.
 cases, handler declarations and definitions, and packed-layout declarations
 and formatters. Keep shared case bodies only across adjacent cases in that
 order. Declare and define every cold handler, including unimplemented
-instructions. Unimplemented handler definitions call
-`fatalf("unsupported {}", bc::opcode_t::op_xxx)`. The decoding switch also
-rejects these instructions before execution.
+instructions. Any future unimplemented handler definitions call
+`fatalf("unsupported {}", bc::opcode_t::op_xxx)` when executed.
 
 ## Dispatch contract
 

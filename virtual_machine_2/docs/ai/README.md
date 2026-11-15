@@ -29,6 +29,7 @@ authorize implementation.
 | Instruction warming and inline CALL operands | [Warm interpreter](warm-interpreter.md) | Design decision; not implemented |
 | Linking decoded modules into a self-contained program | [Linking](linking.md) | Future design |
 | Pointer enumeration and address rebasing | [Relocation](relocation.md) | Future mechanism |
+| Specification and implementation gaps | [Deferred defects](deferred-defects.md) | Postponed |
 
 The reference VM's [format specification](../../../virtual_machine/SPEC.md)
 defines serialized bytecode. Its C implementation is a useful comparison, but

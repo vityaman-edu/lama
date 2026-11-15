@@ -29,9 +29,8 @@ throw; format checks use always-on `LAMAVM_EXPECT` checks. The parser checks:
 - Known opcode encodings, nonnegative closure capture counts, and capture kinds.
 - A final EOF instruction with no trailing bytes.
 
-Parsing recognizes more layouts than the interpreter can execute. In particular,
-closure instructions can be parsed but are rejected by handler decoding. This
-is not a full semantic validator: stack effects, argument counts, string operand
+All recognized opcode forms have interpreter handlers. This is not a full
+semantic validator: stack effects, argument counts, string operand
 offsets, and global indices are not all validated here. Public global offsets
 are not checked against the declaring unit's global count.
 

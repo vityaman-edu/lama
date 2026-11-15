@@ -6,7 +6,6 @@
 
 #include "op/word.hpp"
 
-#include "bc/layout.hpp"
 #include "bc/units.hpp"
 
 #include "core/assert.hpp"
@@ -186,7 +185,18 @@ void op_sexp() {
 }
 
 void op_sta() {
-  fatalf("unsupported {}", bc::opcode_t::op_sta);
+  const box value = stack_pop();
+  const box index = stack_pop();
+  const box aggregate = stack_pop();
+  tracef(
+    "sta {}[{}] := {}",
+    unbox<void*>(aggregate),
+    unbox<std::int64_t>(index),
+    unbox<std::int64_t>(value));
+  Bsta(aggregate, index, value);
+  stack_push(value);
+
+  LAMAVM_DISPATCH();
 }
 
 void op_jmp() {
