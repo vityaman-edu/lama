@@ -18,6 +18,7 @@ authorize implementation.
 | Instruction words and operand coordinates | [Opword representation](opword.md) |
 | Handler decoding, dispatch, calls, and supported operations | [Cold threaded interpreter](threaded-code.md) |
 | Tagged values, stack frames, GC, and C runtime boundary | [Runtime](runtime.md) |
+| Std functions, global variable, and native signatures | [Std runtime interface](std.md) |
 | Differential runner, import fixtures, and result interpretation | [Testing](testing.md) |
 | Build, sanitizers, formatting, and lint entry points | [Tooling](tooling.md) |
 
@@ -26,6 +27,7 @@ authorize implementation.
 | Topic | Guide | Status |
 |:--|:--|:--|
 | Packed layouts, alignment, storage, and object lifetime | [Packed memory](packed-memory.md) | General constraints |
+| Generic native bridges, macros, and runtime symbol resolution | [Runtime bridges](runtime-bridges.md) | Design decisions; not implemented |
 | Instruction warming and inline CALL operands | [Warm interpreter](warm-interpreter.md) | Design decision; not implemented |
 | Linking decoded modules into a self-contained program | [Linking](linking.md) | Future design |
 | Pointer enumeration and address rebasing | [Relocation](relocation.md) | Future mechanism |

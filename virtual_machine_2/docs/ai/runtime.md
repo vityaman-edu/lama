@@ -11,6 +11,11 @@ The runtime interface lives in
 | `gc.hpp` / `gc.cpp` | C collector initialization and stack boundaries |
 | `std.hpp` / `std.cpp` | C++ wrappers for C runtime arithmetic and string allocation |
 
+The [Std inventory](std.md) lists native exports and their signatures. The
+[runtime bridge design](runtime-bridges.md) records the proposed generic bridge,
+type-only macros, symbol registry, and unconditional GC synchronization before
+FFI calls. These are future changes, separate from the implementation below.
+
 ## Word representation
 
 `box` has one `int64_t` member. Its integer constructor applies the C runtime's
