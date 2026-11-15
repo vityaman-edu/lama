@@ -152,7 +152,7 @@ void op_sexp() {
   args[0] = LtagHash(box(c_str(tag_offset)));
   std::reverse(args, args + n_fields + 1);
 
-  box sexp = gc_call([&] { return Bsexp(box(args), box(n_fields + 1)); });
+  const box sexp = gc_call([&] { return Bsexp(box(args), box(n_fields + 1)); });
 
   sp += n_fields + 1;
   stack_push(sexp);
@@ -203,7 +203,12 @@ void op_swap() {
 }
 
 void op_elem() {
-  fatalf("unsupported {}", bc::opcode_t::op_elem);
+  const box index = stack_pop();
+  const box aggregate = stack_pop();
+  tracef("elem {}[{}]", unbox<void*>(aggregate), unbox<std::int64_t>(index));
+  stack_push(Belem(aggregate, index));
+
+  LAMAVM_DISPATCH();
 }
 
 void op_ld_glo() {

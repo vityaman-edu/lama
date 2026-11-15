@@ -21,5 +21,6 @@ namespace lamavm::interpreter {
 /* pure  */ box LtagHash(box x);              // NOLINT
 /* alloc */ box Bsexp(box args, box bn);      // NOLINT
 /* pure  */ box Btag(box d, box t, box n);    // NOLINT
+/* pure  */ box Belem(box p, box i);          // NOLINT
 
 } // namespace lamavm::interpreter

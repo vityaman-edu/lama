@@ -29,6 +29,7 @@ void* Bstring(aint* args);          // NOLINT
 aint LtagHash(const char* s);       // NOLINT
 void* Bsexp(aint* args, aint bn);   // NOLINT
 aint Btag(void* d, aint t, aint n); // NOLINT
+void* Belem(void* p, aint i);       // NOLINT
 }
 
 } // namespace cc
@@ -111,8 +112,8 @@ box LtagHash(box x) {
 
 box Bsexp(box args, box bn) {
   aint* args1 = std::bit_cast<aint*>(args);
-  aint bn1 = std::bit_cast<aint>(bn);
-  void* r = cc::Bsexp(args1, bn1);
+  const aint bn1 = std::bit_cast<aint>(bn);
+  const void* r = cc::Bsexp(args1, bn1);
   return std::bit_cast<box>(r);
 }
 
@@ -121,6 +122,13 @@ box Btag(box d, box t, box n) {
   const aint t1 = std::bit_cast<aint>(t);
   const aint n1 = std::bit_cast<aint>(n);
   const aint r = cc::Btag(d1, t1, n1);
+  return std::bit_cast<box>(r);
+}
+
+box Belem(box p, box i) {
+  void* p1 = std::bit_cast<void*>(p);
+  const aint i1 = std::bit_cast<aint>(i);
+  const void* r = cc::Belem(p1, i1);
   return std::bit_cast<box>(r);
 }
 

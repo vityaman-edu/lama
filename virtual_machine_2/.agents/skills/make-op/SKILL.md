@@ -11,7 +11,7 @@ So... Human asked you to add another operation (let's name it OP) implementation
 
 For example, an OP can be SEXP, ADD, etc.
 
-Do it step-by-step.
+Do it step-by-step. Stop after each step, waiting for user comments (OK means continue).
 
 ## Step 1. See the OP specification
 
@@ -20,6 +20,23 @@ Find and read the OP in the `SPEC.md`.
 Report the markdown section link.
 
 > Found an OP in the SPEC.md: <link>.
+
+Then summarise it in the chat. For example:
+
+> **BEGIN_CLOSURE**
+> Enter a closure body and allocate local slots
+> `BEGIN_CLOSURE:64 n_args:32 n_locals:32 n_captured:32`
+>
+> Pre  Stack: `... | arg_1 | ... | arg_n | closure`
+> Post Stack: `... | arg_1 | ... | arg_n | closure | local_1 | ... | local_m`
+> Effect:
+> - "What it does description"
+> - "What it does description"
+>
+> Example:
+> Pre  Stack: ...
+> Post Stack: ...
+> Effect: ...
 
 ## Step 2. Undertand the OP usage
 
@@ -40,7 +57,7 @@ Report.
 
 ## Step 3. See the OP implementation
 
-See the `virtual_machine/opc.c`.
+See the `virtual_machine/ops.c`.
 Find the `void op_<OP>(DECL_STATE)` function definition.
 Report the code link.
 
@@ -87,15 +104,18 @@ Report source references.
 See the `virtual_machine_2/source/interpreter/cold/handler.cpp`.
 Implement `void op_<OP>()` function there.
 It is a good practice to add a `tracef` call.
+Also add a handler mapping (switch-case).
 Report source references.
 
 ## Step 7. Build
 
-Ensure `make` is OK.
+Ensure `make` is OK. Otherwise report failures and fix.
+Continue without human approval.
 
 ## Step 8. Style
 
-Ensure `make check` is OK.
+Ensure `make check` is OK. Otherwise report failures and fix.
+Continue without human approval.
 
 ## Step 9. Test
 
@@ -104,5 +124,4 @@ In `virtual_machine_2/test/data/examples` add a single minimal `.lama` file that
 Build: `make lamavm2-san-trace`.
 Test: `./scripts/test.sh san --filter="examples/Op*" --runs=2`.
 
-You can add `--show-stderr` to `test.sh`, so you can check
-traces.
+You can add `--show-stderr` to `test.sh`, so you can check traces.

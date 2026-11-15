@@ -18,7 +18,7 @@ flake.nix
 flake.shell.sh
 ```
 
-Can't edit markdown files unless they are under `docs/ai/` directory.
+Can't edit markdown files unless they are under `docs/ai/` or `.agents/skills` directory.
 
 Force Spec Driven Development. Write code only when it is applied.
 
@@ -27,6 +27,8 @@ Keep everything clean, clear, elegant, minimal.
 Do not leave comments in source code (except namespace comments).
 
 Do not disable Clang Tidy rules unless user asked.
+
+Speak english.
 
 ## Code Style
 

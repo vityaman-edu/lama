@@ -70,7 +70,7 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
   case bc::opcode_t::op_swap:
     return cold::op_swap;
   case bc::opcode_t::op_elem:
-    fatalf("unsupported {}", opcode);
+    return cold::op_elem;
   case bc::opcode_t::op_ld_glo:
     return cold::op_ld_glo;
   case bc::opcode_t::op_ld_loc:
