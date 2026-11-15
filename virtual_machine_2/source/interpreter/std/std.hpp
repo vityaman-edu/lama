@@ -12,12 +12,10 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
-#include <variant>
 
 namespace lamavm::interpreter {
 
-using std_fn_some_t = box (*)(std::span<const box> rargs);
-using std_fn_none_t = void (*)(std::span<const box> rargs);
+using std_fn_some_t = box (*)(std::span<box> rargs);
 
 struct std_fn_symbol {
   enum class tail_kind : std::uint8_t {
@@ -25,14 +23,16 @@ struct std_fn_symbol {
     vararg,
   };
 
-  std::variant<std_fn_some_t, std_fn_none_t> fn;
-  std::size_t head = 0;
+  std_fn_some_t fn = nullptr;
+  std::int32_t head = 0;
   tail_kind tail = tail_kind::none;
 };
 
 namespace detail {
 
 [[noreturn]] void unsupported_variadic(std::string_view name);
+
+box invoke_array_std(std::span<box> rargs, box (*f)(box));
 
 template <auto f, typename R, typename... T>
 std::conditional_t<std::is_void_v<R>, void, box>

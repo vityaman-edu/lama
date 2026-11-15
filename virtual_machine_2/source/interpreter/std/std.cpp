@@ -6,6 +6,8 @@
 
 #include <contrib/runtime/runtime_common.h>
 
+#include <algorithm>
+#include <span>
 #include <string_view>
 
 namespace lamavm::interpreter {
@@ -51,6 +53,11 @@ void* Li__Infix_4343(aint* args);                               // NOLINT
 } // namespace cc
 
 namespace detail {
+
+box invoke_array_std(std::span<box> rargs, box (*f)(box)) {
+  std::ranges::reverse(rargs);
+  return f(box(rargs.data()));
+}
 
 [[noreturn]] void unsupported_variadic(std::string_view name) {
   fatalf("unsupported variadic runtime function: {}", name);

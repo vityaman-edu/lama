@@ -467,6 +467,32 @@ void op_call() {
   std::int32_t target = args.arg0;
   const std::int32_t n_args = args.arg1;
 
+  std::string_view name;
+  if (target < 0) {
+    name = c_str(-target - 1);
+
+    // T O D O: collisions between symbols and std_symbols
+    if (const auto it = std_symbols.find(name); it != std::end(std_symbols)) {
+      const auto& [_, s] = *it;
+
+      switch (s.tail) {
+      case std_fn_symbol::tail_kind::none:
+        LAMAVM_EXPECT_B(s.head, ==, n_args);
+        break;
+      case std_fn_symbol::tail_kind::vararg:
+        LAMAVM_EXPECT_B(s.head, <=, n_args);
+        break;
+      }
+
+      std::span<box> rargs{sp, sp + n_args};
+      const box r = gc_call([&] { return s.fn(rargs); });
+      sp += n_args;
+      stack_push(r);
+
+      LAMAVM_DISPATCH();
+    }
+  }
+
   stack_push_frame({
     .n_args = n_args,
     .fp = fp,
@@ -475,8 +501,8 @@ void op_call() {
     .up = up,
   });
 
-  if (target < 0) {
-    const bc::symbol& s = symbols.at(std::string_view{c_str(-target - 1)});
+  if (!name.empty()) {
+    const auto s = symbols.at(name);
     LAMAVM_EXPECT_B(s.kind, ==, bc::symbol::kind::function);
 
     up = units.data() + s.uidx;

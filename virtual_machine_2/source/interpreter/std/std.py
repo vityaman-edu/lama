@@ -43,6 +43,13 @@ FUNCTIONS = [
     ["aint", "time", "Ltime"],
 ]
 
+ARRAY_ARITIES = {
+    "substring": 3,
+    "clone": 1,
+    "stringcat": 1,
+    "string": 1,
+}
+
 
 def generate(output_dir: Path) -> None:
     native_declarations = []
@@ -69,7 +76,7 @@ def generate(output_dir: Path) -> None:
 
         native_declarations.append(f"{result} {native_name}({', '.join(native_parameters)});")
         boxed_declarations.append(f"{boxed_result} {native_name}({', '.join(boxed_parameters)});")
-        span_signature = f"{boxed_result} {native_name}(std::span<const box> rargs)"
+        span_signature = f"box {native_name}(std::span<box> rargs)"
         span_declarations.append(f"{span_signature};")
 
         if is_variadic:
@@ -81,11 +88,13 @@ def generate(output_dir: Path) -> None:
         boxed_definitions.append(
             f"{boxed_result} {native_name}({', '.join(definition_parameters)}) {{\n  {body}\n}}"
         )
-        span_definitions.append(
-            f"{span_signature} {{\n  return detail::invoke_std(rargs, boxd::{native_name});\n}}"
-        )
+        invoke = "invoke_array_std" if std_name in ARRAY_ARITIES else "invoke_std"
+        span_call = f"detail::{invoke}(rargs, boxd::{native_name})"
+        span_body = f"{span_call};\n  return box{{}};" if result == "void" else f"return {span_call};"
+        span_definitions.append(f"{span_signature} {{\n  {span_body}\n}}")
         tail = ", std_fn_symbol::tail_kind::vararg" if is_variadic else ""
-        symbols.append(f'  {{"{std_name}", {{span::{native_name}, {len(arguments)}U{tail}}}}},')
+        arity = ARRAY_ARITIES.get(std_name, len(arguments))
+        symbols.append(f'  {{"{std_name}", {{span::{native_name}, {arity}U{tail}}}}},')
 
     header = "\n".join(
         [
