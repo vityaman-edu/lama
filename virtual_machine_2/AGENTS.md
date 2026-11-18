@@ -53,3 +53,5 @@ if expr then
 ```
 
 Name boolean variables with "is" or "are" prefix.
+
+Follow C++ conventions.

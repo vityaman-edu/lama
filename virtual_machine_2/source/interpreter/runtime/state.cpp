@@ -16,10 +16,6 @@ box* sp = nullptr;
 box* fp = nullptr;
 const uctx* up = nullptr;
 
-const char* c_str(std::int32_t offset) {
-  return up->data.data() + offset;
-}
-
 void stack_push(box x) {
   --sp;
   *sp = x;

@@ -12,11 +12,16 @@ extern "C" {
 
 namespace lamavm::interpreter {
 
+namespace {
+
+constexpr auto min = std::numeric_limits<std::int64_t>::min() / 2;
+constexpr auto max = std::numeric_limits<std::int64_t>::max() / 2;
+
+} // namespace
+
 box::box() = default;
 
 box::box(std::int64_t x) {
-  constexpr auto min = std::numeric_limits<std::int64_t>::min() / 2;
-  constexpr auto max = std::numeric_limits<std::int64_t>::max() / 2;
   LAMAVM_ASSERT_BB(min, <=, x, <=, max);
 
   underlying = BOX(x);
@@ -24,6 +29,11 @@ box::box(std::int64_t x) {
 
 box::box(const void* x)
   : underlying(std::bit_cast<std::int64_t>(x)) {
+}
+
+box box::checked(std::int64_t x) {
+  LAMAVM_EXPECT_BB(min, <=, x, <=, max);
+  return box(x);
 }
 
 box::operator std::int64_t() const {

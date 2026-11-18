@@ -146,14 +146,18 @@ void op_or() {
 }
 
 void op_const() {
-  const auto value = (*++pc).as_i32.arg0;
-  cold::stack_push(box(value));
+  const auto [value, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
+  cold::stack_push(box::checked(value));
 
   LAMAVM_DISPATCH();
 }
 
 void op_string() {
-  const auto string_offset = (*++pc).as_i32.arg0;
+  const auto [string_offset, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   const char* str1 = c_str(string_offset);
   const box str2 = gc_call([&] { return boxd::Bstring(box(static_cast<const void*>(&str1))); });
   cold::stack_push(str2);

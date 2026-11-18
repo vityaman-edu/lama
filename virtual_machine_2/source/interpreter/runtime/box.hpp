@@ -16,6 +16,8 @@ public:
 
   [[nodiscard]] bool is_ptr() const;
 
+  [[nodiscard]] static box checked(std::int64_t x);
+
 private:
   std::int64_t underlying = 0;
 };

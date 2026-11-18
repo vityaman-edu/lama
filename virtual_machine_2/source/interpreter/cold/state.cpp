@@ -5,7 +5,17 @@
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/state.hpp"
 
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
+
 namespace lamavm::interpreter::cold {
+
+const char* c_str(std::int32_t offset) {
+  LAMAVM_EXPECT_BB(0, <=, offset, <, std::ssize(up->data));
+
+  return up->data.data() + offset;
+}
 
 void stack_push(box x) {
   const void* stack_ptr = sp;

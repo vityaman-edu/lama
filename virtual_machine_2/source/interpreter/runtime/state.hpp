@@ -49,8 +49,6 @@ struct frame {
   const uctx* up = nullptr;
 };
 
-const char* c_str(std::int32_t offset);
-
 void stack_push(box x);
 
 box stack_pop();
