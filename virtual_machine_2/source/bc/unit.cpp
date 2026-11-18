@@ -187,7 +187,9 @@ void unit_parser::read_code_section() {
       operands_count = 1;
       break;
     case opcode_t::op_sexp:
-      operands_count = 2;
+    case opcode_t::op_tag:
+      u.code_section.push_back({.as_i32 = {.arg0 = read<std::int32_t>(), .arg1 = 0}});
+      u.code_section.push_back({.as_i32 = {.arg0 = read<std::int32_t>(), .arg1 = 0}});
       break;
     case opcode_t::op_sta:
       break;
@@ -218,13 +220,20 @@ void unit_parser::read_code_section() {
     case opcode_t::op_begin_closure:
       operands_count = 3;
       break;
+    case opcode_t::op_call:
     case opcode_t::op_closure: {
       const auto target = read<std::int32_t>();
-      const auto n_captured = read<std::int32_t>();
-      LAMAVM_EXPECT_B(0, <=, n_captured);
-      u.code_section.push_back({.as_i32 = {.arg0 = target, .arg1 = n_captured}});
+      const auto count = read<std::int32_t>();
+      u.code_section.push_back({.as_i32 = {.arg0 = target, .arg1 = 0}});
+      u.code_section.push_back({.as_i32 = {.arg0 = 0, .arg1 = count}});
 
-      for (std::int32_t i = 0; i < n_captured; ++i) {
+      if (opcode == opcode_t::op_call) {
+        break;
+      }
+
+      LAMAVM_EXPECT_B(0, <=, count);
+
+      for (std::int32_t i = 0; i < count; ++i) {
         const auto kind = read<std::uint8_t>();
         const auto index = read<std::int32_t>();
         LAMAVM_EXPECT_B(kind, <=, 3U);
@@ -235,12 +244,6 @@ void unit_parser::read_code_section() {
     }
 
     case opcode_t::op_callc:
-      operands_count = 1;
-      break;
-    case opcode_t::op_call:
-    case opcode_t::op_tag:
-      operands_count = 2;
-      break;
     case opcode_t::op_array:
       operands_count = 1;
       break;
@@ -294,8 +297,11 @@ void unit_parser::fixup_jump_targets() {
     switch (opcode) {
     case opcode_t::op_const:
     case opcode_t::op_string:
-    case opcode_t::op_sexp:
       ++i;
+      break;
+    case opcode_t::op_sexp:
+    case opcode_t::op_tag:
+      i += 2;
       break;
     case opcode_t::op_jmp: {
       auto& target = u.code_section[++i].as_i32.arg0;
@@ -326,31 +332,23 @@ void unit_parser::fixup_jump_targets() {
     case opcode_t::op_begin_closure:
       i += 2;
       break;
+    case opcode_t::op_call:
     case opcode_t::op_closure: {
-      auto& args = u.code_section[++i].as_i32;
+      auto& target = u.code_section[i + 1].as_i32.arg0;
 
-      if (args.arg0 >= 0) {
-        args.arg0 = word_offset(args.arg0);
+      if (target >= 0) {
+        target = word_offset(target);
       }
 
-      i += args.arg1;
+      i += 2;
+      if (opcode == opcode_t::op_closure) {
+        i += u.code_section[i].as_i32.arg1;
+      }
+
       break;
     }
 
     case opcode_t::op_callc:
-      ++i;
-      break;
-    case opcode_t::op_call: {
-      auto& args = u.code_section[++i].as_i32;
-
-      if (args.arg0 >= 0) {
-        args.arg0 = word_offset(args.arg0);
-      }
-
-      break;
-    }
-
-    case opcode_t::op_tag:
     case opcode_t::op_array:
     case opcode_t::op_fail:
     case opcode_t::op_fail_keep:

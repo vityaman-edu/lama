@@ -169,9 +169,8 @@ void op_string() {
 }
 
 void op_sexp() {
-  const auto& arg = (*++pc).as_i32;
-  const std::int32_t tag_offset = arg.arg0;
-  const std::int32_t n_fields = arg.arg1;
+  const auto tag_offset = (*++pc).as_i32.arg0;
+  const auto n_fields = (*++pc).as_i32.arg0;
 
   box* args = --sp;
   args[0] = boxd::LtagHash(box(c_str(tag_offset)));
@@ -387,9 +386,8 @@ void op_begin_closure() {
 }
 
 void op_closure() {
-  const auto args = (*++pc).as_i32;
-  std::int32_t target = args.arg0;
-  const std::int32_t n_captured = args.arg1;
+  auto target = (*++pc).as_i32.arg0;
+  const auto n_captured = (*++pc).as_i32.arg1;
 
   const auto* target_up = up;
   if (target < 0) { // repeated with call
@@ -400,8 +398,8 @@ void op_closure() {
     target = s.offset;
   }
 
-  const std::span<const op::word_t> captured(++pc, n_captured);
-  pc += (n_captured - 1);
+  const std::span<const op::word_t> captured(pc + 1, n_captured);
+  pc += n_captured;
 
   for (const op::word_t c : std::ranges::views::reverse(captured)) {
     const auto args = c.as_i32;
@@ -463,9 +461,8 @@ void op_callc() {
 }
 
 void op_call() {
-  const auto args = (*++pc).as_i32;
-  std::int32_t target = args.arg0;
-  const std::int32_t n_args = args.arg1;
+  auto target = (*++pc).as_i32.arg0;
+  const auto n_args = (*++pc).as_i32.arg1;
 
   std::string_view name;
   if (target < 0) {
@@ -515,9 +512,8 @@ void op_call() {
 }
 
 void op_tag() {
-  const auto& arg = (*++pc).as_i32;
-  const std::int32_t tag_offset = arg.arg0;
-  const std::int32_t n_fields = arg.arg1;
+  const auto tag_offset = (*++pc).as_i32.arg0;
+  const auto n_fields = (*++pc).as_i32.arg0;
 
   const box tag_hash = boxd::LtagHash(box(c_str(tag_offset)));
   const box value = stack_pop();

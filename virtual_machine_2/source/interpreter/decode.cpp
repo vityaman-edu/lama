@@ -159,7 +159,6 @@ void decode(std::span<op::word_t> text) {
       break;
     case bc::opcode_t::op_const:
     case bc::opcode_t::op_string:
-    case bc::opcode_t::op_sexp:
       i += 1;
       break;
     case bc::opcode_t::op_sta:
@@ -186,15 +185,16 @@ void decode(std::span<op::word_t> text) {
     case bc::opcode_t::op_begin:
       i += 1;
       break;
+    case bc::opcode_t::op_sexp:
+    case bc::opcode_t::op_tag:
+    case bc::opcode_t::op_call:
     case bc::opcode_t::op_begin_closure:
       i += 2;
       break;
     case bc::opcode_t::op_closure:
-      i += 1 + text[i + 1].as_i32.arg1;
+      i += 2 + text[i + 2].as_i32.arg1;
       break;
     case bc::opcode_t::op_callc:
-    case bc::opcode_t::op_call:
-    case bc::opcode_t::op_tag:
     case bc::opcode_t::op_array:
     case bc::opcode_t::op_fail:
     case bc::opcode_t::op_fail_keep:
