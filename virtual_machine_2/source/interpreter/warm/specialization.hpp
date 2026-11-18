@@ -12,6 +12,8 @@ struct uctx;
 
 namespace lamavm::interpreter::warm {
 
+void specialize_capture(op::word_t& word, op::capture_t descriptor);
+
 void specialize_op_add(op::word_t* ip);
 
 void specialize_op_sub(op::word_t* ip);

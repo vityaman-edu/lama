@@ -1,0 +1,10 @@
+fun accumulate(count, text, items) {
+  var n = count, total = 0;
+  while n > 0 do
+    total := total + length(if n % 2 == 0 then text else items fi);
+    n := n - 1
+  od;
+  total
+}
+
+write(accumulate(50000, "benchmark", [1, 2, 3]))

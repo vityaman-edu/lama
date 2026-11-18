@@ -1,7 +1,14 @@
-.PHONY: lamavm2 lamavm2-san lamavm2-san-trace compile_commands style style-cpp style-py check check-cpp check-py test test-san lamac lamavm
+.PHONY: lamavm2 lamavm2-cold lamavm2-san lamavm2-san-trace compile_commands style style-cpp style-py check check-cpp check-py test test-san lamac lamavm
 
 lamavm2:
 	./scripts/lamavm2.sh
+
+lamavm2-cold:
+	./scripts/lamavm2.sh cold
+
+ifneq ($(filter lamavm2 test,$(MAKECMDGOALS)),)
+lamavm2-cold: | lamavm2
+endif
 
 lamavm2-san:
 	./scripts/lamavm2.sh san

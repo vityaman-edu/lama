@@ -61,19 +61,26 @@ add_custom_command(
 
 file(GLOB_RECURSE LAMAVM_SOURCES CONFIGURE_DEPENDS source/*.c source/*.cpp)
 
-add_executable(lamavm2 ${LAMAVM_SOURCES}
-  "${LAMAVM_STD_GENERATED_HEADER}"
-  "${LAMAVM_STD_GENERATED_SOURCE}")
+function(add_lamavm target)
+  add_executable(${target} ${ARGN} ${LAMAVM_SOURCES}
+    "${LAMAVM_STD_GENERATED_HEADER}"
+    "${LAMAVM_STD_GENERATED_SOURCE}")
 
-target_include_directories(lamavm2 PRIVATE
-  "${PROJECT_SOURCE_DIR}/source"
-  "${LAMAVM_GENERATED_DIR}")
+  target_include_directories(${target} PRIVATE
+    "${PROJECT_SOURCE_DIR}/source"
+    "${LAMAVM_GENERATED_DIR}")
 
-target_include_directories(lamavm2 SYSTEM PRIVATE "${PROJECT_SOURCE_DIR}")
-target_compile_options(lamavm2 PRIVATE ${LAMAVM_CXX_FLAGS})
-target_compile_definitions(lamavm2 PRIVATE $<$<BOOL:${LAMAVM_TRACE}>:TRACE>)
-target_link_libraries(lamavm2
-  PRIVATE
-  lama_runtime
-  cxxopts::cxxopts
-  libffi::libffi)
+  target_include_directories(${target} SYSTEM PRIVATE "${PROJECT_SOURCE_DIR}")
+  target_compile_options(${target} PRIVATE ${LAMAVM_CXX_FLAGS})
+  target_compile_definitions(${target} PRIVATE $<$<BOOL:${LAMAVM_TRACE}>:TRACE>)
+  target_link_libraries(${target}
+    PRIVATE
+    lama_runtime
+    cxxopts::cxxopts
+    libffi::libffi)
+endfunction()
+
+add_lamavm(lamavm2)
+add_lamavm(lamavm2-cold EXCLUDE_FROM_ALL)
+target_compile_definitions(lamavm2-cold PRIVATE LAMAVM_COLD)
+set_target_properties(lamavm2-cold PROPERTIES EXPORT_COMPILE_COMMANDS OFF)

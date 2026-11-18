@@ -175,26 +175,28 @@ box resolve_capture(op::word_t& capture) {
   case bc::capture_kind::global: {
     auto& slot = op_glo_target(op_glo_target_index(index));
     const auto offset = static_cast<std::int32_t>(&slot - stack.data());
-    capture.as_capture = {.base = op::capture_t::global_base, .offset = offset};
+    warm::specialize_capture(capture, {.base = op::capture_t::global_base, .offset = offset});
     return slot;
   }
 
   case bc::capture_kind::local: {
     const auto offset = op_loc_target_index(index);
-    capture.as_capture = {.base = op::capture_t::frame_base, .offset = offset};
+    warm::specialize_capture(capture, {.base = op::capture_t::frame_base, .offset = offset});
     return op_loc_target(offset);
   }
 
   case bc::capture_kind::argument: {
     const auto offset = op_arg_target_index(index);
-    capture.as_capture = {.base = op::capture_t::frame_base, .offset = offset};
+    warm::specialize_capture(capture, {.base = op::capture_t::frame_base, .offset = offset});
     return op_arg_target(offset);
   }
 
   case bc::capture_kind::closure: {
     const auto offset = op_clo_target_index(index);
     const auto value = op_clo_target(offset);
-    capture.as_capture = {.base = stack_n_args() + 1, .offset = static_cast<std::int32_t>(offset)};
+    warm::specialize_capture(
+      capture,
+      {.base = stack_n_args() + 1, .offset = static_cast<std::int32_t>(offset)});
     return value;
   }
   }
@@ -659,6 +661,9 @@ void op_callc() {
     .pc = pc + 1,
     .sp = sp + n_args + 1,
     .up = up,
+#ifdef LAMAVM_COLD
+    .entry = entry,
+#endif
   });
 
   up = target_up;
@@ -725,6 +730,9 @@ void op_call() {
     .pc = pc + 1,
     .sp = sp + n_args,
     .up = up,
+#ifdef LAMAVM_COLD
+    .entry = entry,
+#endif
   });
 
   up = callee;

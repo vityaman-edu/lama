@@ -1,0 +1,12 @@
+fun update(count, slots) {
+  var n = count, total = 0;
+  while n > 0 do
+    var index = n % 4;
+    slots[index] := slots[index] + n % 17;
+    total := (total + slots[index]) % 100003;
+    n := n - 1
+  od;
+  total
+}
+
+write(update(50000, [0, 1, 2, 3]))

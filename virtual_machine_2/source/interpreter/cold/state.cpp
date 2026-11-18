@@ -35,6 +35,9 @@ op::word_t* return_pc() {
 }
 
 const op::word_t* frame_entry() {
+#ifdef LAMAVM_COLD
+  return unbox<const op::word_t*>(fp[frame::offset_entry]);
+#else
   const auto* continuation = return_pc();
   if (continuation[-1].as_call.unit_index != op::call_t::indirect) {
     return continuation[-2].as_target;
@@ -45,6 +48,7 @@ const op::word_t* frame_entry() {
   const auto* callee = unbox<const uctx*>(closure[1]);
   const auto offset = unbox<std::int32_t>(closure[0]);
   return callee->text.data() + offset;
+#endif
 }
 
 } // namespace
@@ -114,11 +118,21 @@ void stack_init_locals(op::word_t* entry) {
   }
 
   if (unbox<box*>(fp[frame::offset_fp]) == nullptr) {
+#ifdef LAMAVM_COLD
+    fp[frame::offset_entry] = box(entry);
+#else
     return_pc()[-2].as_target = entry;
+#endif
   }
 }
 
 std::int32_t stack_n_args() {
+#ifdef LAMAVM_COLD
+  if (const auto* entry = frame_entry(); entry != nullptr) {
+    return entry[1].as_i32.arg0;
+  }
+
+#endif
   return return_pc()[-1].as_call.count;
 }
 

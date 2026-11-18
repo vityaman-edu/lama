@@ -8,6 +8,7 @@
 lamac
 lamavm
 lamavm2
+lamavm2-cold
 __pycache__/
 .ruff_cache/
 

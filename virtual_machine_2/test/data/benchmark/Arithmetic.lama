@@ -1,0 +1,14 @@
+fun accumulate(n) {
+  var total = 0;
+  while n > 0 do
+    if n % 2 == 0 then
+      total := total + (n * 3) % 97
+    else
+      total := total - n % 31
+    fi;
+    n := n - 1
+  od;
+  total
+}
+
+write(accumulate(60000))

@@ -1,0 +1,18 @@
+fun score(value) {
+  case value of
+    Point(x, y) -> x + y
+  | Limit(x) -> x
+  | _ -> 0
+  esac
+}
+
+fun accumulate(count, point, limit) {
+  var n = count, total = 0;
+  while n > 0 do
+    total := total + score(if n % 2 == 0 then point else limit fi);
+    n := n - 1
+  od;
+  total
+}
+
+write(accumulate(50000, Point(4, 7), Limit(19)))

@@ -206,3 +206,78 @@ the 64-bit build, so a 32-bit lane cannot hold every tag hash. A two-word
 SEXP/TAG variant could pack the 60-bit unboxed hash with a four-bit arity for
 counts up to 15. That trades a word for bit extraction, reboxing and a second
 layout. Use the three-word layout as the baseline for measuring this tradeoff.
+
+## Benchmark report
+
+Measured on 2026-11-18 on an Apple M3 Pro with macOS 26.6.2. Warm
+`lamavm2` used 30–51% less wall time than `lamavm2-cold` across the six
+workloads. It used 14% less time than `lamavm` on Std calls and took 4–12%
+more time on the other five workloads. Both VM2 modes beat `lamai` on all six.
+
+The [benchmark programs](../../test/data/benchmark/) print one checksum each.
+They exercise integer arithmetic and branches (`Arithmetic`), in-place indexed
+access (`ArrayUpdates`), alternating capturing closures (`Closures`), recursive
+direct calls (`DirectCalls`), constructor tests and field extraction
+(`PatternMatching`), and repeated `length` calls on strings and arrays
+(`StdCalls`). The closure and pattern workloads reuse allocated objects.
+The reference VM crashed during allocation-heavy pilot runs.
+
+Each program was compiled once to bytecode and measured in 30 rounds, with
+the four runner invocations shuffled within each round. One untimed pass
+primed each runner. Each measurement used a fresh process with empty stdin.
+The timings include startup and execution, including source parsing by
+`lamai`. All three bytecode VMs ran as x86-64 binaries under Rosetta, and
+`lamai` ran natively. Both VM2 builds used Apple Clang 21 with `-O3` and
+`-flto`. The cold build keeps the checked handlers and uses one extra frame
+word for the callee entry because its call operands stay in their decoded
+form. The warm-to-cold comparison includes that frame-layout difference.
+
+All 720 measured runs exited successfully and produced the expected checksum
+for their program. The longest measured run took 266.83 ms. An initial
+post-link launch of warm VM2 exceeded 500 ms during setup.
+
+Both builds also passed the full differential suite with two runs per case
+and the harness's default timeout for the cold suite. Each reported 138
+passes and two expected compiler skips.
+
+### Wall time
+
+Arithmetic mean in milliseconds with an approximate 95% bootstrap confidence
+interval from 2,000 resamples. Max is the largest observed time among the four
+runners for that workload.
+
+| Workload | `lamai` | `lamavm` | `lamavm2` | `lamavm2-cold` | Max |
+|:--|--:|--:|--:|--:|--:|
+| Arithmetic | 62.03 [61.83, 62.28] | 10.26 [10.02, 10.51] | 11.25 [11.03, 11.48] | 18.90 [18.65, 19.12] | 64.61 |
+| ArrayUpdates | 83.68 [83.56, 83.80] | 10.47 [10.21, 10.73] | 11.76 [11.52, 12.00] | 20.45 [20.26, 20.65] | 84.35 |
+| Closures | 249.40 [247.41, 251.59] | 10.00 [9.78, 10.23] | 10.93 [10.63, 11.26] | 17.35 [17.06, 17.70] | 266.83 |
+| DirectCalls | 34.53 [34.45, 34.62] | 8.82 [8.59, 9.05] | 9.17 [8.93, 9.41] | 13.19 [12.95, 13.42] | 34.95 |
+| PatternMatching | 93.09 [92.23, 93.96] | 12.55 [12.27, 12.83] | 14.05 [13.38, 15.15] | 28.45 [28.20, 28.69] | 98.14 |
+| StdCalls | 62.45 [61.93, 62.97] | 12.11 [11.84, 12.37] | 10.41 [10.15, 10.70] | 16.65 [16.39, 16.93] | 64.34 |
+
+### Ratios of mean wall times
+
+Each ratio divides the mean wall time of the numerator by the mean wall
+time of the denominator. The final column includes a 95% confidence interval
+from resampling whole rounds.
+
+| Workload | `lamavm` / `lamai` | Warm / `lamai` | Cold / `lamai` | Warm / `lamavm` | Cold / `lamavm` | Cold / warm |
+|:--|--:|--:|--:|--:|--:|--:|
+| Arithmetic | 0.165× | 0.181× | 0.305× | 1.097× | 1.842× | 1.680× [1.641, 1.719] |
+| ArrayUpdates | 0.125× | 0.141× | 0.244× | 1.123× | 1.953× | 1.739× [1.699, 1.782] |
+| Closures | 0.040× | 0.044× | 0.070× | 1.093× | 1.735× | 1.587× [1.533, 1.642] |
+| DirectCalls | 0.255× | 0.266× | 0.382× | 1.039× | 1.495× | 1.438× [1.392, 1.486] |
+| PatternMatching | 0.135× | 0.151× | 0.306× | 1.120× | 2.268× | 2.024× [1.870, 2.130] |
+| StdCalls | 0.194× | 0.167× | 0.267× | 0.860× | 1.376× | 1.599× [1.550, 1.647] |
+
+### Rerun
+
+From the VM2 directory with the compiler and reference VM built, the regular
+differential harness can repeat the two comparisons. It measures each runner
+in a separate batch. Prime newly built binaries before using the 500 ms limit.
+
+```sh
+make lamavm2 lamavm2-cold
+./scripts/test.sh --filter='benchmark/*' --runs=30 --timeout=0.5
+./scripts/test.sh cold --filter='benchmark/*' --runs=30 --timeout=0.5
+```

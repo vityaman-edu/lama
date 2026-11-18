@@ -2,9 +2,11 @@
 set -euo pipefail
 
 mode=rel
+target=lamavm2
 
 case ${1:-} in
   rel|san) mode=$1; shift ;;
+  cold) target=lamavm2-cold; shift ;;
 esac
 
 vm_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
@@ -17,4 +19,4 @@ if [[ $mode == san ]]; then
   fi
 fi
 
-exec python3 -B "$vm_dir/test/main.py" --lamavm "$vm_dir/build/$mode/lamavm2" "$@"
+exec python3 -B "$vm_dir/test/main.py" --lamavm "$vm_dir/build/$mode/$target" "$@"

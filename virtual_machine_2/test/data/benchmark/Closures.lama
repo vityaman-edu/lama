@@ -1,0 +1,23 @@
+fun offset(base) {
+  fun add(value) {
+    var n = 60, total = 0;
+    while n > 0 do
+      total := total + base + (value + n) % 7;
+      n := n - 1
+    od;
+    total
+  }
+  add
+}
+
+fun accumulate(count, left, right) {
+  var n = count, total = 0;
+  while n > 0 do
+    var add = if n % 2 == 0 then left else right fi;
+    total := total + add(n % 7);
+    n := n - 1
+  od;
+  total
+}
+
+write(accumulate(1000, offset(11), offset(29)))
