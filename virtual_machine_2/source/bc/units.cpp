@@ -49,6 +49,8 @@ void visit(loader& l, const std::filesystem::path& path) {
     visit(l, subpath);
   }
 
+  l.started.erase(name);
+
   const auto [it1, is_new] = l.u.by_name.emplace(std::move(name), std::move(u));
   LAMAVM_EXPECT(is_new);
   const auto& [name1, u1] = *it1;
