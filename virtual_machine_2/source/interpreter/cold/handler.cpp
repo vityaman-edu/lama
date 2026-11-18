@@ -264,7 +264,9 @@ void op_elem() {
 }
 
 void op_ld_glo() {
-  auto index = (*++pc).as_i32.arg0;
+  auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   auto& target = op_glo_target(index);
 
   tracef("ld_glo {} = {}", index, unbox<std::int64_t>(target));
@@ -274,7 +276,9 @@ void op_ld_glo() {
 }
 
 void op_ld_loc() {
-  const auto index = (*++pc).as_i32.arg0;
+  const auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   auto loc = op_loc_target(index);
   tracef("ld_loc {} = {}", index, unbox<std::int64_t>(loc));
   cold::stack_push(loc);
@@ -283,7 +287,9 @@ void op_ld_loc() {
 }
 
 void op_ld_arg() {
-  const auto index = (*++pc).as_i32.arg0;
+  const auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   const auto arg = op_arg_target(index);
   tracef("ld_arg {} = {}", index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
@@ -292,7 +298,9 @@ void op_ld_arg() {
 }
 
 void op_ld_clo() {
-  const auto index = (*++pc).as_i32.arg0;
+  const auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   const auto arg = op_clo_target(index);
   tracef("ld_clo {} = {}", index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
@@ -301,7 +309,9 @@ void op_ld_clo() {
 }
 
 void op_st_glo() {
-  auto index = (*++pc).as_i32.arg0;
+  auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   auto& target = op_glo_target(index);
 
   const auto value = stack_pop_arg();
@@ -314,7 +324,9 @@ void op_st_glo() {
 }
 
 void op_st_loc() {
-  const auto index = (*++pc).as_i32.arg0;
+  const auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
@@ -326,7 +338,8 @@ void op_st_loc() {
 }
 
 void op_st_arg() {
-  const auto index = (*++pc).as_i32.arg0;
+  const auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
 
   const auto value = stack_pop_arg();
   cold::stack_push(value);
@@ -339,7 +352,8 @@ void op_st_arg() {
 }
 
 void op_st_clo() {
-  const auto index = (*++pc).as_i32.arg0;
+  const auto [index, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
 
   const auto value = stack_pop_arg();
   cold::stack_push(value);
@@ -352,7 +366,9 @@ void op_st_clo() {
 }
 
 void op_cjmp_z() {
-  const auto target = (*++pc).as_i32.arg0;
+  const auto [target, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   const auto value = stack_pop_arg();
   ++pc;
 
@@ -364,7 +380,9 @@ void op_cjmp_z() {
 }
 
 void op_cjmp_nz() {
-  const auto target = (*++pc).as_i32.arg0;
+  const auto [target, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   const auto value = stack_pop_arg();
   ++pc;
 
@@ -392,7 +410,9 @@ void op_begin_closure() {
   const auto& args = (*++pc).as_i32;
   const auto n_args = args.arg0;
   const auto n_locals = args.arg1;
-  [[maybe_unused]] const auto n_captures = (*++pc).as_i32.arg0;
+
+  [[maybe_unused]] const auto [n_captures, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
 
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
@@ -404,8 +424,11 @@ void op_begin_closure() {
 }
 
 void op_closure() {
-  auto target = (*++pc).as_i32.arg0;
-  const auto n_captured = (*++pc).as_i32.arg1;
+  auto [target, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
+  const auto [arg0, n_captured] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg0, ==, 0);
 
   const auto* target_up = up;
   if (target < 0) { // repeated with call
@@ -460,8 +483,8 @@ void op_closure() {
 }
 
 void op_callc() {
-  const auto args = (*++pc).as_i32;
-  const auto n_args = args.arg0;
+  const auto [n_args, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
 
   auto* cj = unbox<box*>(*(sp + n_args));
   auto target = unbox<std::int32_t>(cj[0]);
@@ -481,8 +504,11 @@ void op_callc() {
 }
 
 void op_call() {
-  auto target = (*++pc).as_i32.arg0;
-  const auto n_args = (*++pc).as_i32.arg1;
+  auto [target, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
+  const auto [arg0, n_args] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg0, ==, 0);
 
   std::string_view name;
   if (target < 0) {
@@ -534,8 +560,11 @@ void op_call() {
 }
 
 void op_tag() {
-  const auto tag_offset = (*++pc).as_i32.arg0;
-  const auto n_fields = (*++pc).as_i32.arg0;
+  const auto [tag_offset, arg10] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg10, ==, 0);
+
+  const auto [n_fields, arg11] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg11, ==, 0);
 
   const box tag_hash = boxd::LtagHash(box(c_str(tag_offset)));
   const box value = stack_pop_arg();
@@ -545,7 +574,9 @@ void op_tag() {
 }
 
 void op_array() {
-  const auto n_elements = (*++pc).as_i32.arg0;
+  const auto [n_elements, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   const box value = stack_pop_arg();
   tracef("array {}", n_elements);
   cold::stack_push(boxd::Barray_patt(value, box(n_elements)));
@@ -619,7 +650,9 @@ void op_patt_closure() {
 }
 
 void op_barray() {
-  const auto n_elements = (*++pc).as_i32.arg0;
+  const auto [n_elements, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
   tracef("barray {}", n_elements);
 
   box* args = sp;

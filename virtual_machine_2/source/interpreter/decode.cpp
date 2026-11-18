@@ -1,6 +1,7 @@
 #include "decode.hpp"
 
 #include "bc/layout.hpp"
+#include "core/assert.hpp"
 #include "core/log.hpp"
 #include "interpreter/cold/handler.hpp"
 #include "op/handler.hpp"
@@ -191,9 +192,14 @@ void decode(std::span<op::word_t> text) {
     case bc::opcode_t::op_begin_closure:
       i += 2;
       break;
-    case bc::opcode_t::op_closure:
-      i += 2 + text[i + 2].as_i32.arg1;
+    case bc::opcode_t::op_closure: {
+      const auto [arg0, n_captured] = text[i + 2].as_i32;
+      LAMAVM_EXPECT_B(arg0, ==, 0);
+
+      i += 2 + n_captured;
       break;
+    }
+
     case bc::opcode_t::op_callc:
     case bc::opcode_t::op_array:
     case bc::opcode_t::op_fail:

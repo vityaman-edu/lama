@@ -304,7 +304,9 @@ void unit_parser::fixup_jump_targets() {
       i += 2;
       break;
     case opcode_t::op_jmp: {
-      auto& target = u.code_section[++i].as_i32.arg0;
+      auto& [target, arg1] = u.code_section[++i].as_i32;
+      LAMAVM_EXPECT_B(arg1, ==, 0);
+
       target = word_offset(target);
       break;
     }
@@ -321,7 +323,9 @@ void unit_parser::fixup_jump_targets() {
       break;
     case opcode_t::op_cjmp_z:
     case opcode_t::op_cjmp_nz: {
-      auto& target = u.code_section[++i].as_i32.arg0;
+      auto& [target, arg1] = u.code_section[++i].as_i32;
+      LAMAVM_EXPECT_B(arg1, ==, 0);
+
       target = word_offset(target);
       break;
     }
@@ -334,7 +338,8 @@ void unit_parser::fixup_jump_targets() {
       break;
     case opcode_t::op_call:
     case opcode_t::op_closure: {
-      auto& target = u.code_section[i + 1].as_i32.arg0;
+      auto& [target, arg1] = u.code_section[i + 1].as_i32;
+      LAMAVM_EXPECT_B(arg1, ==, 0);
 
       if (target >= 0) {
         target = word_offset(target);
@@ -342,7 +347,10 @@ void unit_parser::fixup_jump_targets() {
 
       i += 2;
       if (opcode == opcode_t::op_closure) {
-        i += u.code_section[i].as_i32.arg1;
+        const auto [arg0, n_captured] = u.code_section[i].as_i32;
+        LAMAVM_EXPECT_B(arg0, ==, 0);
+
+        i += n_captured;
       }
 
       break;
