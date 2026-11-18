@@ -6,6 +6,7 @@
 #include "decode.hpp"
 
 #include "interpreter/cold/handler.hpp"
+#include "interpreter/cold/state.hpp"
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/gc.hpp"
 #include "interpreter/runtime/state.hpp"
@@ -28,10 +29,10 @@ void exec() {
   LAMAVM_ASSERT_B(0U, <, up->text.size());
   LAMAVM_ASSERT(up->text.back().as_handler_fn == cold::op_eof);
 
-  stack_push(box(std::int64_t{0}));
-  stack_push(box(std::int64_t{0}));
+  cold::stack_push(box(std::int64_t{0}));
+  cold::stack_push(box(std::int64_t{0}));
 
-  stack_push_frame({
+  cold::stack_push_frame({
     .n_args = 2,
     .fp = fp,
     .pc = up->text.data() + up->text.size() - 1,
@@ -77,7 +78,7 @@ void run(bc::units units1) {
   gc::set_bot(sp);
 
   for (std::size_t i = 0; i < globals; ++i) {
-    stack_push(box(std::int64_t{0}));
+    cold::stack_push(box(std::int64_t{0}));
   }
 
   for (const uctx& u : units) {

@@ -1,4 +1,5 @@
 #include "handler.hpp"
+#include "state.hpp"
 
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/state.hpp"
@@ -28,7 +29,7 @@ template <box (*f)(box)>
 class unop {
 public:
   static void operator()() {
-    const auto x = stack_pop();
+    const auto x = stack_pop_arg();
     stack_push(f(x));
   }
 };
@@ -37,9 +38,14 @@ template <box (*f)(box, box)>
 class binop {
 public:
   static void operator()() {
-    const box y = stack_pop();
-    const box x = stack_pop();
-    stack_push(f(x, y));
+    const box y = stack_pop_arg();
+    const box x = stack_pop_arg();
+
+    // Arithmetic overflow and division by zero
+    // are intentionally left to the runtime.
+    const box r = f(x, y);
+
+    stack_push(r);
   }
 };
 
@@ -76,79 +82,66 @@ box& op_clo_target(std::int32_t index) {
 
 void op_add() {
   binop<boxd::Ls__Infix_43>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_sub() {
   binop<boxd::Ls__Infix_45>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_mul() {
   binop<boxd::Ls__Infix_42>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_div() {
   binop<boxd::Ls__Infix_47>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_mod() {
   binop<boxd::Ls__Infix_37>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_lt() {
   binop<boxd::Ls__Infix_60>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_le() {
   binop<boxd::Ls__Infix_6061>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_gt() {
   binop<boxd::Ls__Infix_62>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_ge() {
   binop<boxd::Ls__Infix_6261>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_eq() {
   binop<boxd::Ls__Infix_6161>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_ne() {
   binop<boxd::Ls__Infix_3361>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_and() {
   binop<boxd::Ls__Infix_3838>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
 void op_or() {
   binop<boxd::Ls__Infix_3333>::operator()();
-
   LAMAVM_DISPATCH();
 }
 
@@ -185,9 +178,9 @@ void op_sexp() {
 }
 
 void op_sta() {
-  const box value = stack_pop();
-  const box index = stack_pop();
-  const box aggregate = stack_pop();
+  const box value = stack_pop_arg();
+  const box index = stack_pop_arg();
+  const box aggregate = stack_pop_arg();
   tracef(
     "sta {}[{}] := {}",
     unbox<void*>(aggregate),
@@ -207,7 +200,7 @@ void op_jmp() {
 }
 
 void op_end() {
-  const box x = stack_pop();
+  const box x = stack_pop_arg();
   stack_pop_frame();
   stack_push(x);
 
@@ -215,13 +208,13 @@ void op_end() {
 }
 
 void op_drop() {
-  stack_pop();
+  stack_pop_arg();
 
   LAMAVM_DISPATCH();
 }
 
 void op_dup() {
-  const auto x = stack_pop();
+  const auto x = stack_pop_arg();
   stack_push(x);
   stack_push(x);
 
@@ -229,8 +222,8 @@ void op_dup() {
 }
 
 void op_swap() {
-  const auto x = stack_pop();
-  const auto y = stack_pop();
+  const auto x = stack_pop_arg();
+  const auto y = stack_pop_arg();
   stack_push(x);
   stack_push(y);
 
@@ -238,8 +231,8 @@ void op_swap() {
 }
 
 void op_elem() {
-  const box index = stack_pop();
-  const box aggregate = stack_pop();
+  const box index = stack_pop_arg();
+  const box aggregate = stack_pop_arg();
   tracef("elem {}[{}]", unbox<void*>(aggregate), unbox<std::int64_t>(index));
   stack_push(boxd::Belem(aggregate, index));
 
@@ -286,7 +279,7 @@ void op_st_glo() {
   auto index = (*++pc).as_i32.arg0;
   auto& target = op_glo_target(index);
 
-  const auto value = stack_pop();
+  const auto value = stack_pop_arg();
   stack_push(value);
 
   tracef("sd_glo {} := {}", index, unbox<std::int64_t>(value));
@@ -297,7 +290,7 @@ void op_st_glo() {
 
 void op_st_loc() {
   const auto index = (*++pc).as_i32.arg0;
-  const auto value = stack_pop();
+  const auto value = stack_pop_arg();
   stack_push(value);
 
   auto& loc = op_loc_target(index);
@@ -310,7 +303,7 @@ void op_st_loc() {
 void op_st_arg() {
   const auto index = (*++pc).as_i32.arg0;
 
-  const auto value = stack_pop();
+  const auto value = stack_pop_arg();
   stack_push(value);
 
   auto& arg = op_arg_target(index);
@@ -323,7 +316,7 @@ void op_st_arg() {
 void op_st_clo() {
   const auto index = (*++pc).as_i32.arg0;
 
-  const auto value = stack_pop();
+  const auto value = stack_pop_arg();
   stack_push(value);
 
   auto& arg = op_clo_target(index);
@@ -335,7 +328,7 @@ void op_st_clo() {
 
 void op_cjmp_z() {
   const auto target = (*++pc).as_i32.arg0;
-  const auto value = stack_pop();
+  const auto value = stack_pop_arg();
   ++pc;
 
   if (unbox<std::int64_t>(value) == 0) {
@@ -347,7 +340,7 @@ void op_cjmp_z() {
 
 void op_cjmp_nz() {
   const auto target = (*++pc).as_i32.arg0;
-  const auto value = stack_pop();
+  const auto value = stack_pop_arg();
   ++pc;
 
   if (unbox<std::int64_t>(value) != 0) {
@@ -364,7 +357,7 @@ void op_begin() {
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {
-    stack_push(box{static_cast<int64_t>(0)});
+    stack_push(box(std::int64_t{0}));
   }
 
   LAMAVM_DISPATCH();
@@ -379,7 +372,7 @@ void op_begin_closure() {
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {
-    stack_push(box{static_cast<int64_t>(0)});
+    stack_push(box(std::int64_t{0}));
   }
 
   LAMAVM_DISPATCH();
@@ -516,7 +509,7 @@ void op_tag() {
   const auto n_fields = (*++pc).as_i32.arg0;
 
   const box tag_hash = boxd::LtagHash(box(c_str(tag_offset)));
-  const box value = stack_pop();
+  const box value = stack_pop_arg();
   stack_push(boxd::Btag(value, tag_hash, box(n_fields)));
 
   LAMAVM_DISPATCH();
@@ -524,7 +517,7 @@ void op_tag() {
 
 void op_array() {
   const auto n_elements = (*++pc).as_i32.arg0;
-  const box value = stack_pop();
+  const box value = stack_pop_arg();
   tracef("array {}", n_elements);
   stack_push(boxd::Barray_patt(value, box(n_elements)));
 
@@ -535,7 +528,7 @@ void op_fail() {
   const auto args = (*++pc).as_i32;
   const auto line = args.arg0;
   const auto col = args.arg1;
-  const box value = stack_pop();
+  const box value = stack_pop_arg();
   tracef("fail {}:{}:{}", up->name, line, col);
   boxd::Bmatch_failure(value, box(up->name), box(line), box(col));
 }

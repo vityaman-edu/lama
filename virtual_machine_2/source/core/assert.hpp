@@ -65,6 +65,6 @@
 
 #define LAMAVM_ASSERT_B(lhs, op, rhs) LAMAVM_EXPECT_B(lhs, op, rhs)
 
-#define LAMAVM_ASSERT_BB(lhs, op, rhs) LAMAVM_EXPECT_BB(lhs, op, rhs)
+#define LAMAVM_ASSERT_BB(a, ab, b, bc, c) LAMAVM_EXPECT_BB(a, ab, b, bc, c)
 
 #endif

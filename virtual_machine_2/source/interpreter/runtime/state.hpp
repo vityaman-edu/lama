@@ -38,27 +38,7 @@ extern box* sp;
 extern box* fp;
 extern const uctx* up;
 
-struct frame {
-  static constexpr std::int64_t size = 5;
-
-  std::int64_t n_args = 0;
-  box* fp = nullptr;
-  const op::word_t* pc = nullptr;
-  box* sp = nullptr;
-  const uctx* up = nullptr;
-};
-
 const char* c_str(std::int32_t offset);
-
-void stack_push(box x);
-
-box stack_pop();
-
-void stack_push_frame(frame f);
-
-void stack_pop_frame();
-
-std::int64_t stack_n_args();
 
 auto gc_call(auto f) {
   gc::set_top(sp - 1);
