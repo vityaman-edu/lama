@@ -28,6 +28,7 @@ authorize implementation.
 |:--|:--|:--|
 | Packed layouts, alignment, storage, and object lifetime | [Packed memory](packed-memory.md) | General constraints |
 | Native bridges and runtime symbol resolution | [Runtime bridges](runtime-bridges.md) | Explicit wrappers and generic bridge applied; symbol resolution deferred |
+| Cold opcode safety contracts and review findings | [Bytecode safety](bytecode-safety.md) | Review pending |
 | In-place warming, unit context, and per-opcode layouts | [Warm interpreter](warm-interpreter.md) | Layout proposals in review |
 | Linking decoded modules into a self-contained program | [Linking](linking.md) | Future design |
 | Pointer enumeration and address rebasing | [Relocation](relocation.md) | Future mechanism |
