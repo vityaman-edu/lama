@@ -11,6 +11,12 @@ if [[ $mode == cold ]]; then
   set -- "$mode" "$@"
 fi
 
+if [[ $mode == san && -n ${NIX_HARDENING_ENABLE:-} ]]; then
+  hardening_flags=" $NIX_HARDENING_ENABLE "
+  hardening_flags=${hardening_flags// fortify / }
+  export NIX_HARDENING_ENABLE=${hardening_flags// fortify3 / }
+fi
+
 if [[ $(uname -s) == Darwin ]]; then
   unset DEVELOPER_DIR SDKROOT
 fi
