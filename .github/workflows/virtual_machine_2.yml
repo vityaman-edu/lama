@@ -19,8 +19,6 @@ jobs:
       matrix:
         target: [test, test-san]
     env:
-      CC: clang
-      CXX: clang++
       CCACHE_DIR: ${{ github.workspace }}/virtual_machine_2/build/ccache/${{ matrix.target }}
       CCACHE_MAXSIZE: 1GiB
       CCACHE_COMPILERCHECK: content
@@ -48,4 +46,4 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Test
-        run: nix develop --command make -C virtual_machine_2 ${{ matrix.target }}
+        run: nix develop --command env CC=clang CXX=clang++ make -C virtual_machine_2 ${{ matrix.target }}
