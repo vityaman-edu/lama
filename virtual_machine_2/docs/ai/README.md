@@ -17,6 +17,7 @@ authorize implementation.
 | Dependency loading, initialization order, and symbol index | [Units](units.md) |
 | Instruction words and operand coordinates | [Opword representation](opword.md) |
 | Handler decoding, dispatch, calls, and supported operations | [Cold threaded interpreter](threaded-code.md) |
+| In-place promotion, resolved operands, and specialized calls | [Warm interpreter](warm-interpreter.md) |
 | Tagged values, stack frames, GC, and C runtime boundary | [Runtime](runtime.md) |
 | Std functions, global variable, and native signatures | [Std runtime interface](std.md) |
 | Differential runner, import fixtures, and result interpretation | [Testing](testing.md) |
@@ -29,7 +30,6 @@ authorize implementation.
 | Packed layouts, alignment, storage, and object lifetime | [Packed memory](packed-memory.md) | General constraints |
 | Native bridges and runtime symbol resolution | [Runtime bridges](runtime-bridges.md) | Explicit wrappers and generic bridge applied; symbol resolution deferred |
 | Cold opcode safety contracts and review findings | [Bytecode safety](bytecode-safety.md) | Review pending |
-| In-place warming, unit context, and per-opcode layouts | [Warm interpreter](warm-interpreter.md) | Layout proposals in review |
 | Linking decoded modules into a self-contained program | [Linking](linking.md) | Future design |
 | Pointer enumeration and address rebasing | [Relocation](relocation.md) | Future mechanism |
 | Specification and implementation gaps | [Deferred defects](deferred-defects.md) | Postponed |

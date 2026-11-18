@@ -71,19 +71,29 @@ The singleton operand stack is a fixed vector of boxes and grows downward.
 current unit's strings, text, and global base. Globals occupy the high end of
 the same stack, initialized to tagged zero before any unit body runs.
 
-A frame occupies five words. Relative to `fp`, it stores:
+A frame occupies four words relative to `fp`.
 
 | Slot | Value |
 |:--|:--|
-| `fp[0]` | Tagged argument count |
-| `fp[-1]` | Saved frame pointer |
-| `fp[-2]` | Saved return instruction pointer |
-| `fp[-3]` | Saved stack pointer |
-| `fp[-4]` | Saved unit context |
+| `fp[0]` | Saved frame pointer |
+| `fp[-1]` | Saved return instruction pointer |
+| `fp[-2]` | Saved stack pointer |
+| `fp[-3]` | Saved unit context |
 
-Arguments are above the frame; locals are below it. END preserves the result,
-restores the four saved pointers, and pushes the result on the caller's stack.
-The saved unit context is necessary for returning from imported function calls.
+Arguments start at `fp + 1`. Locals start at `fp - 4` and grow downward.
+END preserves the result, restores the four pointers, and pushes the result.
+
+Cold checks read the argument count from the word before the return PC. For
+direct CALL, the preceding word points to the callee's BEGIN. CALLC marks its
+count word as indirect. Its closure lives at `saved_sp[-1]`, including across
+GC, and supplies the actual callee's unit and entry offset. In either case,
+BEGIN's signature word supplies the local count. The caller finishes patching
+these operands before dispatching to the callee.
+
+Unit startup supplies a synthetic two-argument call ending at the shared EOF
+handler. Its target starts empty for a cold unit and records the entry when
+BEGIN initializes the locals. A previously warmed entry supplies its target
+at startup. Warm instructions use their own resolved operands.
 
 ## GC boundary
 

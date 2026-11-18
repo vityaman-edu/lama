@@ -25,8 +25,7 @@ conformance; see [deferred defects](deferred-defects.md).
 STA pops the value, index, and aggregate, calls the non-allocating runtime
 `Bsta`, and pushes the stored value. Its stack effect is three values to one.
 
-TAG occupies two words: the handler and packed `tag_offset`, `n_fields`
-operands. It resolves the tag in the current unit with `LtagHash`, consumes
+TAG occupies three words with one operand each for `tag_offset` and `n_fields`. It resolves the tag in the current unit with `LtagHash`, consumes
 one value, and pushes the boxed result of `Btag(value, tag_hash, BOX(n_fields))`.
 The result is true only for an S-expression with both the expected tag and
 arity. The operation does not allocate and leaves stack depth unchanged.
@@ -52,8 +51,8 @@ tail calls prevent one native stack frame per executed instruction.
 
 ## Calls and unit context
 
-Bytecode CALL saves the next handler address, frame/stack pointers, argument
-count, and caller unit context. A nonnegative target is a word offset in the
+Bytecode CALL saves the next handler address, frame and stack pointers,
+and caller unit context. Its argument count stays in the call instruction. A nonnegative target is a word offset in the
 current unit. A negative target names a Std or public function. A Std call
 uses its native bridge and falls through in the current unit. A public
 function call selects the declaring unit. END restores the caller state and
@@ -68,5 +67,5 @@ the next unit; after all bodies finish, `run` exits the process with status zero
 An atomic guard permits only one runtime load per process.
 
 Current bounds-checking gaps are recorded in [deferred defects](deferred-defects.md).
-Per-instruction promotion and the proposed cold and warm operand layouts are
-described in the [warm design](warm-interpreter.md).
+The [warm interpreter](warm-interpreter.md) specializes each returning cold
+instruction before its next dispatch.

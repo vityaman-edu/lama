@@ -1,0 +1,27 @@
+import ClosureFactory;
+
+fun twice(x) {
+  var saved = x;
+  saved * 2
+}
+fun apply(f, x) { f(x) }
+fun counter(x) { makeClosure(x) }
+
+fun nested(x) {
+  fun middle(y) {
+    fun add(z) { x + y + z }
+    add
+  }
+  middle
+}
+
+var a = counter(10), b = counter(20);
+var left = nested(10), right = nested(20);
+var f = left(1), g = right(2);
+
+if apply(a, 1) == 13 &&
+   apply(twice, 4) == 8 &&
+   apply(b, 3) == 25 &&
+   apply(a, 2) == 15 &&
+   apply(f, 3) == 14 && apply(g, 3) == 25
+then write(1) else 1 / 0 fi

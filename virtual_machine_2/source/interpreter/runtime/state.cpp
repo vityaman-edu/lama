@@ -2,7 +2,6 @@
 #include "bc/units.hpp"
 #include "interpreter/runtime/box.hpp"
 #include "op/word.hpp"
-#include <cstdint>
 #include <vector>
 
 namespace lamavm::interpreter {
@@ -11,7 +10,7 @@ bc::symbol::index symbols;
 std::vector<uctx> units;
 std::vector<box> stack;
 
-const op::word_t* pc = nullptr;
+op::word_t* pc = nullptr;
 box* sp = nullptr;
 box* fp = nullptr;
 const uctx* up = nullptr;
@@ -27,15 +26,20 @@ box stack_pop() {
   return x;
 }
 
+void stack_push_frame(frame f) {
+  sp -= frame::size;
+  fp = sp + (frame::size - 1);
+  fp[frame::offset_fp] = box(f.fp);
+  fp[frame::offset_pc] = box(f.pc);
+  fp[frame::offset_sp] = box(f.sp);
+  fp[frame::offset_up] = box(f.up);
+}
+
 void stack_pop_frame() {
   up = unbox<const uctx*>(fp[frame::offset_up]);
   sp = unbox<box*>(fp[frame::offset_sp]);
-  pc = unbox<const op::word_t*>(fp[frame::offset_pc]);
+  pc = unbox<op::word_t*>(fp[frame::offset_pc]);
   fp = unbox<box*>(fp[frame::offset_fp]);
-}
-
-std::int64_t stack_n_args() {
-  return unbox<std::int64_t>(fp[frame::offset_n_args]);
 }
 
 } // namespace lamavm::interpreter

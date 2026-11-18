@@ -26,7 +26,7 @@ namespace lamavm::interpreter {
 struct uctx {
   const char* name = nullptr;
   std::span<const char> data;
-  std::span<const op::word_t> text;
+  std::span<op::word_t> text;
   std::size_t glo_base = 0;
 };
 
@@ -34,22 +34,20 @@ extern bc::symbol::index symbols;
 extern std::vector<uctx> units;
 extern std::vector<box> stack;
 
-extern const op::word_t* pc;
+extern op::word_t* pc;
 extern box* sp;
 extern box* fp;
 extern const uctx* up;
 
 struct frame {
-  static constexpr std::int64_t offset_n_args = 0;
-  static constexpr std::int64_t offset_fp = -1;
-  static constexpr std::int64_t offset_pc = -2;
-  static constexpr std::int64_t offset_sp = -3;
-  static constexpr std::int64_t offset_up = -4;
+  static constexpr std::int64_t offset_fp = 0;
+  static constexpr std::int64_t offset_pc = -1;
+  static constexpr std::int64_t offset_sp = -2;
+  static constexpr std::int64_t offset_up = -3;
   static constexpr std::int64_t size = 1 - offset_up;
 
-  std::int64_t n_args = 0;
   box* fp = nullptr;
-  const op::word_t* pc = nullptr;
+  op::word_t* pc = nullptr;
   box* sp = nullptr;
   const uctx* up = nullptr;
 };
@@ -58,9 +56,9 @@ void stack_push(box x);
 
 box stack_pop();
 
-void stack_pop_frame();
+void stack_push_frame(frame f);
 
-std::int64_t stack_n_args();
+void stack_pop_frame();
 
 auto gc_call(auto f) {
   gc::set_top(sp - 1);

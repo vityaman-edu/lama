@@ -10,7 +10,10 @@
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/gc.hpp"
 #include "interpreter/runtime/state.hpp"
+#include "interpreter/warm/handler.hpp"
+#include "op/word.hpp"
 
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -23,7 +26,7 @@ namespace lamavm::interpreter {
 namespace {
 
 void exec() {
-  fp = sp;
+  fp = nullptr;
   pc = up->text.data();
 
   LAMAVM_ASSERT_B(0U, <, up->text.size());
@@ -32,15 +35,25 @@ void exec() {
   cold::stack_push(box(std::int64_t{0}));
   cold::stack_push(box(std::int64_t{0}));
 
+  std::array<op::word_t, 3> startup{{
+    {.as_target = nullptr},
+    {.as_call = {.unit_index = 0, .count = 2}},
+    {.as_handler_fn = cold::op_eof},
+  }};
+  const auto entry = pc->as_handler_fn;
+  if (entry == warm::op_begin || entry == warm::op_begin_no_locals) {
+    LAMAVM_EXPECT_B(pc[1].as_i32.arg0, ==, startup[1].as_call.count);
+    startup[0].as_target = pc;
+  }
+
   cold::stack_push_frame({
-    .n_args = 2,
     .fp = fp,
-    .pc = up->text.data() + up->text.size() - 1,
+    .pc = &startup.back(),
     .sp = sp,
     .up = up,
   });
 
-  LAMAVM_DISPATCH_JUMP();
+  pc->as_handler_fn();
 }
 
 } // namespace
@@ -86,7 +99,6 @@ void run(bc::units units1) {
   for (const uctx& u : units) {
     up = &u;
     exec();
-    cold::stack_reset_frames();
   }
 
   std::exit(0); // NOLINT(concurrency-mt-unsafe)

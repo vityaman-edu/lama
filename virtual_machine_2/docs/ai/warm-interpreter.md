@@ -1,13 +1,31 @@
 # Warm interpreter
 
-The current [word parser](bytecode.md) reads the packed file and lays out the
-whole unit. It checks structural requirements, including instruction boundaries
-when converting byte targets to word offsets. The [threaded decoder](threaded-code.md)
-installs cold handlers. The warm-interpreter design leaves deeper semantic
-validation and resolution to execution, so a body that never runs incurs
-neither. The current C++ has proposed layouts in `TODO(warm)` comments and a
-string-pointer member in `word_t`. The parser, decoder, and handlers still use
-the old cold layouts below.
+The decoder installs a cold handler at each instruction. On its first successful
+execution, the handler performs the operation once, stores its resolved operands
+in the same words, then installs the warm handler before dispatch. Conditional
+jumps resolve their target on either outcome. FAIL and FAIL_KEEP terminate the
+process. EOF stays shared so startup can recognize the terminator.
+
+Warm execution assumes valid bytecode, compatible frames, live operands of the
+required kinds, and enough stack space. A successful cold visit only checks
+the state of that visit. Release warm handlers use the current operands and
+closure on every visit and omit repeated VM validation. The C runtime and Std
+bridges retain their own behavior.
+
+The `New cold` and `New warm` columns below give the implemented operand
+widths. CALL has separate local, cross-unit and Std handlers. BEGIN and
+BEGIN_CLOSURE have separate handlers for zero locals and retain their
+signatures for cold callers. The [four-word frame](runtime.md#stack-and-frames)
+saves the caller's FP, PC, SP and unit. Cold checks recover the signature
+through the return PC.
+Warm operations use their own cached offsets. A capture descriptor
+stores a base and an offset. Base `-1` selects the global stack, `0` selects
+the current frame, and a positive base locates the live closure at `fp[base]`.
+CLOSURE keeps full-width capture descriptors and the existing heap layout. See the [warm handlers](../../source/interpreter/warm/handler.cpp)
+and [specialization functions](../../source/interpreter/warm/specialization.cpp).
+
+The following design notes record the layout rationale, alternatives, and
+additional checks that a checked execution mode would need.
 
 ## In-place promotion
 
@@ -122,10 +140,8 @@ Each bracket is one operand word. The leading handler word is implicit.
 to its left. A lone `i32` uses the first lane, with the other lane unused unless
 shown. `pc*` points to an instruction word, and `box` denotes already-tagged
 bits. Store these bits in a trivial 64-bit operand member and recover the box
-without applying its integer constructor. Old cold is the layout emitted
-today by [the parser](../../source/bc/unit.cpp). New cold and new warm are
-recommendations. The latter can reuse the same handler where there is no
-persistent fact to specialize. See the
+without applying its integer constructor. Old cold records the earlier layout. New cold is emitted by
+[the parser](../../source/bc/unit.cpp). New warm is installed in place. See the
 [cold handler implementations](../../source/interpreter/cold/handler.cpp)
 and [runtime primitives](../../contrib/runtime/runtime.c) for the behavior
 each warm handler needs to preserve.
@@ -167,8 +183,8 @@ each warm handler needs to preserve.
 | `op_cjmp_nz` | `[target:i32]` | = | `[target:pc*]` | Same layout with a nonzero test. Keep unit context on either edge. |
 | `op_begin` | `[n_args:i32 \| n_locals:i32]` | = | = | Retain the signature. A warm entry can specialize local initialization, including zero locals. |
 | `op_begin_closure` | `[n_args:i32 \| n_locals:i32] [n_captures:i32]` | = | = | Retain both counts for later calls and closure creation. Warm fallthrough still skips both operands. |
-| `op_closure` | `[target:i32 \| N:i32] [kind:i32 \| index:i32] × N` | `[target:i32] [_ \| N:i32] [kind:i32 \| index:i32] × N` | `[target:pc*] [unit_index:u32 \| N:i32] [kind:i32 \| slot:i32] × N` | Accept the split header. Use wide descriptors initially. The slot denotes a resolved global stack index or a frame/payload-relative coordinate. Preserve capture order and GC rooting. |
-| `op_callc` | `[n_args:i32]` | = | = | The site has no fixed callee. A shared pointer-based closure ABI can remove target offset arithmetic. The caller continuation is still `site + 2`. |
+| `op_closure` | `[target:i32 \| N:i32] [kind:i32 \| index:i32] × N` | `[target:i32] [_ \| N:i32] [kind:i32 \| index:i32] × N` | `[target:pc*] [unit_index:u32 \| N:i32] [base:i32 \| offset:i32] × N` | Accept the split header. Use wide descriptors initially. The slot denotes a resolved global stack index or a frame/payload-relative coordinate. Preserve capture order and GC rooting. |
+| `op_callc` | `[n_args:i32]` | = | `[indirect:u32 \| n_args:i32]` | The site has no fixed callee. A shared pointer-based closure ABI can remove target offset arithmetic. The caller continuation is still `site + 2`. |
 | `op_call` | `[target:i32 \| n_args:i32]` | `[target:i32] [_ \| n_args:i32]` | VM `[target:pc*] [unit_index:u32 \| n_args:i32]` or Std `[bridge:fn] [_ \| n_args:i32]` | Accept the extra word for the direct target. Keep the count in the same lane and use separate VM and Std handlers. |
 | `op_tag` | `[tag_offset:i32 \| n_fields:i32]` | `[tag_offset:i32] [n_fields:i32]` | `[tag_hash:box] [n_fields:box]` | Same hash resolution as SEXP. Prebox the count as well, since only `Btag` uses it. Subject type, tag and arity remain live tests. |
 | `op_array` | `[n_elements:i32]` | = | `[n_elements:box]` | Prebox the expected length for `Barray_patt`. Keep the live kind and length tests. |

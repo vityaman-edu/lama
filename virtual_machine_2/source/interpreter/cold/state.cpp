@@ -4,6 +4,7 @@
 
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/state.hpp"
+#include "op/word.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -17,10 +18,8 @@ std::size_t globals_count = 0;
 
 namespace {
 
-std::vector<std::int32_t> frame_locals;
-
 box* frame_begin() {
-  LAMAVM_EXPECT(!frame_locals.empty());
+  LAMAVM_EXPECT(fp != nullptr);
   LAMAVM_EXPECT_B(frame::size, <=, std::ssize(stack));
 
   const void* first_frame = stack.data() + (frame::size - 1);
@@ -29,6 +28,23 @@ box* frame_begin() {
   LAMAVM_EXPECT_BB(first_frame, <=, frame_ptr, <, stack_end);
 
   return fp - (frame::size - 1);
+}
+
+op::word_t* return_pc() {
+  return unbox<op::word_t*>(fp[frame::offset_pc]);
+}
+
+const op::word_t* frame_entry() {
+  const auto* continuation = return_pc();
+  if (continuation[-1].as_call.unit_index != op::call_t::indirect) {
+    return continuation[-2].as_target;
+  }
+
+  const auto* caller_sp = unbox<box*>(fp[frame::offset_sp]);
+  const auto* closure = unbox<box*>(caller_sp[-1]);
+  const auto* callee = unbox<const uctx*>(closure[1]);
+  const auto offset = unbox<std::int32_t>(closure[0]);
+  return callee->text.data() + offset;
 }
 
 } // namespace
@@ -82,26 +98,12 @@ box stack_pop_arg() {
 }
 
 void stack_push_frame(frame f) {
-  frame_locals.push_back(0);
-  cold::stack_push(box(f.n_args));
-  box* new_fp = sp;
-  cold::stack_push(box(f.fp));
-  cold::stack_push(box(f.pc));
-  cold::stack_push(box(f.sp));
-  cold::stack_push(box(f.up));
-  fp = new_fp;
+  LAMAVM_EXPECT_B(frame::size, <=, sp - stack.data());
+  interpreter::stack_push_frame(f);
 }
 
-void stack_pop_frame() {
-  frame_locals.pop_back();
-  interpreter::stack_pop_frame();
-}
-
-void stack_reset_frames() {
-  frame_locals.clear();
-}
-
-void stack_init_locals(std::int32_t n_args, std::int32_t n_locals) {
+void stack_init_locals(op::word_t* entry) {
+  const auto [n_args, n_locals] = entry[1].as_i32;
   const auto* begin = frame_begin();
   LAMAVM_EXPECT_B(static_cast<const void*>(sp), ==, static_cast<const void*>(begin));
   LAMAVM_EXPECT_B(n_args, ==, stack_n_args());
@@ -111,12 +113,19 @@ void stack_init_locals(std::int32_t n_args, std::int32_t n_locals) {
     cold::stack_push(box(std::int64_t{0}));
   }
 
-  frame_locals.back() = n_locals;
+  if (unbox<box*>(fp[frame::offset_fp]) == nullptr) {
+    return_pc()[-2].as_target = entry;
+  }
+}
+
+std::int32_t stack_n_args() {
+  return return_pc()[-1].as_call.count;
 }
 
 std::int64_t stack_n_locals() {
   static_cast<void>(frame_begin());
-  return frame_locals.back();
+  const auto* entry = frame_entry();
+  return entry == nullptr ? 0 : entry[1].as_i32.arg1;
 }
 
 std::span<box> stack_frame_args() {

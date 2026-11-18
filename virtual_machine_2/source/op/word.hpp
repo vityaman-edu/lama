@@ -6,12 +6,33 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <span>
+
+namespace lamavm::interpreter {
+class box;
+} // namespace lamavm::interpreter
 
 namespace lamavm::op {
 
 using arg_idx_t = std::int32_t; // argument
 using loc_idx_t = std::int32_t; // local variable
 using glo_idx_t = std::int32_t; // global variable
+
+struct call_t {
+  static constexpr auto indirect = std::numeric_limits<std::uint32_t>::max();
+
+  std::uint32_t unit_index;
+  std::int32_t count;
+};
+
+struct capture_t {
+  static constexpr std::int32_t global_base = -1;
+  static constexpr std::int32_t frame_base = 0;
+
+  std::int32_t base;
+  std::int32_t offset;
+};
 
 // LamaVM text (code) is just an array of opwords.
 // One operation (instruction) consists of opwords.
@@ -34,7 +55,12 @@ union word_t {
     std::int32_t arg0;
     std::int32_t arg1;
   } as_i32; // e.g. SEXP
+  capture_t as_capture;
   const char* as_str;
+  std::uint64_t as_box_bits;
+  interpreter::box* as_slot;
+  interpreter::box (*as_std_fn)(std::span<interpreter::box>);
+  call_t as_call;
 };
 
 static_assert(ctype<word_t>);

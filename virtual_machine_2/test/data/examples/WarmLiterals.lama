@@ -1,0 +1,14 @@
+fun make(x) { Abcdefghij("seed", x) }
+fun matches(value, x) {
+  case value of
+    Abcdefghij(s, n) -> s[0] == 115 && n == x
+  | _ -> 0
+  esac
+}
+
+var a = make(1), b = make(2), c = make(3);
+b[0][0] := 97;
+
+if matches(a, 1) && matches(c, 3) && matches(b, 2) == 0 &&
+   matches(Zbcdefghij("seed", 1), 1) == 0
+then write(1) else 1 / 0 fi
