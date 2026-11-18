@@ -14,6 +14,7 @@ On the configured 64-bit target, a word occupies eight bytes. The union exposes:
 | `as_handler_fn` | Parameterless `void (*)()` handler |
 | `as_target` | Word pointer, available but unused by current cold operands |
 | `as_i32` | Two signed 32-bit operands, `arg0` and `arg1` |
+| `as_str` | String-table pointer, reserved for warm STRING |
 
 An instruction starts with one handler word, followed by operand words. Each
 pair of serialized int32 operands shares a word; a single operand uses `arg0`
@@ -42,9 +43,9 @@ designation occupies one additional word. These counts describe the parsed
 layout; unsupported handlers are still rejected during handler decoding.
 
 The union is a storage representation. Parsing and handler decoding establish
-which member consumers read; its existence does not make arbitrary member
-reinterpretation valid. The source checks `ctype<word_t>` and equal sizes of
-handler IDs and function pointers; `ctype` alone does not establish alignment.
+which member consumers read. The source checks `ctype<word_t>`, equality of
+handler ID and function pointer sizes, and equality of word and
+`uintptr_t` sizes.
 
 ## Operand coordinates
 
@@ -54,9 +55,12 @@ table, and nonnegative global operands are indices within the current unit.
 A negative external operand `x` names a symbol at string offset `-x - 1`.
 [The cold handlers](threaded-code.md) resolve imported calls and globals at runtime.
 
-The [warm CALL design](warm-interpreter.md) also retains integer coordinates,
-with a unit index and word offset. Resolved native pointers in operands and
-[relocation](relocation.md) remain future possibilities.
+The [warm-interpreter design](warm-interpreter.md) proposes reserving space
+while decoding cold operands so some instructions can later store resolved
+pointers in place. CALL would store an instruction pointer with an inline unit
+index and argument count. The older offset-based layout is a footprint
+baseline. Moving text after promotion would require
+[relocation](relocation.md).
 
 ## Ownership and performance
 

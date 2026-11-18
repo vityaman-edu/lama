@@ -37,8 +37,8 @@ template <box (*f)(box, box)>
 class binop {
 public:
   static void operator()() {
-    const auto y = stack_pop();
-    const auto x = stack_pop();
+    const box y = stack_pop();
+    const box x = stack_pop();
     stack_push(f(x, y));
   }
 };
@@ -159,6 +159,9 @@ void op_const() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// old cold: [ string_offset:i32 ]
+// new warm: [ str:ptr ]
 void op_string() {
   const auto string_offset = (*++pc).as_i32.arg0;
   const char* str1 = c_str(string_offset);
@@ -168,6 +171,10 @@ void op_string() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// old cold: [ tag_offset:i32 | n_fields:i32 ]
+// new cold: [ tag_offset:i32 ] [ n_fields:i32 ]
+// new warm: [ tag_hash:i64   ] [ n_fields:i32 ]
 void op_sexp() {
   const auto& arg = (*++pc).as_i32;
   const std::int32_t tag_offset = arg.arg0;
@@ -200,6 +207,9 @@ void op_sta() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// old cold: [ target:i32 ]
+// new warm: [ target:ptr ]
 void op_jmp() {
   const auto target = (*++pc).as_i32.arg0;
   pc = up->text.data() + target;
@@ -247,6 +257,8 @@ void op_elem() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// note: not optimized, because arg, loc and clo are not
 void op_ld_glo() {
   auto index = (*++pc).as_i32.arg0;
   auto& target = op_glo_target(index);
@@ -283,6 +295,8 @@ void op_ld_clo() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// note: not optimized, because arg, loc and clo are not
 void op_st_glo() {
   auto index = (*++pc).as_i32.arg0;
   auto& target = op_glo_target(index);
@@ -334,6 +348,9 @@ void op_st_clo() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// old cold: [ target:i32 ]
+// new warm: [ target:ptr ]
 void op_cjmp_z() {
   const auto target = (*++pc).as_i32.arg0;
   const auto value = stack_pop();
@@ -346,6 +363,9 @@ void op_cjmp_z() {
   LAMAVM_DISPATCH_JUMP();
 }
 
+// TODO(warm):
+// old cold: [ target:i32 ]
+// new warm: [ target:ptr ]
 void op_cjmp_nz() {
   const auto target = (*++pc).as_i32.arg0;
   const auto value = stack_pop();
@@ -358,6 +378,9 @@ void op_cjmp_nz() {
   LAMAVM_DISPATCH_JUMP();
 }
 
+// TODO(warm):
+// old cold: [ n_args:i32 | n_locals:i32 ]
+// new warm: [      _:i32 | n_locals:i32 ]
 void op_begin() {
   const auto& args = (*++pc).as_i32;
   const auto n_args = args.arg0;
@@ -371,6 +394,9 @@ void op_begin() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// old cold: [ n_args:i32 | n_locals:i32 ] [ n_captures:i32 ]
+// new warm: [      _:i32 | n_locals:i32 ] [          _:i32 ]
 void op_begin_closure() {
   const auto& args = (*++pc).as_i32;
   const auto n_args = args.arg0;
@@ -386,6 +412,11 @@ void op_begin_closure() {
   LAMAVM_DISPATCH();
 }
 
+// TODO(warm):
+// old cold: [ target:i32 | n_captured:i32 ] [ kind:i8 | index:i32 ]*
+// new cold: [ target:i32 | _:i32          ] [ n_captured:i32                  ] [ kind:i4 | index:i28 | kind:i4 | index:i28 ]*
+// new warm: [ target:ptr                  ] [ unit_index:i32 | n_captured:i32 ] [ kind:i4 | index:i28 | kind:i4 | index:i28 ]*
+// note: captures are packed more tightly -- a pair in one word
 void op_closure() {
   const auto args = (*++pc).as_i32;
   std::int32_t target = args.arg0;
@@ -462,6 +493,10 @@ void op_callc() {
   LAMAVM_DISPATCH_JUMP();
 }
 
+// TODO(warm):
+// old cold: [ target:i32 n_args:i32 ]
+// new cold: [ target:i32    | _:i32 ] [ n_args:i32 ]
+// new warm: [ target:ptr ]            [ up_index:i32 | n_args:i32 ]
 void op_call() {
   const auto args = (*++pc).as_i32;
   std::int32_t target = args.arg0;
@@ -514,6 +549,10 @@ void op_call() {
   LAMAVM_DISPATCH_JUMP();
 }
 
+// TODO(warm):
+// old cold: [ tag_offset:i32 | n_fields:i32 ]
+// new cold: [ tag_offset:i32 | _:i32 ] [ n_fields:i32 ]
+// new cold: [ tag_hash:i64           ] [ n_fields:i32 ]
 void op_tag() {
   const auto& arg = (*++pc).as_i32;
   const std::int32_t tag_offset = arg.arg0;

@@ -3,6 +3,8 @@
 #include "handler.hpp"
 
 #include "core/c.hpp"
+#include <cstddef>
+#include <cstdint>
 
 namespace lamavm::op {
 
@@ -31,8 +33,10 @@ union word_t {
     std::int32_t arg0;
     std::int32_t arg1;
   } as_i32; // e.g. SEXP
+  const char* as_str;
 };
 
 static_assert(ctype<word_t>);
+static_assert(sizeof(word_t) == sizeof(std::uintptr_t));
 
 } // namespace lamavm::op

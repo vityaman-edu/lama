@@ -52,10 +52,12 @@ tail calls prevent one native stack frame per executed instruction.
 
 ## Calls and unit context
 
-CALL saves the next handler address, frame/stack pointers, argument count, and
-caller unit context. A nonnegative target is a word offset in the current unit;
-a negative target resolves a public function and selects its declaring unit.
-END restores the caller state and dispatches at the saved return address.
+Bytecode CALL saves the next handler address, frame/stack pointers, argument
+count, and caller unit context. A nonnegative target is a word offset in the
+current unit. A negative target names a Std or public function. A Std call
+uses its native bridge and falls through in the current unit. A public
+function call selects the declaring unit. END restores the caller state and
+dispatches at the saved return address.
 
 Global loads and stores resolve negative operands as public globals and use the
 declaring unit's global base. STRING uses the current unit's string table.
@@ -65,6 +67,6 @@ EOF returns from the handler chain. The outer initialization loop then starts
 the next unit; after all bodies finish, `run` exits the process with status zero.
 An atomic guard permits only one runtime load per process.
 
-Cold execution does not provide comprehensive bounds checking. Per-instruction
-promotion and the narrower inline CALL layout are described in the
-[unimplemented warm design](warm-interpreter.md).
+Current bounds-checking gaps are recorded in [deferred defects](deferred-defects.md).
+Per-instruction promotion and the proposed cold and warm operand layouts are
+described in the [warm design](warm-interpreter.md).
