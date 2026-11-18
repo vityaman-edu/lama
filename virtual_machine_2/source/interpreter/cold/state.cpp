@@ -5,10 +5,6 @@
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/state.hpp"
 
-#include "op/word.hpp"
-
-#include <cstdint>
-
 namespace lamavm::interpreter::cold {
 
 void stack_push(box x) {
@@ -17,8 +13,7 @@ void stack_push(box x) {
   const void* stack_end = stack.data() + stack.size();
   LAMAVM_EXPECT_BB(stack_begin, <, stack_ptr, <=, stack_end);
 
-  --sp;
-  *sp = x;
+  interpreter::stack_push(x);
 }
 
 box stack_pop() {
@@ -27,9 +22,7 @@ box stack_pop() {
   const void* stack_end = stack.data() + stack.size();
   LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <, stack_end);
 
-  const box x = *sp;
-  ++sp;
-  return x;
+  return interpreter::stack_pop();
 }
 
 box stack_pop_arg() {
@@ -42,24 +35,13 @@ box stack_pop_arg() {
 }
 
 void stack_push_frame(frame f) {
-  stack_push(box(f.n_args));
+  cold::stack_push(box(f.n_args));
   box* new_fp = sp;
-  stack_push(box(f.fp));
-  stack_push(box(f.pc));
-  stack_push(box(f.sp));
-  stack_push(box(f.up));
+  cold::stack_push(box(f.fp));
+  cold::stack_push(box(f.pc));
+  cold::stack_push(box(f.sp));
+  cold::stack_push(box(f.up));
   fp = new_fp;
-}
-
-void stack_pop_frame() {
-  up = unbox<const uctx*>(fp[-4]);
-  sp = unbox<box*>(fp[-3]);
-  pc = unbox<const op::word_t*>(fp[-2]);
-  fp = unbox<box*>(fp[-1]);
-}
-
-std::int64_t stack_n_args() {
-  return unbox<std::int64_t>(fp[0]);
 }
 
 } // namespace lamavm::interpreter::cold

@@ -30,7 +30,7 @@ class unop {
 public:
   static void operator()() {
     const auto x = stack_pop_arg();
-    stack_push(f(x));
+    cold::stack_push(f(x));
   }
 };
 
@@ -45,7 +45,7 @@ public:
     // are intentionally left to the runtime.
     const box r = f(x, y);
 
-    stack_push(r);
+    cold::stack_push(r);
   }
 };
 
@@ -147,7 +147,7 @@ void op_or() {
 
 void op_const() {
   const auto value = (*++pc).as_i32.arg0;
-  stack_push(box(value));
+  cold::stack_push(box(value));
 
   LAMAVM_DISPATCH();
 }
@@ -156,7 +156,7 @@ void op_string() {
   const auto string_offset = (*++pc).as_i32.arg0;
   const char* str1 = c_str(string_offset);
   const box str2 = gc_call([&] { return boxd::Bstring(box(static_cast<const void*>(&str1))); });
-  stack_push(str2);
+  cold::stack_push(str2);
 
   LAMAVM_DISPATCH();
 }
@@ -172,7 +172,7 @@ void op_sexp() {
   const box sexp = gc_call([&] { return boxd::Bsexp(box(args), box(n_fields + 1)); });
 
   sp += n_fields + 1;
-  stack_push(sexp);
+  cold::stack_push(sexp);
 
   LAMAVM_DISPATCH();
 }
@@ -187,7 +187,7 @@ void op_sta() {
     unbox<std::int64_t>(index),
     unbox<std::int64_t>(value));
   boxd::Bsta(aggregate, index, value);
-  stack_push(value);
+  cold::stack_push(value);
 
   LAMAVM_DISPATCH();
 }
@@ -202,7 +202,7 @@ void op_jmp() {
 void op_end() {
   const box x = stack_pop_arg();
   stack_pop_frame();
-  stack_push(x);
+  cold::stack_push(x);
 
   LAMAVM_DISPATCH_JUMP();
 }
@@ -215,8 +215,8 @@ void op_drop() {
 
 void op_dup() {
   const auto x = stack_pop_arg();
-  stack_push(x);
-  stack_push(x);
+  cold::stack_push(x);
+  cold::stack_push(x);
 
   LAMAVM_DISPATCH();
 }
@@ -224,8 +224,8 @@ void op_dup() {
 void op_swap() {
   const auto x = stack_pop_arg();
   const auto y = stack_pop_arg();
-  stack_push(x);
-  stack_push(y);
+  cold::stack_push(x);
+  cold::stack_push(y);
 
   LAMAVM_DISPATCH();
 }
@@ -234,7 +234,7 @@ void op_elem() {
   const box index = stack_pop_arg();
   const box aggregate = stack_pop_arg();
   tracef("elem {}[{}]", unbox<void*>(aggregate), unbox<std::int64_t>(index));
-  stack_push(boxd::Belem(aggregate, index));
+  cold::stack_push(boxd::Belem(aggregate, index));
 
   LAMAVM_DISPATCH();
 }
@@ -243,7 +243,7 @@ void op_ld_glo() {
   auto index = (*++pc).as_i32.arg0;
   auto& target = op_glo_target(index);
   tracef("ld_glo {} = {}", index, unbox<std::int64_t>(target));
-  stack_push(target);
+  cold::stack_push(target);
 
   LAMAVM_DISPATCH();
 }
@@ -252,7 +252,7 @@ void op_ld_loc() {
   const auto index = (*++pc).as_i32.arg0;
   auto loc = op_loc_target(index);
   tracef("ld_loc {} = {}", index, unbox<std::int64_t>(loc));
-  stack_push(loc);
+  cold::stack_push(loc);
 
   LAMAVM_DISPATCH();
 }
@@ -261,7 +261,7 @@ void op_ld_arg() {
   const auto index = (*++pc).as_i32.arg0;
   const auto arg = op_arg_target(index);
   tracef("ld_arg {} = {}", index, unbox<std::int64_t>(arg));
-  stack_push(arg);
+  cold::stack_push(arg);
 
   LAMAVM_DISPATCH();
 }
@@ -270,7 +270,7 @@ void op_ld_clo() {
   const auto index = (*++pc).as_i32.arg0;
   const auto arg = op_clo_target(index);
   tracef("ld_clo {} = {}", index, unbox<std::int64_t>(arg));
-  stack_push(arg);
+  cold::stack_push(arg);
 
   LAMAVM_DISPATCH();
 }
@@ -280,7 +280,7 @@ void op_st_glo() {
   auto& target = op_glo_target(index);
 
   const auto value = stack_pop_arg();
-  stack_push(value);
+  cold::stack_push(value);
 
   tracef("sd_glo {} := {}", index, unbox<std::int64_t>(value));
   target = value;
@@ -291,7 +291,7 @@ void op_st_glo() {
 void op_st_loc() {
   const auto index = (*++pc).as_i32.arg0;
   const auto value = stack_pop_arg();
-  stack_push(value);
+  cold::stack_push(value);
 
   auto& loc = op_loc_target(index);
   tracef("st_loc {} := {}", index, unbox<std::int64_t>(value));
@@ -304,7 +304,7 @@ void op_st_arg() {
   const auto index = (*++pc).as_i32.arg0;
 
   const auto value = stack_pop_arg();
-  stack_push(value);
+  cold::stack_push(value);
 
   auto& arg = op_arg_target(index);
   tracef("st_arg {} := {}", index, unbox<std::int64_t>(value));
@@ -317,7 +317,7 @@ void op_st_clo() {
   const auto index = (*++pc).as_i32.arg0;
 
   const auto value = stack_pop_arg();
-  stack_push(value);
+  cold::stack_push(value);
 
   auto& arg = op_clo_target(index);
   tracef("st_clo {} := {}", index, unbox<std::int64_t>(value));
@@ -357,7 +357,7 @@ void op_begin() {
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {
-    stack_push(box(std::int64_t{0}));
+    cold::stack_push(box(std::int64_t{0}));
   }
 
   LAMAVM_DISPATCH();
@@ -372,7 +372,7 @@ void op_begin_closure() {
   LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {
-    stack_push(box(std::int64_t{0}));
+    cold::stack_push(box(std::int64_t{0}));
   }
 
   LAMAVM_DISPATCH();
@@ -417,17 +417,17 @@ void op_closure() {
       fatalf("unexpected capture kind {:x}", kind);
     }
 
-    stack_push(value);
+    cold::stack_push(value);
   }
 
-  stack_push(box(target_up));
-  stack_push(box(target));
+  cold::stack_push(box(target_up));
+  cold::stack_push(box(target));
 
   const box cj = gc_call([&] { return boxd::Bclosure(box(sp), box(1 + n_captured)); });
 
   sp += 1 + 1 + n_captured;
 
-  stack_push(cj);
+  cold::stack_push(cj);
 
   LAMAVM_DISPATCH();
 }
@@ -477,7 +477,7 @@ void op_call() {
       std::span<box> rargs{sp, sp + n_args};
       const box r = gc_call([&] { return s.fn(rargs); });
       sp += n_args;
-      stack_push(r);
+      cold::stack_push(r);
 
       LAMAVM_DISPATCH();
     }
@@ -510,7 +510,7 @@ void op_tag() {
 
   const box tag_hash = boxd::LtagHash(box(c_str(tag_offset)));
   const box value = stack_pop_arg();
-  stack_push(boxd::Btag(value, tag_hash, box(n_fields)));
+  cold::stack_push(boxd::Btag(value, tag_hash, box(n_fields)));
 
   LAMAVM_DISPATCH();
 }
@@ -519,7 +519,7 @@ void op_array() {
   const auto n_elements = (*++pc).as_i32.arg0;
   const box value = stack_pop_arg();
   tracef("array {}", n_elements);
-  stack_push(boxd::Barray_patt(value, box(n_elements)));
+  cold::stack_push(boxd::Barray_patt(value, box(n_elements)));
 
   LAMAVM_DISPATCH();
 }
@@ -599,7 +599,7 @@ void op_barray() {
   const box array = gc_call([&] { return boxd::Barray(box(args), box(n_elements)); });
 
   sp += n_elements;
-  stack_push(array);
+  cold::stack_push(array);
 
   LAMAVM_DISPATCH();
 }

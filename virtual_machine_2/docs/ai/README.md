@@ -20,7 +20,7 @@ authorize implementation.
 | Tagged values, stack frames, GC, and C runtime boundary | [Runtime](runtime.md) |
 | Std functions, global variable, and native signatures | [Std runtime interface](std.md) |
 | Differential runner, import fixtures, and result interpretation | [Testing](testing.md) |
-| Build, sanitizers, formatting, and lint entry points | [Tooling](tooling.md) |
+| Build, sanitizers, checks, and C++ conventions | [Tooling](tooling.md) |
 
 ## Memory and future designs
 

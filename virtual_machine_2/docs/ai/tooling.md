@@ -50,3 +50,16 @@ available. Use that wrapper for focused checks as well.
 Report validation for the current change separately from existing diagnostics.
 Old successful runs do not establish that a later revision passes. Follow
 `AGENTS.md` for source style, comments, and Clang Tidy restrictions.
+
+## C++ conventions
+
+- Keep function declarations and type definitions in `.hpp` files. Put
+  non-template function bodies in the matching `.cpp` file, even for trivial
+  functions.
+- Include the headers that define the types you use.
+- Prefer `LAMAVM_EXPECT_B` and `LAMAVM_ASSERT_B` for comparisons so failure
+  diagnostics print both values.
+- Prefer `LAMAVM_EXPECT_BB` and `LAMAVM_ASSERT_BB` for two-sided bounds. Put the
+  checked value between the bounds, as in `LAMAVM_EXPECT_BB(min, <=, x, <, max)`.
+- Use `EXPECT` for checks that must run in release builds and `ASSERT` for
+  debug-only assertions. [Macro definitions](../../source/core/assert.hpp)
