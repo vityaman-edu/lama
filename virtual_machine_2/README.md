@@ -2,19 +2,46 @@
 
 ## Principles
 
-- **Fail fast**. Immediately exit with a simple message.
+- **Fail fast**.
+  Immediately exit with a simple message.
 
-- **KISS**. Follow the `runtime` and `virtual_machine` style.
-  This is an educational project, keep it as simple as possible.
+- **Compile-time paramters**.
+  Parameterization is implemented via macro definitions.
 
-- **Low LLM**. Write it by hand.
+- **Single Thread**.
+  Only this is supported by the LaMa runtime.
 
-- **MacOS**. Only MacOS is supported, but with Linux in mind.
+## Features
 
-- **Compile-time paramters**. Parameterization is implemented
-  via macro definitions, to keep it simple.
+- **Weak Validation**.
+  Comparing to the reference `virtual_machine`, the `virtual_machine_2`
+  does not validate stack depth and bytecode layout.
 
-- **Single Thread**. Only this is supported by the LaMa runtime.
+- **Lazy Name Resolution**.
+  Name resolution is done in runtime on first intruction execution.
+
+- **Uniform Bytecode**.
+  The packed bytecode is transformed into corresponding 64-bit words
+  without any decoding and pointers resolution.
+  The first word is always a function pointer -- a handler.
+  Arguments are passed as properly aligned following bytes.
+
+- **No Units Merge**.
+  Units are loaded into separate memory areas and a special argument
+  `up` (unit pointer) is used to resolve offsets to strings and code labels.
+  This is done to support easy dynamic unit loading and save time on relocation.
+
+- **Runtime Specialization (Code Patching)**.
+  VM starts with a cold interpreter with some hardening.
+  Cold interpreter lookups strings, external references.
+  After a cold interpreter have executed the instruction kernel,
+  it specializes current instruction.
+  It is done by replacing the handler and arguments to be more specific.
+  For example,
+  `call_local` does not require `up`,
+  `call_std` does not allocate a stack frame,
+  `begin_no_locals` just skips `n_locals` argument,
+  string and code offsets are replaced with a direct pointers.
 
 ## Getting Started
 
@@ -54,126 +81,3 @@ Run differential tests.
 ```sh
 make test
 ```
-
-## Roadmap
-
-### Procedures
-
-The goal is to correctly run the `42.lama`.
-
-- BEGIN
-- CONST
-- END
-- EOF
-
-### Simple Instructions
-
-The goal is to support more interesting expressions.
-
-- BINOP
-- STRING
-- JMP
-- CJMP
-- DROP
-- DUP
-- SWAP
-
-### Internal Call
-
-Call to the current bytecode file.
-
-- CALL
-- LD_LOC
-- LD_ARG
-- ST_LOC
-- ST_ARG
-
-### Globals
-
-Support global variables.
-
-- LD_GLO
-- ST_GLO
-
-### External Call
-
-Call to the external bytecode file.
-
-### SExpr
-
-- SEXP
-- TAG
-- ELEM
-
-### Array
-
-- BARRAY
-- ARRAY
-
-### Clojure
-
-- CLOSURE
-- BEGIN_CLOJURE
-- CALLC
-- ST_CLO
-- LD_CLO
-
-### Pattern Matching
-
-- FAIL
-- PATT_STR_CMP
-- PATT_STRING
-- PATT_ARRAY
-- PATT_SEXP
-- PATT_BOXED
-- PATT_UNBOXED
-- PATT_CLOSURE
-
-### Other
-
-- LINE
-
-## Redesign
-
-### Input
-
-The input of `lamavm2` is an only `.bc` file.
-
-```sh
-./lamavm2 Main.bc
-./lamavm2 ./Main.bc
-./lamavm2 path/to/Main.bc
-```
-
-The main unit can reference external symbols (globals or functions).
-Only public symbols of imported units can be referenced.
-Imported units are found relative to the main unit directory.
-
-### Parsing
-
-The parsing transforms **bytes** into the **unit**.
-
-### Unit Closure
-
-The unit closure recursively resolves imported modules.
-The closure is a single module.
-Module contents are written in a some topological order.
-String Tables are merged, but not interned.
-Global Arrays are appended.
-Imports are gone.
-Public symbols are not merged, only top-level are leaved.
-Relocation is done.
-
-### Analysis
-
-TODO
-
-## T O D O
-
-- Span that has end only at DEBUG and checks range bounds
-- Strong Alias Box for stack content and Std functions args
-- HotSpot. Replace opcodes with handlers. Handlers are naive.
-  When execution threshold is exceeded, intruction is specialized.
-- JIT. Take the function, somehow to turn interpreter into
-  native code. Somehow get LLVM IR from interpreter handlers.
-- When the function code is specialized, no need to put `up` on stack.

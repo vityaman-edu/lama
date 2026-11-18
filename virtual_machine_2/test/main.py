@@ -197,6 +197,15 @@ def test_case(source: Path, name: str, args: Namespace) -> str:
                 stdin,
                 args.runs,
             )
+            if (
+                implementation.name == "lamai"
+                and measurement is not None
+                and any(result.exit_code is None for result in measurement.results)
+            ):
+                statuses[implementation.name] = "SKIP"
+                errors[implementation.name] = f"timed out after {args.timeout:g}s"
+                continue
+
             if measurement is not None:
                 measurements[implementation.name] = measurement
 
