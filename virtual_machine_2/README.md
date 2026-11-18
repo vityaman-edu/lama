@@ -43,6 +43,10 @@
   `begin_no_locals` just skips `n_locals` argument,
   string and code offsets are replaced with a direct pointers.
 
+## Performance
+
+See [LLM-generated report](./docs/ai/warm-interpreter.md#Wall-time).
+
 ## Getting Started
 
 You need Nix with flakes.
