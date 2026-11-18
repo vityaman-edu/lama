@@ -35,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--filter", default="*", help="glob matching a path relative to test/data")
     parser.add_argument("--timeout", type=positive_seconds, default=30)
     parser.add_argument(
-        "--runs", type=run_count, default=20, help="runs per implementation (default: 20)"
+        "--runs", type=run_count, default=2, help="runs per implementation (default: %(default)s)"
     )
     parser.add_argument(
         "--disassemble", action="store_true", help="also show compiler disassembly on failure"

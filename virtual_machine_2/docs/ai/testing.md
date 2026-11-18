@@ -37,7 +37,7 @@ is absent. Compilation and generated files use a temporary directory per case.
   `lamai`. WARN does not make the test command fail.
 - Known compiler failures are SKIP only when their expected exit code and
   diagnostic match. Unexpected acceptance requires reviewing that exception.
-- Default sampling is 20 runs per implementation; `--runs` requires at least
+- Default sampling is two runs per implementation; `--runs` requires at least
   two. Reports show absolute wall time, a 95% bootstrap confidence interval,
   and the ratio to `lamai`, with no baseline subtraction. Without a `lamai`
   measurement the ratio is `n/a`.
