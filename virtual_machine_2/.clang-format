@@ -1,6 +1,6 @@
 BasedOnStyle: LLVM
 AllowShortFunctionsOnASingleLine: None
-AllowShortLambdasOnASingleLine: None
+AllowShortLambdasOnASingleLine: Inline
 IndentWidth: 2
 PointerAlignment: Left
 ColumnLimit: 100

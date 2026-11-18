@@ -69,6 +69,8 @@ void run(bc::units units1) {
     globals += unit.globals_count;
   }
 
+  cold::globals_count = globals;
+
   constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(box);
   stack = std::vector<box>(stack_size);
 
@@ -84,6 +86,7 @@ void run(bc::units units1) {
   for (const uctx& u : units) {
     up = &u;
     exec();
+    cold::stack_reset_frames();
   }
 
   std::exit(0); // NOLINT(concurrency-mt-unsafe)

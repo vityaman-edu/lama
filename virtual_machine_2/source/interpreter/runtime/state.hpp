@@ -40,7 +40,12 @@ extern box* fp;
 extern const uctx* up;
 
 struct frame {
-  static constexpr std::int64_t size = 5;
+  static constexpr std::int64_t offset_n_args = 0;
+  static constexpr std::int64_t offset_fp = -1;
+  static constexpr std::int64_t offset_pc = -2;
+  static constexpr std::int64_t offset_sp = -3;
+  static constexpr std::int64_t offset_up = -4;
+  static constexpr std::int64_t size = 1 - offset_up;
 
   std::int64_t n_args = 0;
   box* fp = nullptr;

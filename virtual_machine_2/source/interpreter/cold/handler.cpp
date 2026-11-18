@@ -8,6 +8,7 @@
 
 #include "op/word.hpp"
 
+#include "bc/layout.hpp"
 #include "bc/units.hpp"
 
 #include "core/assert.hpp"
@@ -17,9 +18,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <format>
 #include <iterator>
 #include <ranges>
 #include <span>
+#include <string_view>
 #include <vector>
 
 namespace lamavm::interpreter::cold {
@@ -56,33 +59,87 @@ public:
   }
 };
 
-box& op_glo_target(std::int32_t& index) {
-  std::size_t glo_base = up->glo_base;
+const bc::symbol& find_symbol(std::string_view name) {
+  const auto it = symbols.find(name);
+  LAMAVM_EXPECT_C(it != symbols.end(), std::format("unknown symbol '{}'", name));
+
+  return it->second;
+}
+
+struct glo_index {
+  std::size_t glo_base;
+  std::int32_t index;
+};
+
+glo_index op_glo_target_index(std::int32_t index) {
+  const auto* owner = up;
+
   if (index < 0) {
-    const bc::symbol& s = symbols.at(std::string_view{c_str(-index - 1)});
+    const auto& s = find_symbol(c_str(-(index + 1)));
     LAMAVM_EXPECT_B(s.kind, ==, bc::symbol::kind::global);
 
-    glo_base = units[s.uidx].glo_base;
-
+    owner = &units[s.uidx];
     index = s.offset;
   }
 
+  LAMAVM_EXPECT_B(0, <=, index);
+
+  const auto* next = owner + 1;
+  const auto limit = next == units.data() + units.size() ? globals_count : next->glo_base;
+  LAMAVM_EXPECT_B(static_cast<std::size_t>(index), <, limit - owner->glo_base);
+
+  return {.glo_base = owner->glo_base, .index = index};
+}
+
+box& op_glo_target(glo_index target_index) {
+  const auto [glo_base, index] = target_index;
   return stack[stack.size() - 1 - index - glo_base];
 }
 
-box& op_loc_target(std::int32_t index) {
-  return fp[-frame::size - index];
+std::int64_t op_loc_target_index(std::int32_t index) {
+  LAMAVM_EXPECT_BB(0, <=, index, <, stack_n_locals());
+
+  return -frame::size - index;
 }
 
-box& op_arg_target(std::int32_t index) {
-  const std::int64_t n_args = stack_n_args();
-  return fp[n_args - index];
+box& op_loc_target(std::int64_t index) {
+  return fp[index];
 }
 
-box& op_clo_target(std::int32_t index) {
-  const std::int64_t n_args = stack_n_args();
-  auto* cj = unbox<box*>(fp[1 + n_args]);
-  return cj[1 + 1 + index];
+std::int64_t op_arg_target_index(std::int32_t index) {
+  const auto n_args = std::ssize(stack_frame_args());
+  LAMAVM_EXPECT_BB(0, <=, index, <, n_args);
+
+  return n_args - index;
+}
+
+box& op_arg_target(std::int64_t index) {
+  return fp[index];
+}
+
+std::span<box> closure_payload(box closure) {
+  LAMAVM_EXPECT_C(unbox<void*>(closure) != nullptr, "expected a closure on the stack, got null");
+  LAMAVM_EXPECT_C(
+    unbox<std::int64_t>(boxd::Bclosure_tag_patt(closure)) == 1,
+    "expected a closure on the stack");
+
+  const auto size = unbox<std::int64_t>(boxd::Llength(closure));
+  LAMAVM_EXPECT_B(2, <=, size);
+
+  return {unbox<box*>(closure), static_cast<std::size_t>(size)};
+}
+
+std::size_t op_clo_target_index(std::int32_t index) {
+  LAMAVM_EXPECT_B(0, <=, index);
+
+  return 2 + static_cast<std::size_t>(index);
+}
+
+box& op_clo_target(std::size_t index) {
+  const auto closure = closure_payload(stack_frame_closure());
+  LAMAVM_EXPECT_B(index, <, closure.size());
+
+  return closure[index];
 }
 
 } // namespace
@@ -166,9 +223,7 @@ void op_string() {
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
   const char* str1 = c_str(string_offset);
-  const box str2 = gc_call([&] {
-    return boxd::Bstring(box(static_cast<const void*>(&str1)));
-  });
+  const box str2 = gc_call([&] { return boxd::Bstring(box(static_cast<const void*>(&str1))); });
   cold::stack_push(str2);
 
   LAMAVM_DISPATCH();
@@ -186,9 +241,7 @@ void op_sexp() {
   const auto args = stack_args(n_fields + 1);
   std::ranges::reverse(args);
 
-  const box sexp = gc_call([&] {
-    return boxd::Bsexp(box(args.data()), box(n_fields + 1));
-  });
+  const box sexp = gc_call([&] { return boxd::Bsexp(box(args.data()), box(n_fields + 1)); });
 
   cold::stack_pop(n_fields + 1);
   cold::stack_push(sexp);
@@ -224,7 +277,7 @@ void op_jmp() {
 
 void op_end() {
   const box x = stack_pop_arg();
-  stack_pop_frame();
+  cold::stack_pop_frame();
   cold::stack_push(x);
 
   LAMAVM_DISPATCH_JUMP();
@@ -264,12 +317,13 @@ void op_elem() {
 }
 
 void op_ld_glo() {
-  auto [index, arg1] = (*++pc).as_i32;
+  const auto [operand, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  auto& target = op_glo_target(index);
+  const auto target_index = op_glo_target_index(operand);
+  auto& target = op_glo_target(target_index);
 
-  tracef("ld_glo {} = {}", index, unbox<std::int64_t>(target));
+  tracef("ld_glo {} = {}", target_index.index, unbox<std::int64_t>(target));
   cold::stack_push(target);
 
   LAMAVM_DISPATCH();
@@ -279,7 +333,7 @@ void op_ld_loc() {
   const auto [index, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  auto loc = op_loc_target(index);
+  auto loc = op_loc_target(op_loc_target_index(index));
   tracef("ld_loc {} = {}", index, unbox<std::int64_t>(loc));
   cold::stack_push(loc);
 
@@ -290,7 +344,7 @@ void op_ld_arg() {
   const auto [index, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  const auto arg = op_arg_target(index);
+  const auto arg = op_arg_target(op_arg_target_index(index));
   tracef("ld_arg {} = {}", index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
 
@@ -301,7 +355,7 @@ void op_ld_clo() {
   const auto [index, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  const auto arg = op_clo_target(index);
+  const auto arg = op_clo_target(op_clo_target_index(index));
   tracef("ld_clo {} = {}", index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
 
@@ -309,15 +363,16 @@ void op_ld_clo() {
 }
 
 void op_st_glo() {
-  auto [index, arg1] = (*++pc).as_i32;
+  const auto [operand, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  auto& target = op_glo_target(index);
+  const auto target_index = op_glo_target_index(operand);
+  auto& target = op_glo_target(target_index);
 
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  tracef("sd_glo {} := {}", index, unbox<std::int64_t>(value));
+  tracef("sd_glo {} := {}", target_index.index, unbox<std::int64_t>(value));
   target = value;
 
   LAMAVM_DISPATCH();
@@ -330,7 +385,7 @@ void op_st_loc() {
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  auto& loc = op_loc_target(index);
+  auto& loc = op_loc_target(op_loc_target_index(index));
   tracef("st_loc {} := {}", index, unbox<std::int64_t>(value));
   loc = value;
 
@@ -344,7 +399,7 @@ void op_st_arg() {
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  auto& arg = op_arg_target(index);
+  auto& arg = op_arg_target(op_arg_target_index(index));
   tracef("st_arg {} := {}", index, unbox<std::int64_t>(value));
   arg = value;
 
@@ -358,7 +413,7 @@ void op_st_clo() {
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  auto& arg = op_clo_target(index);
+  auto& arg = op_clo_target(op_clo_target_index(index));
   tracef("st_clo {} := {}", index, unbox<std::int64_t>(value));
   arg = value;
 
@@ -394,31 +449,22 @@ void op_cjmp_nz() {
 }
 
 void op_begin() {
-  const auto& args = (*++pc).as_i32;
-  const auto n_args = args.arg0;
-  const auto n_locals = args.arg1;
-  LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
-
-  for (std::int32_t i = 0; i < n_locals; ++i) {
-    cold::stack_push(box(std::int64_t{0}));
-  }
+  const auto [n_args, n_locals] = (*++pc).as_i32;
+  stack_init_locals(n_args, n_locals);
 
   LAMAVM_DISPATCH();
 }
 
 void op_begin_closure() {
-  const auto& args = (*++pc).as_i32;
-  const auto n_args = args.arg0;
-  const auto n_locals = args.arg1;
+  const auto [n_args, n_locals] = (*++pc).as_i32;
 
-  [[maybe_unused]] const auto [n_captures, arg1] = (*++pc).as_i32;
+  const auto [n_captures, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  LAMAVM_ASSERT_B(n_args, ==, stack_n_args());
+  const auto closure = closure_payload(stack_frame_closure());
+  LAMAVM_EXPECT_B(n_captures, ==, std::ssize(closure) - 2);
 
-  for (std::int32_t i = 0; i < n_locals; ++i) {
-    cold::stack_push(box(std::int64_t{0}));
-  }
+  stack_init_locals(n_args, n_locals);
 
   LAMAVM_DISPATCH();
 }
@@ -431,8 +477,8 @@ void op_closure() {
   LAMAVM_EXPECT_B(arg0, ==, 0);
 
   const auto* target_up = up;
-  if (target < 0) { // repeated with call
-    const bc::symbol& s = symbols.at(std::string_view{c_str(-target - 1)});
+  if (target < 0) {
+    const auto& s = find_symbol(c_str(-(target + 1)));
     LAMAVM_EXPECT_B(s.kind, ==, bc::symbol::kind::function);
 
     target_up = units.data() + s.uidx;
@@ -443,23 +489,21 @@ void op_closure() {
   pc += n_captured;
 
   for (const op::word_t c : std::ranges::views::reverse(captured)) {
-    const auto args = c.as_i32;
-    const std::int32_t kind = args.arg0;
-    std::int32_t index = args.arg1;
+    const auto [kind, index] = c.as_i32;
 
     box value;
-    switch (kind) {
-    case 0:
-      value = op_glo_target(index);
+    switch (static_cast<bc::capture_kind>(kind)) {
+    case bc::capture_kind::global:
+      value = op_glo_target(op_glo_target_index(index));
       break;
-    case 1:
-      value = op_loc_target(index);
+    case bc::capture_kind::local:
+      value = op_loc_target(op_loc_target_index(index));
       break;
-    case 2:
-      value = op_arg_target(index);
+    case bc::capture_kind::argument:
+      value = op_arg_target(op_arg_target_index(index));
       break;
-    case 3:
-      value = op_clo_target(index);
+    case bc::capture_kind::closure:
+      value = op_clo_target(op_clo_target_index(index));
       break;
     default:
       fatalf("unexpected capture kind {:x}", kind);
@@ -471,11 +515,9 @@ void op_closure() {
   cold::stack_push(box(target_up));
   cold::stack_push(box(target));
 
-  const box cj = gc_call([&] {
-    return boxd::Bclosure(box(sp), box(1 + n_captured));
-  });
+  const box cj = gc_call([&] { return boxd::Bclosure(box(sp), box(1 + n_captured)); });
 
-  sp += 1 + 1 + n_captured;
+  cold::stack_pop(std::int64_t{2} + n_captured);
 
   cold::stack_push(cj);
 
@@ -486,7 +528,9 @@ void op_callc() {
   const auto [n_args, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  auto* cj = unbox<box*>(*(sp + n_args));
+  LAMAVM_EXPECT_B(0, <=, n_args);
+  const auto args = stack_args(std::int64_t{n_args} + 1);
+  const auto cj = closure_payload(args.back());
   auto target = unbox<std::int32_t>(cj[0]);
   auto* target_up = unbox<uctx*>(cj[1]);
 
@@ -510,12 +554,17 @@ void op_call() {
   const auto [arg0, n_args] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg0, ==, 0);
 
+  const auto args = stack_args(n_args);
+
   std::string_view name;
   if (target < 0) {
-    name = c_str(-target - 1);
+    name = c_str(-(target + 1));
 
-    // T O D O: collisions between symbols and std_symbols
     if (const auto it = std_symbols.find(name); it != std::end(std_symbols)) {
+      LAMAVM_EXPECT_C(
+        !symbols.contains(name),
+        std::format("ambiguous symbol '{}' from bytecode and Std", name));
+
       const auto& [_, s] = *it;
 
       switch (s.tail) {
@@ -527,11 +576,8 @@ void op_call() {
         break;
       }
 
-      std::span<box> rargs{sp, sp + n_args};
-      const box r = gc_call([&] {
-        return s.fn(rargs);
-      });
-      sp += n_args;
+      const box r = gc_call([&] { return s.fn(args); });
+      cold::stack_pop(n_args);
       cold::stack_push(r);
 
       LAMAVM_DISPATCH();
@@ -546,8 +592,8 @@ void op_call() {
     .up = up,
   });
 
-  if (!name.empty()) {
-    const auto s = symbols.at(name);
+  if (target < 0) {
+    const auto& s = find_symbol(name);
     LAMAVM_EXPECT_B(s.kind, ==, bc::symbol::kind::function);
 
     up = units.data() + s.uidx;
@@ -585,20 +631,16 @@ void op_array() {
 }
 
 void op_fail() {
-  const auto args = (*++pc).as_i32;
-  const auto line = args.arg0;
-  const auto col = args.arg1;
+  const auto [line, col] = (*++pc).as_i32;
   const box value = stack_pop_arg();
   tracef("fail {}:{}:{}", up->name, line, col);
   boxd::Bmatch_failure(value, box(up->name), box(line), box(col));
 }
 
 void op_fail_keep() {
-  const auto args = (*++pc).as_i32;
-  const auto line = args.arg0;
-  const auto col = args.arg1;
+  const auto [line, col] = (*++pc).as_i32;
   tracef("fail_keep {}:{}:{}", up->name, line, col);
-  boxd::Bmatch_failure(*sp, box(up->name), box(line), box(col));
+  boxd::Bmatch_failure(stack_args(1).front(), box(up->name), box(line), box(col));
 }
 
 void op_line() {
@@ -655,14 +697,12 @@ void op_barray() {
 
   tracef("barray {}", n_elements);
 
-  box* args = sp;
-  std::reverse(args, args + n_elements);
+  const auto args = stack_args(n_elements);
+  std::ranges::reverse(args);
 
-  const box array = gc_call([&] {
-    return boxd::Barray(box(args), box(n_elements));
-  });
+  const box array = gc_call([&] { return boxd::Barray(box(args.data()), box(n_elements)); });
 
-  sp += n_elements;
+  cold::stack_pop(n_elements);
   cold::stack_push(array);
 
   LAMAVM_DISPATCH();

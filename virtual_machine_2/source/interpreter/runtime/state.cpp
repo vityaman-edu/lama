@@ -28,14 +28,14 @@ box stack_pop() {
 }
 
 void stack_pop_frame() {
-  up = unbox<const uctx*>(fp[-4]);
-  sp = unbox<box*>(fp[-3]);
-  pc = unbox<const op::word_t*>(fp[-2]);
-  fp = unbox<box*>(fp[-1]);
+  up = unbox<const uctx*>(fp[frame::offset_up]);
+  sp = unbox<box*>(fp[frame::offset_sp]);
+  pc = unbox<const op::word_t*>(fp[frame::offset_pc]);
+  fp = unbox<box*>(fp[frame::offset_fp]);
 }
 
 std::int64_t stack_n_args() {
-  return unbox<std::int64_t>(fp[0]);
+  return unbox<std::int64_t>(fp[frame::offset_n_args]);
 }
 
 } // namespace lamavm::interpreter

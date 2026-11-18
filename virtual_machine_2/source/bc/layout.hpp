@@ -27,6 +27,13 @@ struct [[gnu::packed]] public_symbol_t {
   std::int8_t flag;
 };
 
+enum class capture_kind : std::uint8_t {
+  global = 0,
+  local = 1,
+  argument = 2,
+  closure = 3,
+};
+
 enum class opcode_t : std::uint8_t {
   op_add = 0x01,
   op_sub = 0x02,

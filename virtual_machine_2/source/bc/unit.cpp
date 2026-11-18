@@ -236,7 +236,7 @@ void unit_parser::read_code_section() {
       for (std::int32_t i = 0; i < count; ++i) {
         const auto kind = read<std::uint8_t>();
         const auto index = read<std::int32_t>();
-        LAMAVM_EXPECT_B(kind, <=, 3U);
+        LAMAVM_EXPECT_B(kind, <=, std::to_underlying(capture_kind::closure));
         u.code_section.push_back({.as_i32 = {.arg0 = kind, .arg1 = index}});
       }
 
