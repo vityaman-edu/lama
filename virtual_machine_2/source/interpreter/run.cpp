@@ -35,11 +35,11 @@ void exec() {
   cold::stack_push(box(std::int64_t{0}));
   cold::stack_push(box(std::int64_t{0}));
 
-  std::array<op::word_t, 3> startup{{
-    {.as_target = nullptr},
-    {.as_call = {.unit_index = 0, .count = 2}},
-    {.as_handler_fn = cold::op_eof},
-  }};
+  std::array startup{
+    op::word_t{.as_target = nullptr},
+    op::word_t{.as_call = {.unit_index = 0, .count = 2}},
+    op::word_t{.as_handler_fn = cold::op_eof},
+  };
   const auto entry = pc->as_handler_fn;
   if (entry == warm::op_begin || entry == warm::op_begin_no_locals) {
     LAMAVM_EXPECT_B(pc[1].as_i32.arg0, ==, startup[1].as_call.count);

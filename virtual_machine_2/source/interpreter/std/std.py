@@ -1,4 +1,5 @@
 import argparse
+import re
 from pathlib import Path
 
 FUNCTIONS = [
@@ -60,6 +61,7 @@ def generate(output_dir: Path) -> None:
     symbols = []
 
     for result, std_name, native_name, *parameters in FUNCTIONS:
+        wrapper_name = "std_" + re.sub(r"(?<=[a-z])(?=[A-Z])", "_", std_name).lower()
         is_variadic = parameters[-1:] == ["..."]
         fixed_parameters = parameters[:-1] if is_variadic else parameters
         arguments = list(zip(fixed_parameters[::2], fixed_parameters[1::2], strict=True))
@@ -69,28 +71,27 @@ def generate(output_dir: Path) -> None:
             native_parameters.append("...")
 
         native_declarations.append(f"{result} {native_name}({', '.join(native_parameters)});")
-        span_signature = f"box {native_name}(std::span<box> rargs)"
+        span_signature = f"box {wrapper_name}(std::span<box> rargs)"
         span_declarations.append(f"{span_signature};")
 
         if not is_variadic:
-            boxed_declarations.append(f"box {native_name}({', '.join(boxed_parameters)});")
+            boxed_signature = f"box {wrapper_name}({', '.join(boxed_parameters)})"
+            boxed_declarations.append(f"{boxed_signature};")
             values = ", ".join(name for _, name in arguments)
             body = f"return detail::bridge<cc::{native_name}>({values});"
             if result == "void":
                 body = f"detail::bridge<cc::{native_name}>({values});\n  return box{{}};"
 
-            boxed_definitions.append(
-                f"box {native_name}({', '.join(boxed_parameters)}) {{\n  {body}\n}}"
-            )
+            boxed_definitions.append(f"{boxed_signature} {{\n  {body}\n}}")
 
         invoke = "invoke_array_std" if std_name in ARRAY_ARITIES else "invoke_std"
-        target_namespace = "cc" if is_variadic else "boxd"
-        span_call = f"detail::{invoke}(rargs, {target_namespace}::{native_name})"
+        target = f"cc::{native_name}" if is_variadic else f"boxd::{wrapper_name}"
+        span_call = f"detail::{invoke}(rargs, {target})"
         span_body = f"return {span_call};"
         span_definitions.append(f"{span_signature} {{\n  {span_body}\n}}")
         tail = ", std_fn_symbol::tail_kind::vararg" if is_variadic else ""
         arity = ARRAY_ARITIES.get(std_name, len(arguments))
-        symbols.append(f'  {{"{std_name}", {{span::{native_name}, {arity}U{tail}}}}},')
+        symbols.append(f'  {{"{std_name}", {{span::{wrapper_name}, {arity}U{tail}}}}},')
 
     header = "\n".join(
         [

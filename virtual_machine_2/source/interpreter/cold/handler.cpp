@@ -150,7 +150,7 @@ std::span<box> closure_payload(box closure) {
     unbox<std::int64_t>(boxd::Bclosure_tag_patt(closure)) == 1,
     "expected a closure on the stack");
 
-  const auto size = unbox<std::int64_t>(boxd::Llength(closure));
+  const auto size = unbox<std::int64_t>(boxd::std_length(closure));
   LAMAVM_EXPECT_B(2, <=, size);
 
   return {unbox<box*>(closure), static_cast<std::size_t>(size)};
@@ -331,7 +331,7 @@ void op_sexp() {
   LAMAVM_EXPECT_B(arg11, ==, 0);
   LAMAVM_EXPECT_B(0, <=, n_fields);
 
-  const auto hash = boxd::LtagHash(box(c_str(tag_offset)));
+  const auto hash = boxd::std_tag_hash(box(c_str(tag_offset)));
   cold::stack_push(hash);
   const auto args = stack_args(n_fields + 1);
   std::ranges::reverse(args);
@@ -447,7 +447,7 @@ void op_ld_loc() {
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
   const auto offset = op_loc_target_index(index);
-  auto loc = op_loc_target(offset);
+  const auto loc = op_loc_target(offset);
   tracef("ld_loc {} = {}", index, unbox<std::int64_t>(loc));
   cold::stack_push(loc);
 
@@ -749,7 +749,7 @@ void op_tag() {
   const auto [n_fields, arg11] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg11, ==, 0);
 
-  const box tag_hash = boxd::LtagHash(box(c_str(tag_offset)));
+  const box tag_hash = boxd::std_tag_hash(box(c_str(tag_offset)));
   const box value = stack_pop_arg();
   cold::stack_push(boxd::Btag(value, tag_hash, box(n_fields)));
 
