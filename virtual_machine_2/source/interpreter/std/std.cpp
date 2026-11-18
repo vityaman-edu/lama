@@ -13,7 +13,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace lamavm::interpreter {
@@ -53,11 +55,20 @@ aint Bsexp_tag_patt(void* x);                                   // NOLINT
 void* Bsta(void* x, aint i, void* v);                           // NOLINT
 void Bmatch_failure(void* v, char* fname, aint line, aint col); // NOLINT
 void* Li__Infix_4343(aint* args);                               // NOLINT
+void lamavm_regexp_free(void* expression);
 }
 
 } // namespace cc
 
 namespace detail {
+
+box own_regexp(box compiled) {
+  using regexp_ptr = std::unique_ptr<void, decltype(&cc::lamavm_regexp_free)>;
+  static std::vector<regexp_ptr> expressions;
+  regexp_ptr expression(unbox<void*>(compiled), cc::lamavm_regexp_free);
+  expressions.push_back(std::move(expression));
+  return compiled;
+}
 
 box invoke_std(std::span<const box> rargs, box (*f)()) {
   return invoke_std_impl(rargs, f);

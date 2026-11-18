@@ -78,9 +78,13 @@ def generate(output_dir: Path) -> None:
             boxed_signature = f"box {wrapper_name}({', '.join(boxed_parameters)})"
             boxed_declarations.append(f"{boxed_signature};")
             values = ", ".join(name for _, name in arguments)
-            body = f"return detail::bridge<cc::{native_name}>({values});"
+            call = f"detail::bridge<cc::{native_name}>({values})"
+            if std_name == "regexp":
+                call = f"detail::own_regexp({call})"
+
+            body = f"return {call};"
             if result == "void":
-                body = f"detail::bridge<cc::{native_name}>({values});\n  return box{{}};"
+                body = f"{call};\n  return box{{}};"
 
             boxed_definitions.append(f"{boxed_signature} {{\n  {body}\n}}")
 

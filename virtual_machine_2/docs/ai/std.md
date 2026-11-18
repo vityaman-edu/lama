@@ -83,6 +83,9 @@ Integer arguments remain tagged unless noted otherwise.
 | `uppercase` | `(code: Int) -> Int` | `aint Luppercase(void *code)` | Takes tagged character-code bits through `void *`. |
 | `lowercase` | `(code: Int) -> Int` | `aint Llowercase(void *code)` | Takes tagged character-code bits through `void *`. |
 
+VM2 owns compiled regular expressions until process exit. It releases each
+expression with `regfree` and frees the storage returned by `Lregexp`.
+
 `kindOf` returns `STRING_TAG = 1`, `ARRAY_TAG = 3`, `SEXP_TAG = 5`,
 `CLOSURE_TAG = 7`, or `UNBOXED_TAG = 9`. These are raw tags, even though they
 are odd numbers and therefore resemble tagged integer words.

@@ -29,6 +29,8 @@ struct std_fn_symbol {
 
 namespace detail {
 
+box own_regexp(box compiled);
+
 box invoke_array_std(std::span<box> rargs, box (*f)(box));
 
 box invoke_variadic_std(
