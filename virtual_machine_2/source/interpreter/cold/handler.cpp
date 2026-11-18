@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <iterator>
 #include <ranges>
 #include <span>
 #include <vector>
@@ -24,6 +25,12 @@
 namespace lamavm::interpreter::cold {
 
 namespace {
+
+void jmp(std::int32_t target) {
+  LAMAVM_EXPECT_BB(0, <=, target, <, std::ssize(up->text));
+
+  pc = up->text.data() + target;
+}
 
 template <box (*f)(box)>
 class unop {
@@ -159,23 +166,31 @@ void op_string() {
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
   const char* str1 = c_str(string_offset);
-  const box str2 = gc_call([&] { return boxd::Bstring(box(static_cast<const void*>(&str1))); });
+  const box str2 = gc_call([&] {
+    return boxd::Bstring(box(static_cast<const void*>(&str1)));
+  });
   cold::stack_push(str2);
 
   LAMAVM_DISPATCH();
 }
 
 void op_sexp() {
-  const auto tag_offset = (*++pc).as_i32.arg0;
-  const auto n_fields = (*++pc).as_i32.arg0;
+  const auto [tag_offset, arg10] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg10, ==, 0);
 
-  box* args = --sp;
-  args[0] = boxd::LtagHash(box(c_str(tag_offset)));
-  std::reverse(args, args + n_fields + 1);
+  const auto [n_fields, arg11] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg11, ==, 0);
+  LAMAVM_EXPECT_B(0, <=, n_fields);
 
-  const box sexp = gc_call([&] { return boxd::Bsexp(box(args), box(n_fields + 1)); });
+  cold::stack_push() = boxd::LtagHash(box(c_str(tag_offset)));
+  const auto args = stack_args(n_fields + 1);
+  std::ranges::reverse(args);
 
-  sp += n_fields + 1;
+  const box sexp = gc_call([&] {
+    return boxd::Bsexp(box(args.data()), box(n_fields + 1));
+  });
+
+  cold::stack_pop(n_fields + 1);
   cold::stack_push(sexp);
 
   LAMAVM_DISPATCH();
@@ -185,11 +200,13 @@ void op_sta() {
   const box value = stack_pop_arg();
   const box index = stack_pop_arg();
   const box aggregate = stack_pop_arg();
+
   tracef(
     "sta {}[{}] := {}",
     unbox<void*>(aggregate),
     unbox<std::int64_t>(index),
     unbox<std::int64_t>(value));
+
   boxd::Bsta(aggregate, index, value);
   cold::stack_push(value);
 
@@ -197,8 +214,10 @@ void op_sta() {
 }
 
 void op_jmp() {
-  const auto target = (*++pc).as_i32.arg0;
-  pc = up->text.data() + target;
+  const auto [target, arg1] = (*++pc).as_i32;
+  LAMAVM_EXPECT_B(arg1, ==, 0);
+
+  jmp(target);
 
   LAMAVM_DISPATCH_JUMP();
 }
@@ -237,6 +256,7 @@ void op_swap() {
 void op_elem() {
   const box index = stack_pop_arg();
   const box aggregate = stack_pop_arg();
+
   tracef("elem {}[{}]", unbox<void*>(aggregate), unbox<std::int64_t>(index));
   cold::stack_push(boxd::Belem(aggregate, index));
 
@@ -246,6 +266,7 @@ void op_elem() {
 void op_ld_glo() {
   auto index = (*++pc).as_i32.arg0;
   auto& target = op_glo_target(index);
+
   tracef("ld_glo {} = {}", index, unbox<std::int64_t>(target));
   cold::stack_push(target);
 
@@ -336,7 +357,7 @@ void op_cjmp_z() {
   ++pc;
 
   if (unbox<std::int64_t>(value) == 0) {
-    pc = up->text.data() + target;
+    jmp(target);
   }
 
   LAMAVM_DISPATCH_JUMP();
@@ -348,7 +369,7 @@ void op_cjmp_nz() {
   ++pc;
 
   if (unbox<std::int64_t>(value) != 0) {
-    pc = up->text.data() + target;
+    jmp(target);
   }
 
   LAMAVM_DISPATCH_JUMP();
@@ -427,7 +448,9 @@ void op_closure() {
   cold::stack_push(box(target_up));
   cold::stack_push(box(target));
 
-  const box cj = gc_call([&] { return boxd::Bclosure(box(sp), box(1 + n_captured)); });
+  const box cj = gc_call([&] {
+    return boxd::Bclosure(box(sp), box(1 + n_captured));
+  });
 
   sp += 1 + 1 + n_captured;
 
@@ -453,7 +476,7 @@ void op_callc() {
   });
 
   up = target_up;
-  pc = up->text.data() + target;
+  jmp(target);
   LAMAVM_DISPATCH_JUMP();
 }
 
@@ -479,7 +502,9 @@ void op_call() {
       }
 
       std::span<box> rargs{sp, sp + n_args};
-      const box r = gc_call([&] { return s.fn(rargs); });
+      const box r = gc_call([&] {
+        return s.fn(rargs);
+      });
       sp += n_args;
       cold::stack_push(r);
 
@@ -504,7 +529,7 @@ void op_call() {
     target = s.offset;
   }
 
-  pc = up->text.data() + target;
+  jmp(target);
   LAMAVM_DISPATCH_JUMP();
 }
 
@@ -600,7 +625,9 @@ void op_barray() {
   box* args = sp;
   std::reverse(args, args + n_elements);
 
-  const box array = gc_call([&] { return boxd::Barray(box(args), box(n_elements)); });
+  const box array = gc_call([&] {
+    return boxd::Barray(box(args), box(n_elements));
+  });
 
   sp += n_elements;
   cold::stack_push(array);

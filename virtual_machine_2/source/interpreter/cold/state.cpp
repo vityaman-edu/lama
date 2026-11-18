@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <span>
 
 namespace lamavm::interpreter::cold {
 
@@ -17,13 +18,17 @@ const char* c_str(std::int32_t offset) {
   return up->data.data() + offset;
 }
 
-void stack_push(box x) {
+box& stack_push() {
   const void* stack_ptr = sp;
   const void* stack_begin = stack.data();
   const void* stack_end = stack.data() + stack.size();
   LAMAVM_EXPECT_BB(stack_begin, <, stack_ptr, <=, stack_end);
 
-  interpreter::stack_push(x);
+  return *--sp;
+}
+
+void stack_push(box x) {
+  cold::stack_push() = x;
 }
 
 box stack_pop() {
@@ -33,6 +38,27 @@ box stack_pop() {
   LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <, stack_end);
 
   return interpreter::stack_pop();
+}
+
+void stack_pop(std::int64_t count) {
+  sp += stack_args(count).size();
+}
+
+std::span<box> stack_args(std::int64_t count) {
+  LAMAVM_EXPECT_B(frame::size, <=, std::ssize(stack));
+
+  const void* first_frame = stack.data() + (frame::size - 1);
+  const void* frame_ptr = fp;
+  const void* stack_end = stack.data() + stack.size();
+  LAMAVM_EXPECT_BB(first_frame, <=, frame_ptr, <, stack_end);
+
+  const box* frame_begin = fp - (frame::size - 1);
+  const void* stack_ptr = sp;
+  const void* stack_begin = stack.data();
+  LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <=, static_cast<const void*>(frame_begin));
+  LAMAVM_EXPECT_BB(0, <=, count, <=, frame_begin - sp);
+
+  return {sp, static_cast<std::size_t>(count)};
 }
 
 box stack_pop_arg() {
