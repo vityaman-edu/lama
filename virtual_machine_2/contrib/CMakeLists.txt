@@ -1,4 +1,4 @@
-add_library(lama_runtime STATIC runtime.c runtime/gc.c runtime/printf.S)
+add_library(lama_runtime OBJECT runtime.c runtime/gc.c runtime/printf.S)
 target_compile_options(lama_runtime PRIVATE -w)
 target_include_directories(lama_runtime SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/runtime")
 
