@@ -226,11 +226,7 @@ void specialize_op_closure(op::word_t* ip, op::word_t* target, const uctx* calle
 }
 
 void specialize_op_callc(op::word_t* ip) {
-  specialize([&] {
-    const auto count = ip[1].as_i32.arg0;
-    ip[1].as_call = {.unit_index = op::call_t::indirect, .count = count};
-    ip->as_handler_fn = op_callc;
-  });
+  specialize([&] { ip->as_handler_fn = op_callc; });
 }
 
 void specialize_op_call(

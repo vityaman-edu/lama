@@ -28,14 +28,10 @@ box stack_pop_arg();
 
 void stack_push_frame(frame f);
 
-void stack_init_locals(op::word_t* entry);
+void stack_init_locals(std::int32_t n_locals);
 
 std::int32_t stack_n_args();
 
-std::int64_t stack_n_locals();
-
-std::span<box> stack_frame_args();
-
-box stack_frame_closure();
+const box* stack_frame_closure();
 
 } // namespace lamavm::interpreter::cold

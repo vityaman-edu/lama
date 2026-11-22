@@ -29,13 +29,11 @@ box stack_pop() {
 void stack_push_frame(frame f) {
   sp -= frame::size;
   fp = sp + (frame::size - 1);
+  fp[frame::offset_n_args] = box(f.n_args);
   fp[frame::offset_fp] = box(f.fp);
   fp[frame::offset_pc] = box(f.pc);
   fp[frame::offset_sp] = box(f.sp);
   fp[frame::offset_up] = box(f.up);
-#ifdef LAMAVM_COLD
-  fp[frame::offset_entry] = box(f.entry);
-#endif
 }
 
 void stack_pop_frame() {

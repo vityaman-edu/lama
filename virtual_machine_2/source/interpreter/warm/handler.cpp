@@ -37,8 +37,9 @@ void init_locals(std::int32_t n_locals) {
   std::fill_n(sp, n_locals, box(std::int64_t{0}));
 }
 
-void push_frame(op::word_t* continuation, box* caller_sp) {
+void push_frame(op::word_t* continuation, box* caller_sp, std::int32_t n_args) {
   stack_push_frame({
+    .n_args = n_args,
     .fp = fp,
     .pc = continuation,
     .sp = caller_sp,
@@ -310,14 +311,14 @@ void op_closure() {
 }
 
 void op_callc() {
-  const auto n_args = pc[1].as_call.count;
+  const auto n_args = pc[1].as_i32.arg0;
   const auto* closure = unbox<box*>(sp[n_args]);
   const auto target_offset = unbox<std::int32_t>(closure[0]);
   const auto* callee = unbox<const uctx*>(closure[1]);
   auto* target = callee->text.data() + target_offset;
 
   tracef("warm callc {} argc={}", callee->name, n_args);
-  push_frame(pc + 2, sp + n_args + 1);
+  push_frame(pc + 2, sp + n_args + 1, n_args);
   up = callee;
   pc = target;
   LAMAVM_DISPATCH_JUMP();
@@ -325,11 +326,11 @@ void op_callc() {
 
 void op_call() {
   const auto [unit_index, n_args] = pc[2].as_call;
-  auto* target = pc[1].as_target;
   const auto* callee = &units[unit_index];
+  auto* target = pc[1].as_target;
 
   tracef("warm call {} -> {} argc={}", up->name, callee->name, n_args);
-  push_frame(pc + 3, sp + n_args);
+  push_frame(pc + 3, sp + n_args, n_args);
   up = callee;
   pc = target;
   LAMAVM_DISPATCH_JUMP();
@@ -340,7 +341,7 @@ void op_call_local() {
   auto* target = pc[1].as_target;
 
   tracef("warm local call {} argc={}", up->name, n_args);
-  push_frame(pc + 3, sp + n_args);
+  push_frame(pc + 3, sp + n_args, n_args);
   pc = target;
   LAMAVM_DISPATCH_JUMP();
 }

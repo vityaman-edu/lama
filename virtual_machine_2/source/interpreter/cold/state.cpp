@@ -30,27 +30,6 @@ box* frame_begin() {
   return fp - (frame::size - 1);
 }
 
-op::word_t* return_pc() {
-  return unbox<op::word_t*>(fp[frame::offset_pc]);
-}
-
-const op::word_t* frame_entry() {
-#ifdef LAMAVM_COLD
-  return unbox<const op::word_t*>(fp[frame::offset_entry]);
-#else
-  const auto* continuation = return_pc();
-  if (continuation[-1].as_call.unit_index != op::call_t::indirect) {
-    return continuation[-2].as_target;
-  }
-
-  const auto* caller_sp = unbox<box*>(fp[frame::offset_sp]);
-  const auto* closure = unbox<box*>(caller_sp[-1]);
-  const auto* callee = unbox<const uctx*>(closure[1]);
-  const auto offset = unbox<std::int32_t>(closure[0]);
-  return callee->text.data() + offset;
-#endif
-}
-
 } // namespace
 
 const char* c_str(std::int32_t offset) {
@@ -86,12 +65,11 @@ void stack_pop(std::int64_t count) {
 }
 
 std::span<box> stack_args(std::int64_t count) {
-  const auto n_locals = stack_n_locals();
-  const box* operands_end = fp - (frame::size - 1) - n_locals;
+  const auto* frame_start = frame_begin();
   const void* stack_ptr = sp;
   const void* stack_begin = stack.data();
-  LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <=, static_cast<const void*>(operands_end));
-  LAMAVM_EXPECT_BB(0, <=, count, <=, operands_end - sp);
+  LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <=, static_cast<const void*>(frame_start));
+  LAMAVM_EXPECT_BB(0, <=, count, <=, frame_start - sp);
 
   return {sp, static_cast<std::size_t>(count)};
 }
@@ -106,60 +84,27 @@ void stack_push_frame(frame f) {
   interpreter::stack_push_frame(f);
 }
 
-void stack_init_locals(op::word_t* entry) {
-  const auto [n_args, n_locals] = entry[1].as_i32;
+void stack_init_locals(std::int32_t n_locals) {
   const auto* begin = frame_begin();
   LAMAVM_EXPECT_B(static_cast<const void*>(sp), ==, static_cast<const void*>(begin));
-  LAMAVM_EXPECT_B(n_args, ==, stack_n_args());
   LAMAVM_EXPECT_BB(0, <=, n_locals, <=, begin - stack.data());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {
     cold::stack_push(box(std::int64_t{0}));
   }
-
-  if (unbox<box*>(fp[frame::offset_fp]) == nullptr) {
-#ifdef LAMAVM_COLD
-    fp[frame::offset_entry] = box(entry);
-#else
-    return_pc()[-2].as_target = entry;
-#endif
-  }
 }
 
 std::int32_t stack_n_args() {
-#ifdef LAMAVM_COLD
-  if (const auto* entry = frame_entry(); entry != nullptr) {
-    return entry[1].as_i32.arg0;
-  }
-
-#endif
-  return return_pc()[-1].as_call.count;
+  return unbox<std::int32_t>(fp[frame::offset_n_args]);
 }
 
-std::int64_t stack_n_locals() {
+const box* stack_frame_closure() {
   static_cast<void>(frame_begin());
-  const auto* entry = frame_entry();
-  return entry == nullptr ? 0 : entry[1].as_i32.arg1;
-}
+  const auto offset = std::int64_t{stack_n_args()} + 1;
+  const auto* saved_sp = unbox<box*>(fp[frame::offset_sp]);
+  LAMAVM_EXPECT_C(offset == saved_sp - fp - 1, "current frame has no closure slot");
 
-std::span<box> stack_frame_args() {
-  static_cast<void>(frame_begin());
-  auto* args = fp + 1;
-  const auto n_args = stack_n_args();
-  LAMAVM_EXPECT_BB(0, <=, n_args, <=, stack.data() + stack.size() - args);
-
-  return {args, static_cast<std::size_t>(n_args)};
-}
-
-box stack_frame_closure() {
-  const auto args = stack_frame_args();
-  const auto* slot = args.data() + args.size();
-  LAMAVM_EXPECT_C(slot != stack.data() + stack.size(), "closure slot is outside the stack");
-
-  const void* saved_sp = unbox<box*>(fp[frame::offset_sp]);
-  LAMAVM_EXPECT_C(slot + 1 == saved_sp, "current frame has no closure");
-
-  return *slot;
+  return fp + offset;
 }
 
 } // namespace lamavm::interpreter::cold

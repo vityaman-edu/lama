@@ -1,8 +1,8 @@
 # Warm interpreter
 
 The decoder installs a cold handler at each instruction. On its first successful
-execution, the handler performs the operation once, stores its resolved operands
-in the same words, then installs the warm handler before dispatch. Conditional
+execution, a specializable handler performs the operation once, stores its resolved
+operands in the same words, then installs the warm handler before dispatch. Conditional
 jumps resolve their target on either outcome. FAIL and FAIL_KEEP terminate the
 process. EOF stays shared so startup can recognize the terminator.
 
@@ -14,10 +14,10 @@ bridges retain their own behavior.
 
 The `New cold` and `New warm` columns below give the implemented operand
 widths. CALL has separate local, cross-unit and Std handlers. BEGIN and
-BEGIN_CLOSURE have separate handlers for zero locals and retain their
-signatures for cold callers. The [four-word frame](runtime.md#stack-and-frames)
-saves the caller's FP, PC, SP and unit. Cold checks recover the signature
-through the return PC.
+BEGIN_CLOSURE retain their signature words when specialized. The
+[frame](runtime.md#stack-and-frames) holds the argument count and saves the
+caller's FP, PC, SP and unit. Cold argument and capture instructions use indices.
+Warm specialization stores the corresponding slot displacements.
 Warm operations use their own cached offsets. A capture descriptor
 stores a base and an offset. Base `-1` selects the global stack, `0` selects
 the current frame, and a positive base locates the live closure at `fp[base]`.
@@ -71,34 +71,26 @@ Under the [aggregate size limit](units.md), each unit uses at least an EOF word
 and one string byte, so all loaded unit indices fit. The index saves bits in
 operand words. A live index still uses a register and a frame saved on the
 existing stack still uses a full box slot. Cold operations that need unit
-metadata can obtain it as `units[unit_index]`. A separate same-unit warm CALL
-can keep the current index.
+metadata can obtain it as `units[unit_index]`.
 
-The earlier two-word CALL design used an inline `i32` target offset and two
-`i16` fields for argument count and target unit. The three-word proposal below
-adds one word per CALL to hold a native target pointer and full-width count and
-index. It removes the unit-text base lookup and its offset addition from
-bytecode CALL. Keep the two-word layout as the footprint baseline when
-measuring. A narrow layout needs checked representability and a full-width
-path for valid counts or indices that exceed its limits.
+The three-word CALL layout keeps the target and argument count in separate
+words. Specialization caches the callee's entry pointer and unit index. A
+same-unit warm CALL uses the current unit directly.
 
 CALL also resolves Std symbols, with Std taking precedence in the current
 handler. A resolved Std site uses a distinct warm handler and caches the
 typed `std_fn_some_t` bridge. Resolve fixed or variadic arity once, pass the
-live arguments through the bridge with the existing GC protocol, leave the unit
-index in place, and fall through. Bytecode CALL saves a VM frame and returns
+live arguments through the bridge with the existing GC protocol and fall
+through. Bytecode CALL saves a VM frame and returns
 to the instruction after the entire CALL. Both forms use `site + 3` for the
 continuation in the proposed layout.
 
-Keep the `BEGIN` and `BEGIN_CLOSURE` signatures available after promotion.
-Cold callers and closure creators can reach a warm entry. Direct CALL can
-validate against `BEGIN` once per site. CALLC must validate the actual closure
-and its target/arity on each execution unless those facts are established by
-another invariant. A closure can name a `BEGIN` entry with no captures. For
-`BEGIN_CLOSURE`, check capture-count agreement. Top-level unit entry also
-uses this contract, with the synthetic two-argument frame in
-[`run.cpp`](../../source/interpreter/run.cpp). Local initialization still
-requires space in the current stack.
+Cold CALL and CALLC check target bounds. Cold CALLC also checks the live
+closure's shape. Cold entry handlers check stack capacity while initializing
+locals, and cold BEGIN_CLOSURE checks the capture count. The
+calling instructions rely on the bytecode contract for entry kind. Top-level
+unit startup uses a synthetic two-argument frame in
+[`run.cpp`](../../source/interpreter/run.cpp).
 
 The first warm CLOSURE can keep the existing heap layout
 `[boxed word offset, unit pointer, captures...]`. It can derive the offset
@@ -173,19 +165,19 @@ each warm handler needs to preserve.
 | `op_elem` | — | = | = | Aggregate kind and index depend on live operands. Preserve the layout differences among strings, arrays and S-expressions. |
 | `op_ld_glo` | `[index:i32]` | = | `[slot:box*]` | Resolve local or imported globals to stable stack cells. Check the declaring unit's global count before forming the pointer. |
 | `op_ld_loc` | `[index:i32]` | = | `[fp_disp:i32]` | Precompute `-frame::size - index` after validating the local index. The frame itself changes. |
-| `op_ld_arg` | `[index:i32]` | = | `[fp_disp:i32]` | Precompute `n_args - index` only with an enforced entry signature. Otherwise keep the index and read the live frame count. |
-| `op_ld_clo` | `[index:i32]` | = | `[closure_fp_disp:i32 \| capture_disp:i32]` | With a fixed arity, cache the frame offset of the closure and payload offset `2 + index`. Read the live closure every time. |
+| `op_ld_arg` | `[index:i32]` | = | `[fp_disp:i32]` | Argument `i` lives at `fp[n_args - i]`. |
+| `op_ld_clo` | `[index:i32]` | = | `[closure_fp_disp:i32 \| capture_disp:i32]` | Resolve the closure slot from the frame and the capture offset from the index. Read the live closure on each visit. |
 | `op_st_glo` | `[index:i32]` | = | `[slot:box*]` | Cache the writable cell, whose value may be changed by stores or updated by GC. Leave the assigned value on the stack. |
 | `op_st_loc` | `[index:i32]` | = | `[fp_disp:i32]` | Same displacement as LD_LOC. Store the top value in the current frame after establishing it is available. |
-| `op_st_arg` | `[index:i32]` | = | `[fp_disp:i32]` | Same signature requirement and index fallback as LD_ARG. Preserve the top value. |
-| `op_st_clo` | `[index:i32]` | = | `[closure_fp_disp:i32 \| capture_disp:i32]` | Same offset requirements as LD_CLO. Store into the current closure, whose address can change across calls or GC. |
+| `op_st_arg` | `[index:i32]` | = | `[fp_disp:i32]` | Use the same displacement as LD_ARG. Preserve the top value. |
+| `op_st_clo` | `[index:i32]` | = | `[closure_fp_disp:i32 \| capture_disp:i32]` | Use the same displacements as LD_CLO to store into the live closure. |
 | `op_cjmp_z` | `[target:i32]` | = | `[target:pc*]` | Accept the pointer proposal. Test the current integer for zero. Fallthrough is `site + 2`. |
 | `op_cjmp_nz` | `[target:i32]` | = | `[target:pc*]` | Same layout with a nonzero test. Keep unit context on either edge. |
-| `op_begin` | `[n_args:i32 \| n_locals:i32]` | = | = | Retain the signature. A warm entry can specialize local initialization, including zero locals. |
-| `op_begin_closure` | `[n_args:i32 \| n_locals:i32] [n_captures:i32]` | = | = | Retain both counts for later calls and closure creation. Warm fallthrough still skips both operands. |
-| `op_closure` | `[target:i32 \| N:i32] [kind:i32 \| index:i32] × N` | `[target:i32] [_ \| N:i32] [kind:i32 \| index:i32] × N` | `[target:pc*] [unit_index:u32 \| N:i32] [base:i32 \| offset:i32] × N` | Accept the split header. Use wide descriptors initially. The slot denotes a resolved global stack index or a frame/payload-relative coordinate. Preserve capture order and GC rooting. |
-| `op_callc` | `[n_args:i32]` | = | `[indirect:u32 \| n_args:i32]` | The site has no fixed callee. A shared pointer-based closure ABI can remove target offset arithmetic. The caller continuation is still `site + 2`. |
-| `op_call` | `[target:i32 \| n_args:i32]` | `[target:i32] [_ \| n_args:i32]` | VM `[target:pc*] [unit_index:u32 \| n_args:i32]` or Std `[bridge:fn] [_ \| n_args:i32]` | Accept the extra word for the direct target. Keep the count in the same lane and use separate VM and Std handlers. |
+| `op_begin` | `[n_args:i32 \| n_locals:i32]` | = | = | Retain the signature and specialize local initialization, including zero locals. |
+| `op_begin_closure` | `[n_args:i32 \| n_locals:i32] [n_captures:i32]` | = | = | Retain both operand words. Warm fallthrough skips them after local initialization. |
+| `op_closure` | `[target:i32 \| N:i32] [kind:i32 \| index:i32] × N` | `[target:i32] [_ \| N:i32] [kind:i32 \| index:i32] × N` | `[target:pc*] [unit_index:u32 \| N:i32] [base:i32 \| offset:i32] × N` | Resolve capture addresses in the cold handler. Preserve capture order and GC rooting. |
+| `op_callc` | `[n_args:i32]` | = | = | The callee comes from the live closure. The caller continuation is `site + 2`. |
+| `op_call` | `[target:i32 \| n_args:i32]` | `[target:i32] [_ \| n_args:i32]` | VM `[target:pc*] [unit_index:u32 \| n_args:i32]` or Std `[bridge:fn] [_ \| n_args:i32]` | Specialization resolves the target and preserves the argument count. |
 | `op_tag` | `[tag_offset:i32 \| n_fields:i32]` | `[tag_offset:i32] [n_fields:i32]` | `[tag_hash:box] [n_fields:box]` | Same hash resolution as SEXP. Prebox the count as well, since only `Btag` uses it. Subject type, tag and arity remain live tests. |
 | `op_array` | `[n_elements:i32]` | = | `[n_elements:box]` | Prebox the expected length for `Barray_patt`. Keep the live kind and length tests. |
 | `op_fail` | `[line:i32 \| col:i32]` | = | = | Terminal diagnostic with the popped value and current unit name. No recurring execution to optimize. |
@@ -228,9 +220,8 @@ primed each runner. Each measurement used a fresh process with empty stdin.
 The timings include startup and execution, including source parsing by
 `lamai`. All three bytecode VMs ran as x86-64 binaries under Rosetta, and
 `lamai` ran natively. Both VM2 builds used Apple Clang 21 with `-O3` and
-`-flto`. The cold build keeps the checked handlers and uses one extra frame
-word for the callee entry because its call operands stay in their decoded
-form. The warm-to-cold comparison includes that frame-layout difference.
+`-flto`. The cold build used one extra frame word for the callee entry in
+these measurements. The comparison includes that historical layout difference.
 
 All 720 measured runs exited successfully and produced the expected checksum
 for their program. The longest measured run took 266.83 ms. An initial

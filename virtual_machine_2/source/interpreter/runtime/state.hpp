@@ -40,24 +40,18 @@ extern box* fp;
 extern const uctx* up;
 
 struct frame {
-  static constexpr std::int64_t offset_fp = 0;
-  static constexpr std::int64_t offset_pc = -1;
-  static constexpr std::int64_t offset_sp = -2;
-  static constexpr std::int64_t offset_up = -3;
-#ifdef LAMAVM_COLD
-  static constexpr std::int64_t offset_entry = -4;
-  static constexpr std::int64_t size = 1 - offset_entry;
-#else
+  static constexpr std::int64_t offset_n_args = 0;
+  static constexpr std::int64_t offset_fp = -1;
+  static constexpr std::int64_t offset_pc = -2;
+  static constexpr std::int64_t offset_sp = -3;
+  static constexpr std::int64_t offset_up = -4;
   static constexpr std::int64_t size = 1 - offset_up;
-#endif
 
+  std::int32_t n_args = 0;
   box* fp = nullptr;
   op::word_t* pc = nullptr;
   box* sp = nullptr;
   const uctx* up = nullptr;
-#ifdef LAMAVM_COLD
-  const op::word_t* entry = nullptr;
-#endif
 };
 
 void stack_push(box x);

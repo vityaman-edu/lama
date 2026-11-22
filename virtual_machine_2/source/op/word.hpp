@@ -6,7 +6,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <span>
 
 namespace lamavm::interpreter {
@@ -20,8 +19,6 @@ using loc_idx_t = std::int32_t; // local variable
 using glo_idx_t = std::int32_t; // global variable
 
 struct call_t {
-  static constexpr auto indirect = std::numeric_limits<std::uint32_t>::max();
-
   std::uint32_t unit_index;
   std::int32_t count;
 };

@@ -10,10 +10,8 @@
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/gc.hpp"
 #include "interpreter/runtime/state.hpp"
-#include "interpreter/warm/handler.hpp"
 #include "op/word.hpp"
 
-#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -30,26 +28,17 @@ void exec() {
   pc = up->text.data();
 
   LAMAVM_ASSERT_B(0U, <, up->text.size());
-  LAMAVM_ASSERT(up->text.back().as_handler_fn == cold::op_eof);
 
+  auto* caller_sp = sp;
   cold::stack_push(box(std::int64_t{0}));
   cold::stack_push(box(std::int64_t{0}));
 
-  std::array startup{
-    op::word_t{.as_target = nullptr},
-    op::word_t{.as_call = {.unit_index = 0, .count = 2}},
-    op::word_t{.as_handler_fn = cold::op_eof},
-  };
-  const auto entry = pc->as_handler_fn;
-  if (entry == warm::op_begin || entry == warm::op_begin_no_locals) {
-    LAMAVM_EXPECT_B(pc[1].as_i32.arg0, ==, startup[1].as_call.count);
-    startup[0].as_target = pc;
-  }
-
+  op::word_t startup_return{.as_handler_fn = cold::op_eof};
   cold::stack_push_frame({
+    .n_args = 2,
     .fp = fp,
-    .pc = &startup.back(),
-    .sp = sp,
+    .pc = &startup_return,
+    .sp = caller_sp,
     .up = up,
   });
 

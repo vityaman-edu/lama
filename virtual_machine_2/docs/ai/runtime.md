@@ -71,29 +71,30 @@ The singleton operand stack is a fixed vector of boxes and grows downward.
 current unit's strings, text, and global base. Globals occupy the high end of
 the same stack, initialized to tagged zero before any unit body runs.
 
-A frame occupies four words relative to `fp`.
+A frame occupies five words relative to `fp`.
 
 | Slot | Value |
 |:--|:--|
-| `fp[0]` | Saved frame pointer |
-| `fp[-1]` | Saved return instruction pointer |
-| `fp[-2]` | Saved stack pointer |
-| `fp[-3]` | Saved unit context |
+| `fp[0]` | Argument count |
+| `fp[-1]` | Saved frame pointer |
+| `fp[-2]` | Saved return instruction pointer |
+| `fp[-3]` | Saved stack pointer |
+| `fp[-4]` | Saved unit context |
 
-Arguments start at `fp + 1`. Locals start at `fp - 4` and grow downward.
-END preserves the result, restores the four pointers, and pushes the result.
+Calls leave the evaluated arguments in place. Argument `i` is at
+`fp[n_args - i]`. Locals start at `fp - 5` and grow downward. END preserves
+the result, restores the four pointers, and pushes the result.
 
-Cold checks read the argument count from the word before the return PC. For
-direct CALL, the preceding word points to the callee's BEGIN. CALLC marks its
-count word as indirect. Its closure lives at `saved_sp[-1]`, including across
-GC, and supplies the actual callee's unit and entry offset. In either case,
-BEGIN's signature word supplies the local count. The caller finishes patching
-these operands before dispatching to the callee.
+Fixed-arity instructions get their operand count from the opcode. CALL and
+CALLC carry their argument count, and BEGIN and BEGIN_CLOSURE carry their
+local count. The cold handlers use the decoded argument and capture indices to
+address their slots. Warm specialization can store the resolved displacements.
+The saved `pc` is the return address.
 
-Unit startup supplies a synthetic two-argument call ending at the shared EOF
-handler. Its target starts empty for a cold unit and records the entry when
-BEGIN initializes the locals. A previously warmed entry supplies its target
-at startup. Warm instructions use their own resolved operands.
+CALLC reads the closure operand when it dispatches to the callee. The closure
+remains at `fp[n_args + 1]` for instructions that access capture values.
+Unit startup pushes two synthetic arguments and saves a return address at the
+shared EOF handler.
 
 ## GC boundary
 

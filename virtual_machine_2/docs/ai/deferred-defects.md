@@ -19,11 +19,10 @@ The requirements below come from
 
 ## Semantic validation
 
-- `LD_LOC`, `LD_ARG`, `LD_CLO` and their `ST` counterparts do not check indices
-  against the current function's local, argument, or capture counts.
-- `CLOSURE` validates the capture count's sign and capture kinds, but not
-  capture indices or count agreement with the target entry.
-  `BEGIN_CLOSURE` reads its capture count without validating it.
+- `LD_LOC` and `ST_LOC` check the physical stack bounds. The runtime does
+  not track the number of locals for these checks or for operand-stack pops.
+- `CLOSURE` leaves capture-count agreement to the cold `BEGIN_CLOSURE`
+  handler. A specialized entry assumes the count is valid.
 - `CALL` and `CLOSURE` internal targets are checked for instruction boundaries,
   but not the required function-entry kind. Inter-unit targets likewise lack
   entry-kind checks.

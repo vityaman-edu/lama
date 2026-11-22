@@ -5,7 +5,6 @@
 #include "interpreter/runtime/state.hpp"
 #include "interpreter/std/std.g.hpp"
 #include "interpreter/std/std.hpp"
-#include "interpreter/warm/handler.hpp"
 #include "interpreter/warm/specialization.hpp"
 
 #include "op/word.hpp"
@@ -22,6 +21,7 @@
 #include <cstdlib>
 #include <format>
 #include <iterator>
+#include <limits>
 #include <ranges>
 #include <span>
 #include <string_view>
@@ -35,31 +35,6 @@ op::word_t* resolve_target(const uctx* unit, std::int32_t target) {
   LAMAVM_EXPECT_BB(0, <=, target, <, std::ssize(unit->text));
 
   return unit->text.data() + target;
-}
-
-bool is_begin(const op::word_t* target) {
-  const auto handler = target->as_handler_fn;
-  return handler ==
-         cold::op_begin ||
-         handler ==
-         warm::op_begin ||
-         handler == warm::op_begin_no_locals;
-}
-
-void check_closure_entry(const op::word_t* target, std::int64_t n_captured) {
-  if (is_begin(target)) {
-    LAMAVM_EXPECT_B(n_captured, ==, 0);
-    return;
-  }
-
-  const auto handler = target->as_handler_fn;
-  const bool is_closure_entry = handler ==
-                                cold::op_begin_closure ||
-                                handler ==
-                                warm::op_begin_closure ||
-                                handler == warm::op_begin_closure_no_locals;
-  LAMAVM_EXPECT(is_closure_entry);
-  LAMAVM_EXPECT_B(target[2].as_i32.arg0, ==, n_captured);
 }
 
 template <box (*f)(box)>
@@ -124,7 +99,7 @@ box& op_glo_target(glo_index target_index) {
 }
 
 std::int32_t op_loc_target_index(std::int32_t index) {
-  LAMAVM_EXPECT_BB(0, <=, index, <, stack_n_locals());
+  LAMAVM_EXPECT_BB(0, <=, index, <=, fp - stack.data() - frame::size);
 
   return -static_cast<std::int32_t>(frame::size) - index;
 }
@@ -134,14 +109,10 @@ box& op_loc_target(std::int64_t index) {
 }
 
 std::int32_t op_arg_target_index(std::int32_t index) {
-  const auto n_args = std::ssize(stack_frame_args());
+  const auto n_args = stack_n_args();
   LAMAVM_EXPECT_BB(0, <=, index, <, n_args);
 
-  return static_cast<std::int32_t>(n_args) - index;
-}
-
-box& op_arg_target(std::int64_t index) {
-  return fp[index];
+  return n_args - index;
 }
 
 std::span<box> closure_payload(box closure) {
@@ -156,17 +127,17 @@ std::span<box> closure_payload(box closure) {
   return {unbox<box*>(closure), static_cast<std::size_t>(size)};
 }
 
-std::size_t op_clo_target_index(std::int32_t index) {
-  LAMAVM_EXPECT_B(0, <=, index);
+op::capture_t op_clo_capture(std::int32_t index) {
+  LAMAVM_EXPECT_BB(0, <=, index, <=, std::numeric_limits<std::int32_t>::max() - 2);
 
-  return 2 + static_cast<std::size_t>(index);
+  return {.base = static_cast<std::int32_t>(stack_frame_closure() - fp), .offset = index + 2};
 }
 
-box& op_clo_target(std::size_t index) {
-  const auto closure = closure_payload(stack_frame_closure());
-  LAMAVM_EXPECT_B(index, <, closure.size());
+box& op_clo_target(op::capture_t capture) {
+  const auto closure = closure_payload(fp[capture.base]);
+  LAMAVM_EXPECT_B(capture.offset, <, std::ssize(closure));
 
-  return closure[index];
+  return closure[capture.offset];
 }
 
 box resolve_capture(op::word_t& capture) {
@@ -188,15 +159,13 @@ box resolve_capture(op::word_t& capture) {
   case bc::capture_kind::argument: {
     const auto offset = op_arg_target_index(index);
     warm::specialize_capture(capture, {.base = op::capture_t::frame_base, .offset = offset});
-    return op_arg_target(offset);
+    return fp[offset];
   }
 
   case bc::capture_kind::closure: {
-    const auto offset = op_clo_target_index(index);
-    const auto value = op_clo_target(offset);
-    warm::specialize_capture(
-      capture,
-      {.base = stack_n_args() + 1, .offset = static_cast<std::int32_t>(offset)});
+    const auto descriptor = op_clo_capture(index);
+    const auto value = op_clo_target(descriptor);
+    warm::specialize_capture(capture, descriptor);
     return value;
   }
   }
@@ -461,7 +430,7 @@ void op_ld_arg() {
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
   const auto offset = op_arg_target_index(index);
-  const auto arg = op_arg_target(offset);
+  const auto arg = fp[offset];
   tracef("ld_arg {} = {}", index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
 
@@ -474,12 +443,12 @@ void op_ld_clo() {
   const auto [index, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  const auto offset = op_clo_target_index(index);
-  const auto arg = op_clo_target(offset);
+  const auto capture = op_clo_capture(index);
+  const auto arg = op_clo_target(capture);
   tracef("ld_clo {} = {}", index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
 
-  warm::specialize_op_ld_clo(ip, stack_n_args() + 1, static_cast<std::int32_t>(offset));
+  warm::specialize_op_ld_clo(ip, capture.base, capture.offset);
   LAMAVM_DISPATCH();
 }
 
@@ -527,9 +496,8 @@ void op_st_arg() {
   cold::stack_push(value);
 
   const auto offset = op_arg_target_index(index);
-  auto& arg = op_arg_target(offset);
   tracef("st_arg {} := {}", index, unbox<std::int64_t>(value));
-  arg = value;
+  fp[offset] = value;
 
   warm::specialize_op_st_arg(ip, offset);
   LAMAVM_DISPATCH();
@@ -543,12 +511,12 @@ void op_st_clo() {
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  const auto offset = op_clo_target_index(index);
-  auto& arg = op_clo_target(offset);
+  const auto capture = op_clo_capture(index);
+  auto& arg = op_clo_target(capture);
   tracef("st_clo {} := {}", index, unbox<std::int64_t>(value));
   arg = value;
 
-  warm::specialize_op_st_clo(ip, stack_n_args() + 1, static_cast<std::int32_t>(offset));
+  warm::specialize_op_st_clo(ip, capture.base, capture.offset);
   LAMAVM_DISPATCH();
 }
 
@@ -580,8 +548,7 @@ void op_cjmp_nz() {
 
 void op_begin() {
   auto* ip = pc;
-  ++pc;
-  stack_init_locals(ip);
+  stack_init_locals((*++pc).as_i32.arg1);
 
   warm::specialize_op_begin(ip);
   LAMAVM_DISPATCH();
@@ -589,15 +556,16 @@ void op_begin() {
 
 void op_begin_closure() {
   auto* ip = pc;
-  ++pc;
+  const auto [n_args, n_locals] = (*++pc).as_i32;
 
   const auto [n_captures, arg1] = (*++pc).as_i32;
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
-  const auto closure = closure_payload(stack_frame_closure());
+  LAMAVM_EXPECT_B(n_args, ==, stack_n_args());
+  const auto closure = closure_payload(*stack_frame_closure());
   LAMAVM_EXPECT_B(n_captures, ==, std::ssize(closure) - 2);
 
-  stack_init_locals(ip);
+  stack_init_locals(n_locals);
 
   warm::specialize_op_begin_closure(ip);
   LAMAVM_DISPATCH();
@@ -621,7 +589,6 @@ void op_closure() {
   }
 
   auto* entry = resolve_target(target_up, target);
-  check_closure_entry(entry, n_captured);
   const std::span<op::word_t> captured(pc + 1, static_cast<std::size_t>(n_captured));
   pc += n_captured;
 
@@ -653,17 +620,13 @@ void op_callc() {
   const auto target = unbox<std::int32_t>(cj[0]);
   const auto* target_up = unbox<const uctx*>(cj[1]);
   auto* entry = resolve_target(target_up, target);
-  check_closure_entry(entry, std::ssize(cj) - 2);
-  LAMAVM_EXPECT_B(entry[1].as_i32.arg0, ==, n_args);
 
   cold::stack_push_frame({
+    .n_args = n_args,
     .fp = fp,
     .pc = pc + 1,
     .sp = sp + n_args + 1,
     .up = up,
-#ifdef LAMAVM_COLD
-    .entry = entry,
-#endif
   });
 
   up = target_up;
@@ -722,17 +685,13 @@ void op_call() {
   }
 
   auto* entry = resolve_target(callee, target);
-  LAMAVM_EXPECT(is_begin(entry));
-  LAMAVM_EXPECT_B(entry[1].as_i32.arg0, ==, n_args);
   const auto* caller = up;
   cold::stack_push_frame({
+    .n_args = n_args,
     .fp = fp,
     .pc = pc + 1,
     .sp = sp + n_args,
     .up = up,
-#ifdef LAMAVM_COLD
-    .entry = entry,
-#endif
   });
 
   up = callee;
