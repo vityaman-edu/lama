@@ -2,6 +2,7 @@
 #include "state.hpp"
 
 #include "interpreter/runtime/box.hpp"
+#include "interpreter/runtime/closure.hpp"
 #include "interpreter/runtime/state.hpp"
 #include "interpreter/std/std.g.hpp"
 #include "interpreter/std/std.hpp"
@@ -115,18 +116,6 @@ std::int32_t op_arg_target_index(std::int32_t index) {
   return n_args - index;
 }
 
-std::span<box> closure_payload(box closure) {
-  LAMAVM_EXPECT_C(unbox<void*>(closure) != nullptr, "expected a closure on the stack, got null");
-  LAMAVM_EXPECT_C(
-    unbox<std::int64_t>(boxd::Bclosure_tag_patt(closure)) == 1,
-    "expected a closure on the stack");
-
-  const auto size = unbox<std::int64_t>(boxd::std_length(closure));
-  LAMAVM_EXPECT_B(2, <=, size);
-
-  return {unbox<box*>(closure), static_cast<std::size_t>(size)};
-}
-
 op::capture_t op_clo_capture(std::int32_t index) {
   LAMAVM_EXPECT_BB(0, <=, index, <=, std::numeric_limits<std::int32_t>::max() - 2);
 
@@ -134,7 +123,7 @@ op::capture_t op_clo_capture(std::int32_t index) {
 }
 
 box& op_clo_target(op::capture_t capture) {
-  const auto closure = closure_payload(fp[capture.base]);
+  const auto closure = closure_payload<hard>(fp[capture.base]);
   LAMAVM_EXPECT_B(capture.offset, <, std::ssize(closure));
 
   return closure[capture.offset];
@@ -562,7 +551,7 @@ void op_begin_closure() {
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
   LAMAVM_EXPECT_B(n_args, ==, stack_n_args());
-  const auto closure = closure_payload(*stack_frame_closure());
+  const auto closure = closure_payload<hard>(*stack_frame_closure());
   LAMAVM_EXPECT_B(n_captures, ==, std::ssize(closure) - 2);
 
   stack_init_locals(n_locals);
@@ -616,7 +605,7 @@ void op_callc() {
 
   LAMAVM_EXPECT_B(0, <=, n_args);
   const auto args = stack_args(std::int64_t{n_args} + 1);
-  const auto cj = closure_payload(args.back());
+  const auto cj = closure_payload<hard>(args.back());
   const auto target = unbox<std::int32_t>(cj[0]);
   const auto* target_up = unbox<const uctx*>(cj[1]);
   auto* entry = resolve_target(target_up, target);

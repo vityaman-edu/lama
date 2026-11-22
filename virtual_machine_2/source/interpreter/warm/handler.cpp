@@ -1,7 +1,9 @@
 #include "handler.hpp"
 
+#include "core/assert.hpp"
 #include "core/log.hpp"
 #include "interpreter/runtime/box.hpp"
+#include "interpreter/runtime/closure.hpp"
 #include "interpreter/runtime/state.hpp"
 #include "interpreter/std/std.hpp"
 #include "op/word.hpp"
@@ -28,7 +30,7 @@ box boxed_word(const op::word_t& word) {
 
 box& capture_slot() {
   const auto [frame_offset, capture_offset] = pc[1].as_i32;
-  auto* closure = unbox<box*>(fp[frame_offset]);
+  const auto closure = closure_payload<soft>(fp[frame_offset]);
   return closure[capture_offset];
 }
 
@@ -56,7 +58,7 @@ box capture_value(op::capture_t capture) {
     return fp[capture.offset];
   }
 
-  const auto* closure = unbox<box*>(fp[capture.base]);
+  const auto closure = closure_payload<soft>(fp[capture.base]);
   return closure[capture.offset];
 }
 
@@ -312,7 +314,7 @@ void op_closure() {
 
 void op_callc() {
   const auto n_args = pc[1].as_i32.arg0;
-  const auto* closure = unbox<box*>(sp[n_args]);
+  const auto closure = closure_payload<soft>(sp[n_args]);
   const auto target_offset = unbox<std::int32_t>(closure[0]);
   const auto* callee = unbox<const uctx*>(closure[1]);
   auto* target = callee->text.data() + target_offset;
