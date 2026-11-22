@@ -1,0 +1,8 @@
+fun make() { ["kept", "allocated after kept"] }
+
+var i = 0, sum = 0;
+while i < 200 do
+  sum := sum + make()[0][0];
+  i := i + 1
+od;
+write(sum)
