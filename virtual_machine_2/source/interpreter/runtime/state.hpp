@@ -32,7 +32,7 @@ struct uctx {
 
 extern bc::symbol::index symbols;
 extern std::vector<uctx> units;
-extern std::vector<box> stack;
+extern std::span<box> stack;
 
 extern op::word_t* pc;
 extern box* sp;

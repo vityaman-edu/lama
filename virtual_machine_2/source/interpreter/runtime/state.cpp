@@ -8,7 +8,6 @@ namespace lamavm::interpreter {
 
 bc::symbol::index symbols;
 std::vector<uctx> units;
-std::vector<box> stack;
 
 op::word_t* pc = nullptr;
 box* sp = nullptr;

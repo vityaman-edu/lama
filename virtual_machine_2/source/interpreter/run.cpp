@@ -9,15 +9,15 @@
 #include "interpreter/cold/state.hpp"
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/gc.hpp"
+#include "interpreter/runtime/stack.hpp"
 #include "interpreter/runtime/state.hpp"
 #include "op/word.hpp"
+#include "os/mmap.hpp"
 
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <utility>
-#include <vector>
 
 namespace lamavm::interpreter {
 
@@ -73,10 +73,7 @@ void run(bc::units units1) {
 
   cold::globals_count = globals;
 
-  constexpr size_t stack_size = size_t{1024} * 1024 / sizeof(box);
-  stack = std::vector<box>(stack_size);
-
-  sp = stack.data() + stack.size();
+  const os::mmap mstack = map_stack();
 
   gc::init();
   gc::set_bot(sp);
@@ -90,7 +87,9 @@ void run(bc::units units1) {
     exec();
   }
 
-  std::exit(0); // NOLINT(concurrency-mt-unsafe)
+  stack = {};
+  sp = nullptr;
+  fp = nullptr;
 }
 
 } // namespace lamavm::interpreter
