@@ -10,6 +10,7 @@
 #include "interpreter/runtime/box.hpp"
 #include "interpreter/runtime/gc.hpp"
 #include "interpreter/runtime/stack.hpp"
+#include "interpreter/runtime/stack_fault.hpp"
 #include "interpreter/runtime/state.hpp"
 #include "op/word.hpp"
 #include "os/mmap.hpp"
@@ -74,6 +75,7 @@ void run(bc::units units1) {
   cold::globals_count = globals;
 
   const os::mmap mstack = map_stack();
+  register_stack_fault_handler();
 
   gc::init();
   gc::set_bot(sp);

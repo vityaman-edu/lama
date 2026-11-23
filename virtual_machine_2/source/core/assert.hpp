@@ -18,17 +18,23 @@ constexpr bool is_ndebug = false;
 } // namespace lamavm
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LAMAVM_VERIFY_C(kind, c, m)                                                                \
+#define LAMAVM_VERIFY_BLOCK(kind, ...)                                                             \
   do { /* NOLINT(cppcoreguidelines-avoid-do-while) */                                              \
     if constexpr (!::lamavm::is_ndebug || (kind) == ::lamavm::hard) {                              \
-      if (!(c)) {                                                                                  \
-        ::lamavm::fatalf("{}:{}:1: unexepectedly {}", __FILE__, __LINE__, (m));                    \
-      }                                                                                            \
+      __VA_ARGS__                                                                                  \
     }                                                                                              \
   } while (false)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define LAMAVM_VERIFY_C(kind, c, m)                                                                \
+  LAMAVM_VERIFY_BLOCK(                                                                             \
+    kind,                                                                                          \
+    if (!(c)) { ::lamavm::fatalf("{}:{}:1: unexepectedly {}", __FILE__, __LINE__, (m)); })
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_VERIFY(kind, c) LAMAVM_VERIFY_C(kind, c, #c " is false")
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_VERIFY_B(kind, lhs, op, rhs)                                                        \
   do { /* NOLINT(cppcoreguidelines-avoid-do-while) */                                              \
     if constexpr (!::lamavm::is_ndebug || (kind) == ::lamavm::hard) {                              \
@@ -48,27 +54,32 @@ constexpr bool is_ndebug = false;
     }                                                                                              \
   } while (false)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_VERIFY_BB(kind, a, ab, b, bc, c)                                                    \
-  if constexpr (!::lamavm::is_ndebug || (kind) == ::lamavm::hard) {                                \
-    LAMAVM_VERIFY_B(kind, a, ab, b);                                                               \
-    LAMAVM_VERIFY_B(kind, b, bc, c);                                                               \
-  } else                                                                                           \
-    static_cast<void>(0)
+  LAMAVM_VERIFY_BLOCK(kind, LAMAVM_VERIFY_B(kind, a, ab, b); LAMAVM_VERIFY_B(kind, b, bc, c);)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_EXPECT(c) LAMAVM_VERIFY(::lamavm::hard, c)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_EXPECT_C(c, m) LAMAVM_VERIFY_C(::lamavm::hard, c, m)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_EXPECT_B(lhs, op, rhs) LAMAVM_VERIFY_B(::lamavm::hard, lhs, op, rhs)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_EXPECT_BB(a, ab, b, bc, c) LAMAVM_VERIFY_BB(::lamavm::hard, a, ab, b, bc, c)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_ASSERT(c) LAMAVM_VERIFY(::lamavm::soft, c)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_ASSERT_C(c, m) LAMAVM_VERIFY_C(::lamavm::soft, c, m)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_ASSERT_B(lhs, op, rhs) LAMAVM_VERIFY_B(::lamavm::soft, lhs, op, rhs)
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_ASSERT_BB(a, ab, b, bc, c) LAMAVM_VERIFY_BB(::lamavm::soft, a, ab, b, bc, c)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

@@ -10,11 +10,18 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <span>
 
 #include <sys/mman.h>
 
 namespace lamavm::interpreter {
+
+namespace {
+
+std::size_t guard_size = 0;
+
+} // namespace
 
 std::span<box> stack;
 
@@ -30,10 +37,21 @@ os::mmap map_stack() {
   const auto memory = mstack.pages(1, mstack.pages() - 1);
   os::mprotect(memory, PROT_READ | PROT_WRITE);
 
+  guard_size = page_size;
   stack = *reinterpret_cast<storage*>(memory.data());
   sp = stack.data() + stack.size();
 
   return mstack;
+}
+
+bool is_top_stack_guard(std::uintptr_t address) noexcept {
+  const auto start = reinterpret_cast<std::uintptr_t>(stack.data()) - guard_size;
+  return !stack.empty() && address >= start && address - start < guard_size;
+}
+
+bool is_bot_stack_guard(std::uintptr_t address) noexcept {
+  const auto start = reinterpret_cast<std::uintptr_t>(stack.data()) + stack.size_bytes();
+  return !stack.empty() && address >= start && address - start < guard_size;
 }
 
 } // namespace lamavm::interpreter

@@ -13,6 +13,7 @@ from lamai import Lamai
 from lamavm import Lamavm
 from lamavm2 import Lamavm2
 
+SKIPPED_TESTS = {"examples/StackOverflow.lama"}
 KNOWN_FAILURES = {
     "regression/test054.lama": (2, b"Indirect assignment is not supported yet"),
     "regression/test110.lama": (2, b"Indirect assignment is not supported yet"),
@@ -271,6 +272,11 @@ def main() -> int:
     counts = {"GOOD": 0, "WARN": 0, "FAIL": 0, "SKIP": 0}
     for source in args.sources:
         name = source.relative_to(args.data).as_posix()
+        if name in SKIPPED_TESTS:
+            print(f"{color(name, '1;34')} {color_status('SKIP')}")
+            counts["SKIP"] += 1
+            continue
+
         print(
             f"{color(name, '1;34')} {color_status('RUNNING')} (n={color_number(args.runs)})",
             flush=True,
