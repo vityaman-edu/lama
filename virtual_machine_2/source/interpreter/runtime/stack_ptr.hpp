@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bit>
 #include <cstddef>
 #include <utility>
 
@@ -20,8 +21,7 @@ public:
     return *this;
   }
 
-  // NOLINTNEXTLINE(google-explicit-constructor)
-  operator T*() const noexcept {
+  explicit operator T*() const noexcept {
     return get();
   }
 
@@ -37,12 +37,20 @@ public:
     return std::forward_like<decltype(self)&>(self.get()[i]);
   }
 
+  [[nodiscard]] T* operator+(std::ptrdiff_t offset) const noexcept {
+    return get() + offset;
+  }
+
+  [[nodiscard]] T* operator-(std::ptrdiff_t offset) const noexcept {
+    return get() - offset;
+  }
+
   stack_ptr& operator+=(std::ptrdiff_t offset) noexcept {
-    return *this = get() + offset;
+    return *this = *this + offset;
   }
 
   stack_ptr& operator-=(std::ptrdiff_t offset) noexcept {
-    return *this = get() - offset;
+    return *this = *this - offset;
   }
 
   stack_ptr& operator++() noexcept {
@@ -68,11 +76,11 @@ public:
 private:
   [[nodiscard]] T* get() const noexcept {
     const auto top = *gc_stack_top;
-    return top == 0 ? nullptr : reinterpret_cast<T*>(top + sizeof(T));
+    return top == 0 ? nullptr : std::bit_cast<T*>(top + sizeof(T));
   }
 
   void set(T* value) noexcept {
-    *gc_stack_top = value == nullptr ? 0 : reinterpret_cast<std::size_t>(value) - sizeof(T);
+    *gc_stack_top = value == nullptr ? 0 : std::bit_cast<std::size_t>(value) - sizeof(T);
   }
 
   std::size_t* gc_stack_top;

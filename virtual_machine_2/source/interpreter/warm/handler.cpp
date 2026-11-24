@@ -152,7 +152,7 @@ void op_sexp() {
 
   stack_push(hash);
   std::reverse(static_cast<box*>(sp), sp + count);
-  const auto result = boxd::Bsexp(box(sp), box(count));
+  const auto result = boxd::Bsexp(box(static_cast<box*>(sp)), box(count));
   sp += count;
   stack_push(result);
   pc += 2;
@@ -306,7 +306,7 @@ void op_closure() {
   stack_push(box(callee));
   const auto target_offset = target - callee->text.data();
   stack_push(box(target_offset));
-  const auto closure = boxd::Bclosure(box(sp), box(1 + count));
+  const auto closure = boxd::Bclosure(box(static_cast<box*>(sp)), box(1 + count));
   sp += 2 + count;
   stack_push(closure);
   LAMAVM_DISPATCH_JUMP();
@@ -419,7 +419,7 @@ void op_patt_closure() {
 void op_barray() {
   const auto count = pc[1].as_i32.arg0;
   std::reverse(static_cast<box*>(sp), sp + count);
-  const auto result = boxd::Barray(box(sp), box(count));
+  const auto result = boxd::Barray(box(static_cast<box*>(sp)), box(count));
   sp += count;
   stack_push(result);
   ++pc;

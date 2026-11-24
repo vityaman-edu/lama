@@ -39,7 +39,7 @@ const char* c_str(std::int32_t offset) {
 }
 
 box& stack_push() {
-  const void* stack_ptr = sp;
+  const void* stack_ptr = static_cast<box*>(sp);
   const void* stack_begin = stack.data();
   const void* stack_end = stack.data() + stack.size();
   LAMAVM_EXPECT_BB(stack_begin, <, stack_ptr, <=, stack_end);
@@ -52,7 +52,7 @@ void stack_push(box x) {
 }
 
 box stack_pop() {
-  const void* stack_ptr = sp;
+  const void* stack_ptr = static_cast<box*>(sp);
   const void* stack_begin = stack.data();
   const void* stack_end = stack.data() + stack.size();
   LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <, stack_end);
@@ -66,12 +66,13 @@ void stack_pop(std::int64_t count) {
 
 std::span<box> stack_args(std::int64_t count) {
   const auto* frame_start = frame_begin();
-  const void* stack_ptr = sp;
+  auto* args = static_cast<box*>(sp);
+  const void* stack_ptr = args;
   const void* stack_begin = stack.data();
   LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <=, static_cast<const void*>(frame_start));
-  LAMAVM_EXPECT_BB(0, <=, count, <=, frame_start - sp);
+  LAMAVM_EXPECT_BB(0, <=, count, <=, frame_start - args);
 
-  return {static_cast<box*>(sp), static_cast<std::size_t>(count)};
+  return {args, static_cast<std::size_t>(count)};
 }
 
 box stack_pop_arg() {
@@ -80,13 +81,14 @@ box stack_pop_arg() {
 }
 
 void stack_push_frame(frame f) {
-  LAMAVM_EXPECT_B(frame::size, <=, sp - stack.data());
+  LAMAVM_EXPECT_B(frame::size, <=, static_cast<box*>(sp) - stack.data());
   interpreter::stack_push_frame(f);
 }
 
 void stack_init_locals(std::int32_t n_locals) {
   const auto* begin = frame_begin();
-  LAMAVM_EXPECT_B(static_cast<const void*>(sp), ==, static_cast<const void*>(begin));
+  const void* stack_ptr = static_cast<box*>(sp);
+  LAMAVM_EXPECT_B(stack_ptr, ==, static_cast<const void*>(begin));
   LAMAVM_EXPECT_BB(0, <=, n_locals, <=, begin - stack.data());
 
   for (std::int32_t i = 0; i < n_locals; ++i) {

@@ -588,7 +588,7 @@ void op_closure() {
   cold::stack_push(box(target_up));
   cold::stack_push(box(target));
 
-  const box cj = boxd::Bclosure(box(sp), box(1 + n_captured));
+  const box cj = boxd::Bclosure(box(static_cast<box*>(sp)), box(1 + n_captured));
 
   cold::stack_pop(std::int64_t{2} + n_captured);
 
