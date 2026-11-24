@@ -13,7 +13,7 @@ the global count. Import names and public-symbol keys are `string_view`s into
 the owned string table. Keep that storage alive and stable while the views exist;
 copying the unit does not rebase them into the copied string table.
 
-`unit::parse(istream&)` reads scalar fields and operands into ordinary values.
+`unit::parse(istream&)` reads metadata fields and packed instructions from the stream.
 The path overload requires `.bc`, opens a binary stream, and delegates to it.
 
 ## Parsing and validation
@@ -36,26 +36,24 @@ are not checked against the declaring unit's global count.
 
 ## Instruction emission
 
-[`unit_parser::read_code_section`](../../source/bc/unit.cpp) emits a handler ID
-and operand words directly into `code_section`. It fills the lanes reserved by
-the cold encoding, including the two fixed operand words for CALL and CLOSURE.
-The [typed interpreter layouts](opword.md#interpreter-layouts) describe the
-execution-time view, after the decoder installs a handler function pointer.
+[`unit_parser::read_code_section`](../../source/bc/unit.cpp) reads operands using
+the [packed layouts](../../source/bc/layout.hpp) and writes them using the
+[cold layouts](../../source/interpreter/cold/layout.hpp). Each instruction
+starts with a handler ID that the decoder later replaces with a function pointer.
 
 Keep emission, target fixups, and decoder stepping consistent with both
 execution layouts. Record each instruction's word position before emitting
 its operands. CLOSURE has a variable tail of one word per capture, so fixup and
-decoder traversal must skip the header and the complete tail.
-Parser-side layout integration still needs to account for the handler-ID word
-and the encoded kind/index capture records emitted before dispatch.
+decoder traversal skip the header and the complete tail.
 
 ## Target coordinates
 
 While reading instructions, `word_by_bc` maps serialized opcode byte offsets to
 decoded word indices; operand bytes are not valid instruction boundaries.
-A second pass rewrites JMP, CJMP_Z, CJMP_NZ, and nonnegative CALL/CLOSURE targets
-through that map. Public function offsets use the same conversion, including
-the instruction-boundary check. EOF is a valid mapped boundary.
+A second pass advances by the cold layout sizes and rewrites JMP, CJMP_Z,
+CJMP_NZ, and nonnegative CALL/CLOSURE targets through that map. Public function
+offsets use the same conversion, including the instruction-boundary check.
+EOF is a valid mapped boundary.
 
 Global indices, string offsets, argument counts, and closure capture
 designations retain their meaning. Negative CALL/CLOSURE operands remain

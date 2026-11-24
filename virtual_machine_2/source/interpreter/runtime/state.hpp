@@ -14,7 +14,7 @@
 #include <vector>
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LAMAVM_DISPATCH_JUMP() LAMAVM_MUSTTAIL return pc->as_handler_fn()
+#define LAMAVM_DISPATCH_JUMP() LAMAVM_MUSTTAIL return pc->as_handler.as_fn()
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define LAMAVM_DISPATCH(...)                                                                       \

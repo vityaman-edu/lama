@@ -34,7 +34,7 @@ void exec() {
   cold::stack_push(box(std::int64_t{0}));
   cold::stack_push(box(std::int64_t{0}));
 
-  op::word_t startup_return{.as_handler_fn = cold::op_eof};
+  op::word_t startup_return{.as_handler = {.as_fn = cold::op_eof}};
   cold::stack_push_frame({
     .n_args = 2,
     .fp = fp,
@@ -43,7 +43,7 @@ void exec() {
     .up = up,
   });
 
-  pc->as_handler_fn();
+  pc->as_handler.as_fn();
 }
 
 } // namespace

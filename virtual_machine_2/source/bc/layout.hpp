@@ -158,6 +158,16 @@ struct [[gnu::packed]] op_string_t {
   std::int32_t string_offset;
 };
 
+struct [[gnu::packed]] op_sexp_t {
+  opcode_t opcode;
+  std::int32_t tag_offset;
+  std::int32_t n_fields;
+};
+
+struct [[gnu::packed]] op_sta_t {
+  opcode_t opcode;
+};
+
 struct [[gnu::packed]] op_jmp_t {
   opcode_t opcode;
   std::int32_t target;
@@ -179,6 +189,10 @@ struct [[gnu::packed]] op_swap_t {
   opcode_t opcode;
 };
 
+struct [[gnu::packed]] op_elem_t {
+  opcode_t opcode;
+};
+
 struct [[gnu::packed]] op_ld_glo_t {
   opcode_t opcode;
   std::int32_t index;
@@ -194,6 +208,11 @@ struct [[gnu::packed]] op_ld_arg_t {
   std::int32_t index;
 };
 
+struct [[gnu::packed]] op_ld_clo_t {
+  opcode_t opcode;
+  std::int32_t index;
+};
+
 struct [[gnu::packed]] op_st_glo_t {
   opcode_t opcode;
   std::int32_t index;
@@ -205,6 +224,11 @@ struct [[gnu::packed]] op_st_loc_t {
 };
 
 struct [[gnu::packed]] op_st_arg_t {
+  opcode_t opcode;
+  std::int32_t index;
+};
+
+struct [[gnu::packed]] op_st_clo_t {
   opcode_t opcode;
   std::int32_t index;
 };
@@ -225,15 +249,94 @@ struct [[gnu::packed]] op_begin_t {
   std::int32_t n_locals;
 };
 
+struct [[gnu::packed]] op_begin_closure_t {
+  opcode_t opcode;
+  std::int32_t n_args;
+  std::int32_t n_locals;
+  std::int32_t n_captures;
+};
+
+struct [[gnu::packed]] op_closure_header_t {
+  opcode_t opcode;
+  std::int32_t target;
+  std::int32_t n_captured;
+};
+
+struct [[gnu::packed]] closure_capture_t {
+  capture_kind kind;
+  std::int32_t index;
+};
+
+struct [[gnu::packed]] op_callc_t {
+  opcode_t opcode;
+  std::int32_t n_args;
+};
+
 struct [[gnu::packed]] op_call_t {
   opcode_t opcode;
   std::int32_t target;
   std::int32_t n_args;
 };
 
+struct [[gnu::packed]] op_tag_t {
+  opcode_t opcode;
+  std::int32_t tag_offset;
+  std::int32_t n_fields;
+};
+
+struct [[gnu::packed]] op_array_t {
+  opcode_t opcode;
+  std::int32_t n_elements;
+};
+
+struct [[gnu::packed]] op_fail_t {
+  opcode_t opcode;
+  std::int32_t line;
+  std::int32_t column;
+};
+
+struct [[gnu::packed]] op_fail_keep_t {
+  opcode_t opcode;
+  std::int32_t line;
+  std::int32_t column;
+};
+
 struct [[gnu::packed]] op_line_t {
   opcode_t opcode;
   std::int32_t line;
+};
+
+struct [[gnu::packed]] op_patt_str_cmp_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_patt_string_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_patt_array_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_patt_sexp_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_patt_boxed_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_patt_unboxed_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_patt_closure_t {
+  opcode_t opcode;
+};
+
+struct [[gnu::packed]] op_barray_t {
+  opcode_t opcode;
+  std::int32_t n_elements;
 };
 
 struct [[gnu::packed]] op_eof_t {
@@ -258,22 +361,43 @@ static_assert(ctype<op_and_t>);
 static_assert(ctype<op_or_t>);
 static_assert(ctype<op_const_t>);
 static_assert(ctype<op_string_t>);
+static_assert(ctype<op_sexp_t>);
+static_assert(ctype<op_sta_t>);
 static_assert(ctype<op_jmp_t>);
 static_assert(ctype<op_end_t>);
 static_assert(ctype<op_drop_t>);
 static_assert(ctype<op_dup_t>);
 static_assert(ctype<op_swap_t>);
+static_assert(ctype<op_elem_t>);
 static_assert(ctype<op_ld_glo_t>);
 static_assert(ctype<op_ld_loc_t>);
 static_assert(ctype<op_ld_arg_t>);
+static_assert(ctype<op_ld_clo_t>);
 static_assert(ctype<op_st_glo_t>);
 static_assert(ctype<op_st_loc_t>);
 static_assert(ctype<op_st_arg_t>);
+static_assert(ctype<op_st_clo_t>);
 static_assert(ctype<op_cjmp_z_t>);
 static_assert(ctype<op_cjmp_nz_t>);
 static_assert(ctype<op_begin_t>);
+static_assert(ctype<op_begin_closure_t>);
+static_assert(ctype<op_closure_header_t>);
+static_assert(ctype<closure_capture_t>);
+static_assert(ctype<op_callc_t>);
 static_assert(ctype<op_call_t>);
+static_assert(ctype<op_tag_t>);
+static_assert(ctype<op_array_t>);
+static_assert(ctype<op_fail_t>);
+static_assert(ctype<op_fail_keep_t>);
 static_assert(ctype<op_line_t>);
+static_assert(ctype<op_patt_str_cmp_t>);
+static_assert(ctype<op_patt_string_t>);
+static_assert(ctype<op_patt_array_t>);
+static_assert(ctype<op_patt_sexp_t>);
+static_assert(ctype<op_patt_boxed_t>);
+static_assert(ctype<op_patt_unboxed_t>);
+static_assert(ctype<op_patt_closure_t>);
+static_assert(ctype<op_barray_t>);
 static_assert(ctype<op_eof_t>);
 
 } // namespace lamavm::bc

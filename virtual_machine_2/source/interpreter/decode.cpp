@@ -139,8 +139,8 @@ op::handler_fn_t decode(op::handler_id_t handler_id) {
 
 void decode(std::span<op::word_t> text) {
   for (std::size_t i = 0; i < text.size(); ++i) {
-    const auto handler_id = text[i].as_handler_id;
-    text[i].as_handler_fn = decode(handler_id);
+    const auto handler_id = text[i].as_handler.as_id;
+    text[i].as_handler.as_fn = decode(handler_id);
 
     const auto opcode = static_cast<bc::opcode_t>(handler_id);
     switch (opcode) {

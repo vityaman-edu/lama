@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/c.hpp"
-#include "op/handler.hpp"
 #include "op/word.hpp"
 
 #include <cstddef>
@@ -11,85 +10,85 @@
 namespace lamavm::interpreter::cold {
 
 struct op_add_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_add_t* reinterpret(op::word_t* w);
 };
 
 struct op_sub_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_sub_t* reinterpret(op::word_t* w);
 };
 
 struct op_mul_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_mul_t* reinterpret(op::word_t* w);
 };
 
 struct op_div_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_div_t* reinterpret(op::word_t* w);
 };
 
 struct op_mod_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_mod_t* reinterpret(op::word_t* w);
 };
 
 struct op_lt_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_lt_t* reinterpret(op::word_t* w);
 };
 
 struct op_le_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_le_t* reinterpret(op::word_t* w);
 };
 
 struct op_gt_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_gt_t* reinterpret(op::word_t* w);
 };
 
 struct op_ge_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_ge_t* reinterpret(op::word_t* w);
 };
 
 struct op_eq_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_eq_t* reinterpret(op::word_t* w);
 };
 
 struct op_ne_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_ne_t* reinterpret(op::word_t* w);
 };
 
 struct op_and_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_and_t* reinterpret(op::word_t* w);
 };
 
 struct op_or_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_or_t* reinterpret(op::word_t* w);
 };
 
 struct op_const_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t value;
   std::int32_t reserved_1;
 
@@ -97,7 +96,7 @@ struct op_const_t {
 };
 
 struct op_string_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t string_offset;
   std::int32_t reserved_1;
 
@@ -105,7 +104,7 @@ struct op_string_t {
 };
 
 struct op_sexp_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t tag_offset;
   std::int32_t reserved_1;
   std::int32_t n_fields;
@@ -115,13 +114,13 @@ struct op_sexp_t {
 };
 
 struct op_sta_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_sta_t* reinterpret(op::word_t* w);
 };
 
 struct op_jmp_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t target;
   std::int32_t reserved_1;
 
@@ -129,37 +128,37 @@ struct op_jmp_t {
 };
 
 struct op_end_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_end_t* reinterpret(op::word_t* w);
 };
 
 struct op_drop_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_drop_t* reinterpret(op::word_t* w);
 };
 
 struct op_dup_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_dup_t* reinterpret(op::word_t* w);
 };
 
 struct op_swap_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_swap_t* reinterpret(op::word_t* w);
 };
 
 struct op_elem_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_elem_t* reinterpret(op::word_t* w);
 };
 
 struct op_ld_glo_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -167,7 +166,7 @@ struct op_ld_glo_t {
 };
 
 struct op_ld_loc_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -175,7 +174,7 @@ struct op_ld_loc_t {
 };
 
 struct op_ld_arg_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -183,7 +182,7 @@ struct op_ld_arg_t {
 };
 
 struct op_ld_clo_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -191,7 +190,7 @@ struct op_ld_clo_t {
 };
 
 struct op_st_glo_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -199,7 +198,7 @@ struct op_st_glo_t {
 };
 
 struct op_st_loc_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -207,7 +206,7 @@ struct op_st_loc_t {
 };
 
 struct op_st_arg_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -215,7 +214,7 @@ struct op_st_arg_t {
 };
 
 struct op_st_clo_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t index;
   std::int32_t reserved_1;
 
@@ -223,7 +222,7 @@ struct op_st_clo_t {
 };
 
 struct op_cjmp_z_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t target;
   std::int32_t reserved_1;
 
@@ -231,7 +230,7 @@ struct op_cjmp_z_t {
 };
 
 struct op_cjmp_nz_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t target;
   std::int32_t reserved_1;
 
@@ -239,7 +238,7 @@ struct op_cjmp_nz_t {
 };
 
 struct op_begin_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t n_args;
   std::int32_t n_locals;
 
@@ -247,7 +246,7 @@ struct op_begin_t {
 };
 
 struct op_begin_closure_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t n_args;
   std::int32_t n_locals;
   std::int32_t n_captures;
@@ -257,7 +256,7 @@ struct op_begin_closure_t {
 };
 
 struct op_closure_header_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t target;
   std::int32_t reserved_1;
   std::int32_t reserved_2;
@@ -281,7 +280,7 @@ struct op_closure_view_t {
 };
 
 struct op_callc_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t n_args;
   std::int32_t reserved_1;
 
@@ -289,7 +288,7 @@ struct op_callc_t {
 };
 
 struct op_call_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t target;
   std::int32_t reserved_1;
   std::int32_t reserved_2;
@@ -299,7 +298,7 @@ struct op_call_t {
 };
 
 struct op_tag_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t tag_offset;
   std::int32_t reserved_1;
   std::int32_t n_fields;
@@ -309,7 +308,7 @@ struct op_tag_t {
 };
 
 struct op_array_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t n_elements;
   std::int32_t reserved_1;
 
@@ -317,7 +316,7 @@ struct op_array_t {
 };
 
 struct op_fail_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t line;
   std::int32_t column;
 
@@ -325,7 +324,7 @@ struct op_fail_t {
 };
 
 struct op_fail_keep_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t line;
   std::int32_t column;
 
@@ -333,7 +332,7 @@ struct op_fail_keep_t {
 };
 
 struct op_line_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t line;
   std::int32_t reserved_1;
 
@@ -341,49 +340,49 @@ struct op_line_t {
 };
 
 struct op_patt_str_cmp_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_patt_str_cmp_t* reinterpret(op::word_t* w);
 };
 
 struct op_patt_string_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_patt_string_t* reinterpret(op::word_t* w);
 };
 
 struct op_patt_array_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_patt_array_t* reinterpret(op::word_t* w);
 };
 
 struct op_patt_sexp_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_patt_sexp_t* reinterpret(op::word_t* w);
 };
 
 struct op_patt_boxed_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_patt_boxed_t* reinterpret(op::word_t* w);
 };
 
 struct op_patt_unboxed_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_patt_unboxed_t* reinterpret(op::word_t* w);
 };
 
 struct op_patt_closure_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_patt_closure_t* reinterpret(op::word_t* w);
 };
 
 struct op_barray_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
   std::int32_t n_elements;
   std::int32_t reserved_1;
 
@@ -391,7 +390,7 @@ struct op_barray_t {
 };
 
 struct op_eof_t {
-  op::handler_fn_t handler;
+  op::handler_t as_handler;
 
   [[nodiscard]] static op_eof_t* reinterpret(op::word_t* w);
 };

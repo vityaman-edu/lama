@@ -4,7 +4,6 @@
 
 #include "core/c.hpp"
 
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -32,6 +31,11 @@ struct capture_t {
   std::int32_t offset;
 };
 
+union handler_t {
+  handler_id_t as_id; // for a ptr comparison
+  handler_fn_t as_fn; // like the `opcode_t`, but at the runtime
+};
+
 // LamaVM text (code) is just an array of opwords.
 // One operation (instruction) consists of opwords.
 // The first operation opword is always a handler.
@@ -46,9 +50,8 @@ struct capture_t {
 // - Naive. The handler is an id, arguments are offsets.
 // - Threaded. The handler is fn, arguments are pointers.
 union word_t {
-  handler_id_t as_handler_id; // for a ptr comparison
-  handler_fn_t as_handler_fn; // like the `opcode_t`, but at the runtime
-  word_t* as_target;          // e.g. JMP, CALL
+  handler_t as_handler;
+  word_t* as_target; // e.g. JMP, CALL
   struct {
     std::int32_t arg0;
     std::int32_t arg1;
@@ -65,7 +68,8 @@ static_assert(ctype<word_t>);
 static_assert(sizeof(word_t) == sizeof(std::uintptr_t));
 
 template <typename Layout = word_t>
-  requires(std::same_as<Layout, word_t> || requires { &Layout::handler; })
+  requires(
+    requires { &Layout::as_handler; } || requires { &Layout::handler; })
 [[nodiscard]] constexpr std::ptrdiff_t word_count() {
   constexpr auto word_size = sizeof(word_t);
   static_assert(sizeof(Layout) % word_size == 0);

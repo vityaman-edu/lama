@@ -1,16 +1,20 @@
 #include "unit.hpp"
 
-#include "core/format.hpp"
 #include "layout.hpp"
 #include "limit.hpp"
 
 #include "core/assert.hpp"
-#include "op/handler.hpp"
+#include "core/format.hpp"
+
+#include "interpreter/cold/layout.hpp"
+
+#include "op/word.hpp"
 
 #include <array>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -27,6 +31,8 @@ using namespace std::string_view_literals;
 
 namespace {
 
+namespace cold = interpreter::cold;
+
 class unit_parser {
 public:
   explicit unit_parser(std::istream& in);
@@ -35,6 +41,15 @@ public:
 private:
   template <typename T>
   T read();
+
+  template <typename Packed>
+  Packed read_op();
+
+  template <typename Cold>
+  void emit_op(const Cold& cold);
+
+  closure_capture_t read_capture();
+  void emit_capture(const cold::closure_capture_t& capture);
 
   void read_bytes(char* data, std::size_t size);
   void read_header();
@@ -86,6 +101,32 @@ T unit_parser::read() {
   T value; // NOLINT(cppcoreguidelines-pro-type-member-init, hicpp-member-init)
   read_bytes(reinterpret_cast<char*>(&value), sizeof(value));
   return value;
+}
+
+template <typename Packed>
+Packed unit_parser::read_op() {
+  static_assert(offsetof(Packed, opcode) == 0);
+  return read<Packed>();
+}
+
+template <typename Cold>
+void unit_parser::emit_op(const Cold& cold) {
+  static_assert(offsetof(Cold, as_handler) == 0);
+
+  const auto offset = u.code_section.size();
+  u.code_section.resize(offset + op::word_count<Cold>());
+  std::memcpy(u.code_section.data() + offset, &cold, sizeof(cold));
+}
+
+closure_capture_t unit_parser::read_capture() {
+  const auto capture = read<closure_capture_t>();
+  const auto kind = std::to_underlying(capture.kind);
+  LAMAVM_EXPECT_B(kind, <=, std::to_underlying(capture_kind::closure));
+  return capture;
+}
+
+void unit_parser::emit_capture(const cold::closure_capture_t& capture) {
+  u.code_section.push_back({.as_i32 = std::bit_cast<decltype(op::word_t::as_i32)>(capture)});
 }
 
 void unit_parser::read_header() {
@@ -153,132 +194,558 @@ void unit_parser::read_public_symbols() {
 void unit_parser::read_code_section() {
   for (;;) {
     const auto bc_offset = cursor - metadata_size;
-    const auto opcode = read<opcode_t>();
+    const auto opcode = static_cast<opcode_t>(in.peek());
 
     word_by_bc.resize(bc_offset + 1, -1);
     word_by_bc[bc_offset] = static_cast<std::int32_t>(u.code_section.size());
 
-    u.code_section.push_back({.as_handler_id = static_cast<op::handler_id_t>(opcode)});
-
-    if (opcode == opcode_t::op_eof) {
-      LAMAVM_EXPECT_B(in.peek(), ==, std::char_traits<char>::eof());
-      break;
+    switch (opcode) {
+    case opcode_t::op_add: {
+      const auto packed = read_op<op_add_t>();
+      const cold::op_add_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
     }
 
-    std::size_t operands_count = 0;
+    case opcode_t::op_sub: {
+      const auto packed = read_op<op_sub_t>();
+      const cold::op_sub_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
 
-    switch (opcode) {
-    case opcode_t::op_add:
-    case opcode_t::op_sub:
-    case opcode_t::op_mul:
-    case opcode_t::op_div:
-    case opcode_t::op_mod:
-    case opcode_t::op_lt:
-    case opcode_t::op_le:
-    case opcode_t::op_gt:
-    case opcode_t::op_ge:
-    case opcode_t::op_eq:
-    case opcode_t::op_ne:
-    case opcode_t::op_and:
-    case opcode_t::op_or:
-      break;
-    case opcode_t::op_const:
-    case opcode_t::op_string:
-      operands_count = 1;
-      break;
-    case opcode_t::op_sexp:
-    case opcode_t::op_tag:
-      u.code_section.push_back({.as_i32 = {.arg0 = read<std::int32_t>(), .arg1 = 0}});
-      u.code_section.push_back({.as_i32 = {.arg0 = read<std::int32_t>(), .arg1 = 0}});
-      break;
-    case opcode_t::op_sta:
-      break;
-    case opcode_t::op_jmp:
-      operands_count = 1;
-      break;
-    case opcode_t::op_end:
-    case opcode_t::op_drop:
-    case opcode_t::op_dup:
-    case opcode_t::op_swap:
-    case opcode_t::op_elem:
-      break;
-    case opcode_t::op_ld_glo:
-    case opcode_t::op_ld_loc:
-    case opcode_t::op_ld_arg:
-    case opcode_t::op_ld_clo:
-    case opcode_t::op_st_glo:
-    case opcode_t::op_st_loc:
-    case opcode_t::op_st_arg:
-    case opcode_t::op_st_clo:
-    case opcode_t::op_cjmp_z:
-    case opcode_t::op_cjmp_nz:
-      operands_count = 1;
-      break;
-    case opcode_t::op_begin:
-      operands_count = 2;
-      break;
-    case opcode_t::op_begin_closure:
-      operands_count = 3;
-      break;
-    case opcode_t::op_call:
+    case opcode_t::op_mul: {
+      const auto packed = read_op<op_mul_t>();
+      const cold::op_mul_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_div: {
+      const auto packed = read_op<op_div_t>();
+      const cold::op_div_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_mod: {
+      const auto packed = read_op<op_mod_t>();
+      const cold::op_mod_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_lt: {
+      const auto packed = read_op<op_lt_t>();
+      const cold::op_lt_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_le: {
+      const auto packed = read_op<op_le_t>();
+      const cold::op_le_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_gt: {
+      const auto packed = read_op<op_gt_t>();
+      const cold::op_gt_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_ge: {
+      const auto packed = read_op<op_ge_t>();
+      const cold::op_ge_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_eq: {
+      const auto packed = read_op<op_eq_t>();
+      const cold::op_eq_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_ne: {
+      const auto packed = read_op<op_ne_t>();
+      const cold::op_ne_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_and: {
+      const auto packed = read_op<op_and_t>();
+      const cold::op_and_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_or: {
+      const auto packed = read_op<op_or_t>();
+      const cold::op_or_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_const: {
+      const auto packed = read_op<op_const_t>();
+      const cold::op_const_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .value = packed.value,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_string: {
+      const auto packed = read_op<op_string_t>();
+      const cold::op_string_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .string_offset = packed.string_offset,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_sexp: {
+      const auto packed = read_op<op_sexp_t>();
+      const cold::op_sexp_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .tag_offset = packed.tag_offset,
+        .reserved_1 = 0,
+        .n_fields = packed.n_fields,
+        .reserved_2 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_sta: {
+      const auto packed = read_op<op_sta_t>();
+      const cold::op_sta_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_jmp: {
+      const auto packed = read_op<op_jmp_t>();
+      const cold::op_jmp_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .target = packed.target,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_end: {
+      const auto packed = read_op<op_end_t>();
+      const cold::op_end_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_drop: {
+      const auto packed = read_op<op_drop_t>();
+      const cold::op_drop_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_dup: {
+      const auto packed = read_op<op_dup_t>();
+      const cold::op_dup_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_swap: {
+      const auto packed = read_op<op_swap_t>();
+      const cold::op_swap_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_elem: {
+      const auto packed = read_op<op_elem_t>();
+      const cold::op_elem_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_ld_glo: {
+      const auto packed = read_op<op_ld_glo_t>();
+      const cold::op_ld_glo_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_ld_loc: {
+      const auto packed = read_op<op_ld_loc_t>();
+      const cold::op_ld_loc_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_ld_arg: {
+      const auto packed = read_op<op_ld_arg_t>();
+      const cold::op_ld_arg_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_ld_clo: {
+      const auto packed = read_op<op_ld_clo_t>();
+      const cold::op_ld_clo_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_st_glo: {
+      const auto packed = read_op<op_st_glo_t>();
+      const cold::op_st_glo_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_st_loc: {
+      const auto packed = read_op<op_st_loc_t>();
+      const cold::op_st_loc_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_st_arg: {
+      const auto packed = read_op<op_st_arg_t>();
+      const cold::op_st_arg_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_st_clo: {
+      const auto packed = read_op<op_st_clo_t>();
+      const cold::op_st_clo_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .index = packed.index,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_cjmp_z: {
+      const auto packed = read_op<op_cjmp_z_t>();
+      const cold::op_cjmp_z_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .target = packed.target,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_cjmp_nz: {
+      const auto packed = read_op<op_cjmp_nz_t>();
+      const cold::op_cjmp_nz_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .target = packed.target,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_begin: {
+      const auto packed = read_op<op_begin_t>();
+      const cold::op_begin_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .n_args = packed.n_args,
+        .n_locals = packed.n_locals,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_begin_closure: {
+      const auto packed = read_op<op_begin_closure_t>();
+      const cold::op_begin_closure_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .n_args = packed.n_args,
+        .n_locals = packed.n_locals,
+        .n_captures = packed.n_captures,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
     case opcode_t::op_closure: {
-      const auto target = read<std::int32_t>();
-      const auto count = read<std::int32_t>();
-      u.code_section.push_back({.as_i32 = {.arg0 = target, .arg1 = 0}});
-      u.code_section.push_back({.as_i32 = {.arg0 = 0, .arg1 = count}});
-
-      if (opcode == opcode_t::op_call) {
-        break;
-      }
-
+      const auto packed = read_op<op_closure_header_t>();
+      const auto count = packed.n_captured;
       LAMAVM_EXPECT_B(0, <=, count);
 
+      const cold::op_closure_header_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .target = packed.target,
+        .reserved_1 = 0,
+        .reserved_2 = 0,
+        .n_captured = packed.n_captured,
+      };
+      emit_op(op);
+
       for (std::int32_t i = 0; i < count; ++i) {
-        const auto kind = read<std::uint8_t>();
-        const auto index = read<std::int32_t>();
-        LAMAVM_EXPECT_B(kind, <=, std::to_underlying(capture_kind::closure));
-        u.code_section.push_back({.as_i32 = {.arg0 = kind, .arg1 = index}});
+        const auto packed_capture = read_capture();
+        const cold::closure_capture_t capture{
+          .kind = std::to_underlying(packed_capture.kind),
+          .index = packed_capture.index,
+        };
+        emit_capture(capture);
       }
 
-      break;
+      continue;
     }
 
-    case opcode_t::op_callc:
-    case opcode_t::op_array:
-      operands_count = 1;
-      break;
-    case opcode_t::op_fail:
-    case opcode_t::op_fail_keep:
-      operands_count = 2;
-      break;
-    case opcode_t::op_line:
-      operands_count = 1;
-      break;
-    case opcode_t::op_patt_str_cmp:
-    case opcode_t::op_patt_string:
-    case opcode_t::op_patt_array:
-    case opcode_t::op_patt_sexp:
-    case opcode_t::op_patt_boxed:
-    case opcode_t::op_patt_unboxed:
-    case opcode_t::op_patt_closure:
-      break;
-    case opcode_t::op_barray:
-      operands_count = 1;
-      break;
-    case opcode_t::op_eof:
-      std::unreachable();
-    default:
-      LAMAVM_EXPECT_C(
-        false,
-        std::format("unknown bytecode opcode 0x{:02x}", std::to_underlying(opcode)));
+    case opcode_t::op_callc: {
+      const auto packed = read_op<op_callc_t>();
+      const cold::op_callc_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .n_args = packed.n_args,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
     }
 
-    for (std::size_t i = 0; i < operands_count; i += 2) {
-      const auto arg0 = read<std::int32_t>();
-      const auto arg1 = i + 1 < operands_count ? read<std::int32_t>() : 0;
-
-      u.code_section.push_back({.as_i32 = {.arg0 = arg0, .arg1 = arg1}});
+    case opcode_t::op_call: {
+      const auto packed = read_op<op_call_t>();
+      const cold::op_call_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .target = packed.target,
+        .reserved_1 = 0,
+        .reserved_2 = 0,
+        .n_args = packed.n_args,
+      };
+      emit_op(op);
+      continue;
     }
+
+    case opcode_t::op_tag: {
+      const auto packed = read_op<op_tag_t>();
+      const cold::op_tag_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .tag_offset = packed.tag_offset,
+        .reserved_1 = 0,
+        .n_fields = packed.n_fields,
+        .reserved_2 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_array: {
+      const auto packed = read_op<op_array_t>();
+      const cold::op_array_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .n_elements = packed.n_elements,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_fail: {
+      const auto packed = read_op<op_fail_t>();
+      const cold::op_fail_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .line = packed.line,
+        .column = packed.column,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_fail_keep: {
+      const auto packed = read_op<op_fail_keep_t>();
+      const cold::op_fail_keep_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .line = packed.line,
+        .column = packed.column,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_line: {
+      const auto packed = read_op<op_line_t>();
+      const cold::op_line_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .line = packed.line,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_patt_str_cmp: {
+      const auto packed = read_op<op_patt_str_cmp_t>();
+      const cold::op_patt_str_cmp_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_patt_string: {
+      const auto packed = read_op<op_patt_string_t>();
+      const cold::op_patt_string_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_patt_array: {
+      const auto packed = read_op<op_patt_array_t>();
+      const cold::op_patt_array_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_patt_sexp: {
+      const auto packed = read_op<op_patt_sexp_t>();
+      const cold::op_patt_sexp_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_patt_boxed: {
+      const auto packed = read_op<op_patt_boxed_t>();
+      const cold::op_patt_boxed_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_patt_unboxed: {
+      const auto packed = read_op<op_patt_unboxed_t>();
+      const cold::op_patt_unboxed_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_patt_closure: {
+      const auto packed = read_op<op_patt_closure_t>();
+      const cold::op_patt_closure_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_barray: {
+      const auto packed = read_op<op_barray_t>();
+      const cold::op_barray_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+        .n_elements = packed.n_elements,
+        .reserved_1 = 0,
+      };
+      emit_op(op);
+      continue;
+    }
+
+    case opcode_t::op_eof: {
+      const auto packed = read_op<op_eof_t>();
+      const cold::op_eof_t op = {
+        .as_handler = {.as_id = std::to_underlying(packed.opcode)},
+      };
+      emit_op(op);
+      LAMAVM_EXPECT_B(in.peek(), ==, std::char_traits<char>::eof());
+      return;
+    }
+    }
+
+    LAMAVM_EXPECT_C(
+      false,
+      std::format("unknown bytecode opcode 0x{:02x}", std::to_underlying(opcode)));
   }
 }
 
@@ -291,80 +758,204 @@ void unit_parser::fixup_jump_targets() {
     return word;
   };
 
-  for (std::size_t i = 0; i < u.code_section.size(); ++i) {
-    const auto opcode = static_cast<opcode_t>(u.code_section[i].as_handler_id);
+  auto* const end = u.code_section.data() + u.code_section.size();
+  for (auto* pc = u.code_section.data(); pc != end;) {
+    const auto opcode = static_cast<opcode_t>(pc->as_handler.as_id);
 
     switch (opcode) {
+    case opcode_t::op_add:
+      pc += op::word_count<cold::op_add_t>();
+      break;
+    case opcode_t::op_sub:
+      pc += op::word_count<cold::op_sub_t>();
+      break;
+    case opcode_t::op_mul:
+      pc += op::word_count<cold::op_mul_t>();
+      break;
+    case opcode_t::op_div:
+      pc += op::word_count<cold::op_div_t>();
+      break;
+    case opcode_t::op_mod:
+      pc += op::word_count<cold::op_mod_t>();
+      break;
+    case opcode_t::op_lt:
+      pc += op::word_count<cold::op_lt_t>();
+      break;
+    case opcode_t::op_le:
+      pc += op::word_count<cold::op_le_t>();
+      break;
+    case opcode_t::op_gt:
+      pc += op::word_count<cold::op_gt_t>();
+      break;
+    case opcode_t::op_ge:
+      pc += op::word_count<cold::op_ge_t>();
+      break;
+    case opcode_t::op_eq:
+      pc += op::word_count<cold::op_eq_t>();
+      break;
+    case opcode_t::op_ne:
+      pc += op::word_count<cold::op_ne_t>();
+      break;
+    case opcode_t::op_and:
+      pc += op::word_count<cold::op_and_t>();
+      break;
+    case opcode_t::op_or:
+      pc += op::word_count<cold::op_or_t>();
+      break;
     case opcode_t::op_const:
+      pc += op::word_count<cold::op_const_t>();
+      break;
     case opcode_t::op_string:
-      ++i;
+      pc += op::word_count<cold::op_string_t>();
       break;
     case opcode_t::op_sexp:
-    case opcode_t::op_tag:
-      i += 2;
+      pc += op::word_count<cold::op_sexp_t>();
+      break;
+    case opcode_t::op_sta:
+      pc += op::word_count<cold::op_sta_t>();
       break;
     case opcode_t::op_jmp: {
-      auto& [target, arg1] = u.code_section[++i].as_i32;
-      LAMAVM_EXPECT_B(arg1, ==, 0);
+      auto& instruction = *cold::op_jmp_t::reinterpret(pc);
+      LAMAVM_EXPECT_B(instruction.reserved_1, ==, 0);
 
-      target = word_offset(target);
+      instruction.target = word_offset(instruction.target);
+      pc += op::word_count<cold::op_jmp_t>();
       break;
     }
 
-    case opcode_t::op_ld_glo:
-    case opcode_t::op_ld_loc:
-    case opcode_t::op_ld_arg:
-    case opcode_t::op_ld_clo:
-    case opcode_t::op_st_glo:
-    case opcode_t::op_st_loc:
-    case opcode_t::op_st_arg:
-    case opcode_t::op_st_clo:
-      ++i;
+    case opcode_t::op_end:
+      pc += op::word_count<cold::op_end_t>();
       break;
-    case opcode_t::op_cjmp_z:
-    case opcode_t::op_cjmp_nz: {
-      auto& [target, arg1] = u.code_section[++i].as_i32;
-      LAMAVM_EXPECT_B(arg1, ==, 0);
+    case opcode_t::op_drop:
+      pc += op::word_count<cold::op_drop_t>();
+      break;
+    case opcode_t::op_dup:
+      pc += op::word_count<cold::op_dup_t>();
+      break;
+    case opcode_t::op_swap:
+      pc += op::word_count<cold::op_swap_t>();
+      break;
+    case opcode_t::op_elem:
+      pc += op::word_count<cold::op_elem_t>();
+      break;
+    case opcode_t::op_ld_glo:
+      pc += op::word_count<cold::op_ld_glo_t>();
+      break;
+    case opcode_t::op_ld_loc:
+      pc += op::word_count<cold::op_ld_loc_t>();
+      break;
+    case opcode_t::op_ld_arg:
+      pc += op::word_count<cold::op_ld_arg_t>();
+      break;
+    case opcode_t::op_ld_clo:
+      pc += op::word_count<cold::op_ld_clo_t>();
+      break;
+    case opcode_t::op_st_glo:
+      pc += op::word_count<cold::op_st_glo_t>();
+      break;
+    case opcode_t::op_st_loc:
+      pc += op::word_count<cold::op_st_loc_t>();
+      break;
+    case opcode_t::op_st_arg:
+      pc += op::word_count<cold::op_st_arg_t>();
+      break;
+    case opcode_t::op_st_clo:
+      pc += op::word_count<cold::op_st_clo_t>();
+      break;
+    case opcode_t::op_cjmp_z: {
+      auto& instruction = *cold::op_cjmp_z_t::reinterpret(pc);
+      LAMAVM_EXPECT_B(instruction.reserved_1, ==, 0);
 
-      target = word_offset(target);
+      instruction.target = word_offset(instruction.target);
+      pc += op::word_count<cold::op_cjmp_z_t>();
+      break;
+    }
+
+    case opcode_t::op_cjmp_nz: {
+      auto& instruction = *cold::op_cjmp_nz_t::reinterpret(pc);
+      LAMAVM_EXPECT_B(instruction.reserved_1, ==, 0);
+
+      instruction.target = word_offset(instruction.target);
+      pc += op::word_count<cold::op_cjmp_nz_t>();
       break;
     }
 
     case opcode_t::op_begin:
-      ++i;
+      pc += op::word_count<cold::op_begin_t>();
       break;
     case opcode_t::op_begin_closure:
-      i += 2;
+      pc += op::word_count<cold::op_begin_closure_t>();
       break;
-    case opcode_t::op_call:
     case opcode_t::op_closure: {
-      auto& [target, arg1] = u.code_section[i + 1].as_i32;
-      LAMAVM_EXPECT_B(arg1, ==, 0);
+      const auto closure = cold::op_closure_view_t::reinterpret(pc);
+      auto& header = *closure.header;
+      LAMAVM_EXPECT_B(header.reserved_1, ==, 0);
+      LAMAVM_EXPECT_B(header.reserved_2, ==, 0);
 
-      if (target >= 0) {
-        target = word_offset(target);
+      if (header.target >= 0) {
+        header.target = word_offset(header.target);
       }
 
-      i += 2;
-      if (opcode == opcode_t::op_closure) {
-        const auto [arg0, n_captured] = u.code_section[i].as_i32;
-        LAMAVM_EXPECT_B(arg0, ==, 0);
-
-        i += n_captured;
-      }
-
+      pc += cold::word_count(closure);
       break;
     }
 
     case opcode_t::op_callc:
-    case opcode_t::op_array:
-    case opcode_t::op_fail:
-    case opcode_t::op_fail_keep:
-    case opcode_t::op_line:
-    case opcode_t::op_barray:
-      ++i;
+      pc += op::word_count<cold::op_callc_t>();
       break;
-    default:
+    case opcode_t::op_call: {
+      auto& instruction = *cold::op_call_t::reinterpret(pc);
+      LAMAVM_EXPECT_B(instruction.reserved_1, ==, 0);
+
+      if (instruction.target >= 0) {
+        instruction.target = word_offset(instruction.target);
+      }
+
+      pc += op::word_count<cold::op_call_t>();
+      break;
+    }
+
+    case opcode_t::op_tag:
+      pc += op::word_count<cold::op_tag_t>();
+      break;
+    case opcode_t::op_array:
+      pc += op::word_count<cold::op_array_t>();
+      break;
+    case opcode_t::op_fail:
+      pc += op::word_count<cold::op_fail_t>();
+      break;
+    case opcode_t::op_fail_keep:
+      pc += op::word_count<cold::op_fail_keep_t>();
+      break;
+    case opcode_t::op_line:
+      pc += op::word_count<cold::op_line_t>();
+      break;
+    case opcode_t::op_patt_str_cmp:
+      pc += op::word_count<cold::op_patt_str_cmp_t>();
+      break;
+    case opcode_t::op_patt_string:
+      pc += op::word_count<cold::op_patt_string_t>();
+      break;
+    case opcode_t::op_patt_array:
+      pc += op::word_count<cold::op_patt_array_t>();
+      break;
+    case opcode_t::op_patt_sexp:
+      pc += op::word_count<cold::op_patt_sexp_t>();
+      break;
+    case opcode_t::op_patt_boxed:
+      pc += op::word_count<cold::op_patt_boxed_t>();
+      break;
+    case opcode_t::op_patt_unboxed:
+      pc += op::word_count<cold::op_patt_unboxed_t>();
+      break;
+    case opcode_t::op_patt_closure:
+      pc += op::word_count<cold::op_patt_closure_t>();
+      break;
+    case opcode_t::op_barray:
+      pc += op::word_count<cold::op_barray_t>();
+      break;
+    case opcode_t::op_eof:
+      pc += op::word_count<cold::op_eof_t>();
       break;
     }
   }
