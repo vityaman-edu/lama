@@ -1,4 +1,5 @@
 #include "handler.hpp"
+#include "layout.hpp"
 #include "state.hpp"
 
 #include "interpreter/runtime/box.hpp"
@@ -24,8 +25,8 @@
 #include <iterator>
 #include <limits>
 #include <ranges>
-#include <span>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 namespace lamavm::interpreter::cold {
@@ -43,7 +44,10 @@ class unop {
 public:
   static void operator()() {
     const auto x = stack_pop_arg();
-    cold::stack_push(f(x));
+
+    const box r = f(x);
+
+    cold::stack_push(r);
   }
 };
 
@@ -129,32 +133,35 @@ box& op_clo_target(op::capture_t capture) {
   return closure[capture.offset];
 }
 
-box resolve_capture(op::word_t& capture) {
-  const auto [kind, index] = capture.as_i32;
+box resolve_capture(closure_capture_t& capture) {
+  auto& word = *reinterpret_cast<op::word_t*>(&capture);
+  const auto kind = capture.kind;
+  const auto index = capture.index;
+
   switch (static_cast<bc::capture_kind>(kind)) {
   case bc::capture_kind::global: {
     auto& slot = op_glo_target(op_glo_target_index(index));
     const auto offset = static_cast<std::int32_t>(&slot - stack.data());
-    warm::specialize_capture(capture, {.base = op::capture_t::global_base, .offset = offset});
+    warm::specialize_capture(word, {.base = op::capture_t::global_base, .offset = offset});
     return slot;
   }
 
   case bc::capture_kind::local: {
     const auto offset = op_loc_target_index(index);
-    warm::specialize_capture(capture, {.base = op::capture_t::frame_base, .offset = offset});
+    warm::specialize_capture(word, {.base = op::capture_t::frame_base, .offset = offset});
     return op_loc_target(offset);
   }
 
   case bc::capture_kind::argument: {
     const auto offset = op_arg_target_index(index);
-    warm::specialize_capture(capture, {.base = op::capture_t::frame_base, .offset = offset});
+    warm::specialize_capture(word, {.base = op::capture_t::frame_base, .offset = offset});
     return fp[offset];
   }
 
   case bc::capture_kind::closure: {
     const auto descriptor = op_clo_capture(index);
     const auto value = op_clo_target(descriptor);
-    warm::specialize_capture(capture, descriptor);
+    warm::specialize_capture(word, descriptor);
     return value;
   }
   }
@@ -165,146 +172,142 @@ box resolve_capture(op::word_t& capture) {
 } // namespace
 
 void op_add() {
-  auto* ip = pc;
+  std::ignore = op_add_t::reinterpret(pc);
   binop<boxd::Ls__Infix_43>::operator()();
-  warm::specialize_op_add(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_add(pc);
+  LAMAVM_DISPATCH(op_add_t);
 }
 
 void op_sub() {
-  auto* ip = pc;
+  std::ignore = op_sub_t::reinterpret(pc);
   binop<boxd::Ls__Infix_45>::operator()();
-  warm::specialize_op_sub(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_sub(pc);
+  LAMAVM_DISPATCH(op_sub_t);
 }
 
 void op_mul() {
-  auto* ip = pc;
+  std::ignore = op_mul_t::reinterpret(pc);
   binop<boxd::Ls__Infix_42>::operator()();
-  warm::specialize_op_mul(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_mul(pc);
+  LAMAVM_DISPATCH(op_mul_t);
 }
 
 void op_div() {
-  auto* ip = pc;
+  std::ignore = op_div_t::reinterpret(pc);
   binop<boxd::Ls__Infix_47>::operator()();
-  warm::specialize_op_div(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_div(pc);
+  LAMAVM_DISPATCH(op_div_t);
 }
 
 void op_mod() {
-  auto* ip = pc;
+  std::ignore = op_mod_t::reinterpret(pc);
   binop<boxd::Ls__Infix_37>::operator()();
-  warm::specialize_op_mod(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_mod(pc);
+  LAMAVM_DISPATCH(op_mod_t);
 }
 
 void op_lt() {
-  auto* ip = pc;
+  std::ignore = op_lt_t::reinterpret(pc);
   binop<boxd::Ls__Infix_60>::operator()();
-  warm::specialize_op_lt(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_lt(pc);
+  LAMAVM_DISPATCH(op_lt_t);
 }
 
 void op_le() {
-  auto* ip = pc;
+  std::ignore = op_le_t::reinterpret(pc);
   binop<boxd::Ls__Infix_6061>::operator()();
-  warm::specialize_op_le(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_le(pc);
+  LAMAVM_DISPATCH(op_le_t);
 }
 
 void op_gt() {
-  auto* ip = pc;
+  std::ignore = op_gt_t::reinterpret(pc);
   binop<boxd::Ls__Infix_62>::operator()();
-  warm::specialize_op_gt(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_gt(pc);
+  LAMAVM_DISPATCH(op_gt_t);
 }
 
 void op_ge() {
-  auto* ip = pc;
+  std::ignore = op_ge_t::reinterpret(pc);
   binop<boxd::Ls__Infix_6261>::operator()();
-  warm::specialize_op_ge(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_ge(pc);
+  LAMAVM_DISPATCH(op_ge_t);
 }
 
 void op_eq() {
-  auto* ip = pc;
+  std::ignore = op_eq_t::reinterpret(pc);
   binop<boxd::Ls__Infix_6161>::operator()();
-  warm::specialize_op_eq(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_eq(pc);
+  LAMAVM_DISPATCH(op_eq_t);
 }
 
 void op_ne() {
-  auto* ip = pc;
+  std::ignore = op_ne_t::reinterpret(pc);
   binop<boxd::Ls__Infix_3361>::operator()();
-  warm::specialize_op_ne(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_ne(pc);
+  LAMAVM_DISPATCH(op_ne_t);
 }
 
 void op_and() {
-  auto* ip = pc;
+  std::ignore = op_and_t::reinterpret(pc);
   binop<boxd::Ls__Infix_3838>::operator()();
-  warm::specialize_op_and(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_and(pc);
+  LAMAVM_DISPATCH(op_and_t);
 }
 
 void op_or() {
-  auto* ip = pc;
+  std::ignore = op_or_t::reinterpret(pc);
   binop<boxd::Ls__Infix_3333>::operator()();
-  warm::specialize_op_or(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_or(pc);
+  LAMAVM_DISPATCH(op_or_t);
 }
 
 void op_const() {
-  auto* ip = pc;
-  const auto [value, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_const_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const auto literal = box::checked(value);
+  const auto literal = box::checked(args->value);
   cold::stack_push(literal);
 
-  warm::specialize_op_const(ip, literal);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_const(pc, literal);
+  LAMAVM_DISPATCH(op_const_t);
 }
 
 void op_string() {
-  auto* ip = pc;
-  const auto [string_offset, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_string_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const char* str1 = c_str(string_offset);
+  const char* str1 = c_str(args->string_offset);
   const box str2 = boxd::Bstring(box(static_cast<const void*>(&str1)));
   cold::stack_push(str2);
 
-  warm::specialize_op_string(ip, str1);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_string(pc, str1);
+  LAMAVM_DISPATCH(op_string_t);
 }
 
 void op_sexp() {
-  auto* ip = pc;
-  const auto [tag_offset, arg10] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg10, ==, 0);
+  const auto* args = op_sexp_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
+  LAMAVM_EXPECT_B(args->reserved_2, ==, 0);
 
-  const auto [n_fields, arg11] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg11, ==, 0);
-  LAMAVM_EXPECT_B(0, <=, n_fields);
+  LAMAVM_EXPECT_B(0, <=, args->n_fields);
 
-  const auto hash = boxd::std_tag_hash(box(c_str(tag_offset)));
+  const auto hash = boxd::std_tag_hash(box(c_str(args->tag_offset)));
   cold::stack_push(hash);
-  const auto args = stack_args(n_fields + 1);
-  std::ranges::reverse(args);
+  const auto values = stack_args(args->n_fields + 1);
+  std::ranges::reverse(values);
 
-  const box sexp = boxd::Bsexp(box(args.data()), box(n_fields + 1));
+  const box sexp = boxd::Bsexp(box(values.data()), box(args->n_fields + 1));
 
-  cold::stack_pop(n_fields + 1);
+  cold::stack_pop(args->n_fields + 1);
   cold::stack_push(sexp);
 
-  warm::specialize_op_sexp(ip, hash);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_sexp(pc, hash);
+  LAMAVM_DISPATCH(op_sexp_t);
 }
 
 void op_sta() {
-  auto* ip = pc;
+  std::ignore = op_sta_t::reinterpret(pc);
   const box value = stack_pop_arg();
   const box index = stack_pop_arg();
   const box aggregate = stack_pop_arg();
@@ -318,135 +321,131 @@ void op_sta() {
   boxd::Bsta(aggregate, index, value);
   cold::stack_push(value);
 
-  warm::specialize_op_sta(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_sta(pc);
+  LAMAVM_DISPATCH(op_sta_t);
 }
 
 void op_jmp() {
-  auto* ip = pc;
-  const auto [target, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_jmp_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  pc = resolve_target(up, target);
+  auto* destination = resolve_target(up, args->target);
 
-  warm::specialize_op_jmp(ip, pc);
+  warm::specialize_op_jmp(pc, destination);
+
+  pc = destination;
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_end() {
-  auto* ip = pc;
+  std::ignore = op_end_t::reinterpret(pc);
   const box x = stack_pop_arg();
+  warm::specialize_op_end(pc);
+
   interpreter::stack_pop_frame();
   cold::stack_push(x);
-
-  warm::specialize_op_end(ip);
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_drop() {
-  auto* ip = pc;
+  std::ignore = op_drop_t::reinterpret(pc);
   stack_pop_arg();
 
-  warm::specialize_op_drop(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_drop(pc);
+  LAMAVM_DISPATCH(op_drop_t);
 }
 
 void op_dup() {
-  auto* ip = pc;
+  std::ignore = op_dup_t::reinterpret(pc);
   const auto x = stack_pop_arg();
   cold::stack_push(x);
   cold::stack_push(x);
 
-  warm::specialize_op_dup(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_dup(pc);
+  LAMAVM_DISPATCH(op_dup_t);
 }
 
 void op_swap() {
-  auto* ip = pc;
+  std::ignore = op_swap_t::reinterpret(pc);
   const auto x = stack_pop_arg();
   const auto y = stack_pop_arg();
   cold::stack_push(x);
   cold::stack_push(y);
 
-  warm::specialize_op_swap(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_swap(pc);
+  LAMAVM_DISPATCH(op_swap_t);
 }
 
 void op_elem() {
-  auto* ip = pc;
+  std::ignore = op_elem_t::reinterpret(pc);
   const box index = stack_pop_arg();
   const box aggregate = stack_pop_arg();
 
   tracef("elem {}[{}]", unbox<void*>(aggregate), unbox<std::int64_t>(index));
   cold::stack_push(boxd::Belem(aggregate, index));
 
-  warm::specialize_op_elem(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_elem(pc);
+  LAMAVM_DISPATCH(op_elem_t);
 }
 
 void op_ld_glo() {
-  auto* ip = pc;
-  const auto [operand, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_ld_glo_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const auto target_index = op_glo_target_index(operand);
+  const auto target_index = op_glo_target_index(args->index);
   auto& target = op_glo_target(target_index);
 
   tracef("ld_glo {} = {}", target_index.index, unbox<std::int64_t>(target));
   cold::stack_push(target);
 
-  warm::specialize_op_ld_glo(ip, target);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_ld_glo(pc, target);
+  LAMAVM_DISPATCH(op_ld_glo_t);
 }
 
 void op_ld_loc() {
-  auto* ip = pc;
-  const auto [index, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_ld_loc_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const auto offset = op_loc_target_index(index);
+  const auto offset = op_loc_target_index(args->index);
   const auto loc = op_loc_target(offset);
-  tracef("ld_loc {} = {}", index, unbox<std::int64_t>(loc));
+  tracef("ld_loc {} = {}", args->index, unbox<std::int64_t>(loc));
   cold::stack_push(loc);
 
-  warm::specialize_op_ld_loc(ip, offset);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_ld_loc(pc, offset);
+  LAMAVM_DISPATCH(op_ld_loc_t);
 }
 
 void op_ld_arg() {
-  auto* ip = pc;
-  const auto [index, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_ld_arg_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const auto offset = op_arg_target_index(index);
+  const auto offset = op_arg_target_index(args->index);
   const auto arg = fp[offset];
-  tracef("ld_arg {} = {}", index, unbox<std::int64_t>(arg));
+  tracef("ld_arg {} = {}", args->index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
 
-  warm::specialize_op_ld_arg(ip, offset);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_ld_arg(pc, offset);
+  LAMAVM_DISPATCH(op_ld_arg_t);
 }
 
 void op_ld_clo() {
-  auto* ip = pc;
-  const auto [index, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_ld_clo_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const auto capture = op_clo_capture(index);
+  const auto capture = op_clo_capture(args->index);
   const auto arg = op_clo_target(capture);
-  tracef("ld_clo {} = {}", index, unbox<std::int64_t>(arg));
+  tracef("ld_clo {} = {}", args->index, unbox<std::int64_t>(arg));
   cold::stack_push(arg);
 
-  warm::specialize_op_ld_clo(ip, capture.base, capture.offset);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_ld_clo(pc, capture.base, capture.offset);
+  LAMAVM_DISPATCH(op_ld_clo_t);
 }
 
 void op_st_glo() {
-  auto* ip = pc;
-  const auto [operand, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_st_glo_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const auto target_index = op_glo_target_index(operand);
+  const auto target_index = op_glo_target_index(args->index);
   auto& target = op_glo_target(target_index);
 
   const auto value = stack_pop_arg();
@@ -455,118 +454,114 @@ void op_st_glo() {
   tracef("sd_glo {} := {}", target_index.index, unbox<std::int64_t>(value));
   target = value;
 
-  warm::specialize_op_st_glo(ip, target);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_st_glo(pc, target);
+  LAMAVM_DISPATCH(op_st_glo_t);
 }
 
 void op_st_loc() {
-  auto* ip = pc;
-  const auto [index, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_st_loc_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  const auto offset = op_loc_target_index(index);
+  const auto offset = op_loc_target_index(args->index);
   auto& loc = op_loc_target(offset);
-  tracef("st_loc {} := {}", index, unbox<std::int64_t>(value));
+  tracef("st_loc {} := {}", args->index, unbox<std::int64_t>(value));
   loc = value;
 
-  warm::specialize_op_st_loc(ip, offset);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_st_loc(pc, offset);
+  LAMAVM_DISPATCH(op_st_loc_t);
 }
 
 void op_st_arg() {
-  auto* ip = pc;
-  const auto [index, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_st_arg_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  const auto offset = op_arg_target_index(index);
-  tracef("st_arg {} := {}", index, unbox<std::int64_t>(value));
+  const auto offset = op_arg_target_index(args->index);
+  tracef("st_arg {} := {}", args->index, unbox<std::int64_t>(value));
   fp[offset] = value;
 
-  warm::specialize_op_st_arg(ip, offset);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_st_arg(pc, offset);
+  LAMAVM_DISPATCH(op_st_arg_t);
 }
 
 void op_st_clo() {
-  auto* ip = pc;
-  const auto [index, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_st_clo_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
   const auto value = stack_pop_arg();
   cold::stack_push(value);
 
-  const auto capture = op_clo_capture(index);
+  const auto capture = op_clo_capture(args->index);
   auto& arg = op_clo_target(capture);
-  tracef("st_clo {} := {}", index, unbox<std::int64_t>(value));
+  tracef("st_clo {} := {}", args->index, unbox<std::int64_t>(value));
   arg = value;
 
-  warm::specialize_op_st_clo(ip, capture.base, capture.offset);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_st_clo(pc, capture.base, capture.offset);
+  LAMAVM_DISPATCH(op_st_clo_t);
 }
 
 void op_cjmp_z() {
-  auto* ip = pc;
-  const auto [target, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_cjmp_z_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  auto* destination = resolve_target(up, target);
+  auto* destination = resolve_target(up, args->target);
   const auto value = stack_pop_arg();
-  pc = unbox<std::int64_t>(value) == 0 ? destination : ip + 2;
+  const auto is_taken = unbox<std::int64_t>(value) == 0;
 
-  warm::specialize_op_cjmp_z(ip, destination);
+  warm::specialize_op_cjmp_z(pc, destination);
+
+  pc = is_taken ? destination : pc + word_count<op_cjmp_z_t>();
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_cjmp_nz() {
-  auto* ip = pc;
-  const auto [target, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_cjmp_nz_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  auto* destination = resolve_target(up, target);
+  auto* destination = resolve_target(up, args->target);
   const auto value = stack_pop_arg();
-  pc = unbox<std::int64_t>(value) != 0 ? destination : ip + 2;
+  const auto is_taken = unbox<std::int64_t>(value) != 0;
 
-  warm::specialize_op_cjmp_nz(ip, destination);
+  warm::specialize_op_cjmp_nz(pc, destination);
+
+  pc = is_taken ? destination : pc + word_count<op_cjmp_nz_t>();
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_begin() {
-  auto* ip = pc;
-  stack_init_locals((*++pc).as_i32.arg1);
+  const auto* args = op_begin_t::reinterpret(pc);
+  stack_init_locals(args->n_locals);
 
-  warm::specialize_op_begin(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_begin(pc);
+  LAMAVM_DISPATCH(op_begin_t);
 }
 
 void op_begin_closure() {
-  auto* ip = pc;
-  const auto [n_args, n_locals] = (*++pc).as_i32;
+  const auto* args = op_begin_closure_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  const auto [n_captures, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
-
-  LAMAVM_EXPECT_B(n_args, ==, stack_n_args());
+  LAMAVM_EXPECT_B(args->n_args, ==, stack_n_args());
   const auto closure = closure_payload<hard>(*stack_frame_closure());
-  LAMAVM_EXPECT_B(n_captures, ==, std::ssize(closure) - 2);
+  LAMAVM_EXPECT_B(args->n_captures, ==, std::ssize(closure) - 2);
 
-  stack_init_locals(n_locals);
+  stack_init_locals(args->n_locals);
 
-  warm::specialize_op_begin_closure(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_begin_closure(pc);
+  LAMAVM_DISPATCH(op_begin_closure_t);
 }
 
 void op_closure() {
-  auto* ip = pc;
-  auto [target, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto args = op_closure_view_t::reinterpret(pc);
+  const auto& [header, captures] = args;
+  LAMAVM_EXPECT_B(header->reserved_1, ==, 0);
+  LAMAVM_EXPECT_B(header->reserved_2, ==, 0);
 
-  const auto [arg0, n_captured] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg0, ==, 0);
+  auto target = header->target;
 
   const auto* target_up = up;
   if (target < 0) {
@@ -578,61 +573,59 @@ void op_closure() {
   }
 
   auto* entry = resolve_target(target_up, target);
-  const std::span<op::word_t> captured(pc + 1, static_cast<std::size_t>(n_captured));
-  pc += n_captured;
 
-  for (auto& capture : std::views::reverse(captured)) {
+  for (auto& capture : std::views::reverse(captures)) {
     cold::stack_push(resolve_capture(capture));
   }
 
   cold::stack_push(box(target_up));
   cold::stack_push(box(target));
 
-  const box cj = boxd::Bclosure(box(static_cast<box*>(sp)), box(1 + n_captured));
+  const box cj = boxd::Bclosure(box(static_cast<box*>(sp)), box(1 + header->n_captured));
 
-  cold::stack_pop(std::int64_t{2} + n_captured);
+  cold::stack_pop(std::int64_t{2} + header->n_captured);
 
   cold::stack_push(cj);
 
-  warm::specialize_op_closure(ip, entry, target_up);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_closure(pc, entry, target_up);
+
+  pc += word_count(args);
+  LAMAVM_DISPATCH_JUMP();
 }
 
 void op_callc() {
-  auto* ip = pc;
-  const auto [n_args, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_callc_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  LAMAVM_EXPECT_B(0, <=, n_args);
-  const auto args = stack_args(std::int64_t{n_args} + 1);
-  const auto cj = closure_payload<hard>(args.back());
+  LAMAVM_EXPECT_B(0, <=, args->n_args);
+  const auto values = stack_args(std::int64_t{args->n_args} + 1);
+  const auto cj = closure_payload<hard>(values.back());
   const auto target = unbox<std::int32_t>(cj[0]);
   const auto* target_up = unbox<const uctx*>(cj[1]);
   auto* entry = resolve_target(target_up, target);
 
   cold::stack_push_frame({
-    .n_args = n_args,
+    .n_args = args->n_args,
     .fp = fp,
-    .pc = pc + 1,
-    .sp = sp + n_args + 1,
+    .pc = pc + word_count<op_callc_t>(),
+    .sp = sp + args->n_args + 1,
     .up = up,
   });
 
+  warm::specialize_op_callc(pc);
+
   up = target_up;
   pc = entry;
-  warm::specialize_op_callc(ip);
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_call() {
-  auto* ip = pc;
-  auto [target, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_call_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
+  LAMAVM_EXPECT_B(args->reserved_2, ==, 0);
 
-  const auto [arg0, n_args] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg0, ==, 0);
-
-  const auto args = stack_args(n_args);
+  auto target = args->target;
+  const auto values = stack_args(args->n_args);
 
   std::string_view name;
   if (target < 0) {
@@ -647,19 +640,19 @@ void op_call() {
 
       switch (s.tail) {
       case std_fn_symbol::tail_kind::none:
-        LAMAVM_EXPECT_B(s.head, ==, n_args);
+        LAMAVM_EXPECT_B(s.head, ==, args->n_args);
         break;
       case std_fn_symbol::tail_kind::vararg:
-        LAMAVM_EXPECT_B(s.head, <=, n_args);
+        LAMAVM_EXPECT_B(s.head, <=, args->n_args);
         break;
       }
 
-      const box r = s.fn(args);
-      cold::stack_pop(n_args);
+      const box r = s.fn(values);
+      cold::stack_pop(args->n_args);
       cold::stack_push(r);
 
-      warm::specialize_op_call_std(ip, s.fn);
-      LAMAVM_DISPATCH();
+      warm::specialize_op_call_std(pc, s.fn);
+      LAMAVM_DISPATCH(op_call_t);
     }
   }
 
@@ -674,147 +667,142 @@ void op_call() {
   }
 
   auto* entry = resolve_target(callee, target);
-  const auto* caller = up;
   cold::stack_push_frame({
-    .n_args = n_args,
+    .n_args = args->n_args,
     .fp = fp,
-    .pc = pc + 1,
-    .sp = sp + n_args,
+    .pc = pc + word_count<op_call_t>(),
+    .sp = sp + args->n_args,
     .up = up,
   });
 
+  warm::specialize_op_call(pc, entry, callee, up);
+
   up = callee;
   pc = entry;
-  warm::specialize_op_call(ip, entry, callee, caller);
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_tag() {
-  auto* ip = pc;
-  const auto [tag_offset, arg10] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg10, ==, 0);
+  const auto* args = op_tag_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
+  LAMAVM_EXPECT_B(args->reserved_2, ==, 0);
 
-  const auto [n_fields, arg11] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg11, ==, 0);
-
-  const box tag_hash = boxd::std_tag_hash(box(c_str(tag_offset)));
+  const box tag_hash = boxd::std_tag_hash(box(c_str(args->tag_offset)));
   const box value = stack_pop_arg();
-  cold::stack_push(boxd::Btag(value, tag_hash, box(n_fields)));
+  cold::stack_push(boxd::Btag(value, tag_hash, box(args->n_fields)));
 
-  warm::specialize_op_tag(ip, tag_hash, box(n_fields));
-  LAMAVM_DISPATCH();
+  warm::specialize_op_tag(pc, tag_hash, box(args->n_fields));
+  LAMAVM_DISPATCH(op_tag_t);
 }
 
 void op_array() {
-  auto* ip = pc;
-  const auto [n_elements, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_array_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
   const box value = stack_pop_arg();
-  tracef("array {}", n_elements);
-  cold::stack_push(boxd::Barray_patt(value, box(n_elements)));
+  tracef("array {}", args->n_elements);
+  cold::stack_push(boxd::Barray_patt(value, box(args->n_elements)));
 
-  warm::specialize_op_array(ip, box(n_elements));
-  LAMAVM_DISPATCH();
+  warm::specialize_op_array(pc, box(args->n_elements));
+  LAMAVM_DISPATCH(op_array_t);
 }
 
 void op_fail() {
-  const auto [line, col] = (*++pc).as_i32;
+  const auto* args = op_fail_t::reinterpret(pc);
   const box value = stack_pop_arg();
-  tracef("fail {}:{}:{}", up->name, line, col);
-  boxd::Bmatch_failure(value, box(up->name), box(line), box(col));
+  tracef("fail {}:{}:{}", up->name, args->line, args->column);
+  boxd::Bmatch_failure(value, box(up->name), box(args->line), box(args->column));
 }
 
 void op_fail_keep() {
-  const auto [line, col] = (*++pc).as_i32;
-  tracef("fail_keep {}:{}:{}", up->name, line, col);
-  boxd::Bmatch_failure(stack_args(1).front(), box(up->name), box(line), box(col));
+  const auto* args = op_fail_keep_t::reinterpret(pc);
+  tracef("fail_keep {}:{}:{}", up->name, args->line, args->column);
+  boxd::Bmatch_failure(stack_args(1).front(), box(up->name), box(args->line), box(args->column));
 }
 
 void op_line() {
-  auto* ip = pc;
-  ++pc;
+  std::ignore = op_line_t::reinterpret(pc);
 
-  warm::specialize_op_line(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_line(pc);
+  LAMAVM_DISPATCH(op_line_t);
 }
 
 void op_patt_str_cmp() {
-  auto* ip = pc;
+  std::ignore = op_patt_str_cmp_t::reinterpret(pc);
   binop<boxd::Bstring_patt>::operator()();
 
-  warm::specialize_op_patt_str_cmp(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_patt_str_cmp(pc);
+  LAMAVM_DISPATCH(op_patt_str_cmp_t);
 }
 
 void op_patt_string() {
-  auto* ip = pc;
+  std::ignore = op_patt_string_t::reinterpret(pc);
   unop<boxd::Bstring_tag_patt>::operator()();
 
-  warm::specialize_op_patt_string(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_patt_string(pc);
+  LAMAVM_DISPATCH(op_patt_string_t);
 }
 
 void op_patt_array() {
-  auto* ip = pc;
+  std::ignore = op_patt_array_t::reinterpret(pc);
   unop<boxd::Barray_tag_patt>::operator()();
 
-  warm::specialize_op_patt_array(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_patt_array(pc);
+  LAMAVM_DISPATCH(op_patt_array_t);
 }
 
 void op_patt_sexp() {
-  auto* ip = pc;
+  std::ignore = op_patt_sexp_t::reinterpret(pc);
   unop<boxd::Bsexp_tag_patt>::operator()();
 
-  warm::specialize_op_patt_sexp(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_patt_sexp(pc);
+  LAMAVM_DISPATCH(op_patt_sexp_t);
 }
 
 void op_patt_boxed() {
-  auto* ip = pc;
+  std::ignore = op_patt_boxed_t::reinterpret(pc);
   unop<boxd::Bboxed_patt>::operator()();
 
-  warm::specialize_op_patt_boxed(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_patt_boxed(pc);
+  LAMAVM_DISPATCH(op_patt_boxed_t);
 }
 
 void op_patt_unboxed() {
-  auto* ip = pc;
+  std::ignore = op_patt_unboxed_t::reinterpret(pc);
   unop<boxd::Bunboxed_patt>::operator()();
 
-  warm::specialize_op_patt_unboxed(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_patt_unboxed(pc);
+  LAMAVM_DISPATCH(op_patt_unboxed_t);
 }
 
 void op_patt_closure() {
-  auto* ip = pc;
+  std::ignore = op_patt_closure_t::reinterpret(pc);
   unop<boxd::Bclosure_tag_patt>::operator()();
 
-  warm::specialize_op_patt_closure(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_patt_closure(pc);
+  LAMAVM_DISPATCH(op_patt_closure_t);
 }
 
 void op_barray() {
-  auto* ip = pc;
-  const auto [n_elements, arg1] = (*++pc).as_i32;
-  LAMAVM_EXPECT_B(arg1, ==, 0);
+  const auto* args = op_barray_t::reinterpret(pc);
+  LAMAVM_EXPECT_B(args->reserved_1, ==, 0);
 
-  tracef("barray {}", n_elements);
+  tracef("barray {}", args->n_elements);
 
-  const auto args = stack_args(n_elements);
-  std::ranges::reverse(args);
+  const auto values = stack_args(args->n_elements);
+  std::ranges::reverse(values);
 
-  const box array = boxd::Barray(box(args.data()), box(n_elements));
+  const box array = boxd::Barray(box(values.data()), box(args->n_elements));
 
-  cold::stack_pop(n_elements);
+  cold::stack_pop(args->n_elements);
   cold::stack_push(array);
 
-  warm::specialize_op_barray(ip);
-  LAMAVM_DISPATCH();
+  warm::specialize_op_barray(pc);
+  LAMAVM_DISPATCH(op_barray_t);
 }
 
 void op_eof() {
+  std::ignore = op_eof_t::reinterpret(pc);
 }
 
 } // namespace lamavm::interpreter::cold

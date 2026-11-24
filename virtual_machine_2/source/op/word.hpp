@@ -4,6 +4,7 @@
 
 #include "core/c.hpp"
 
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -62,5 +63,13 @@ union word_t {
 
 static_assert(ctype<word_t>);
 static_assert(sizeof(word_t) == sizeof(std::uintptr_t));
+
+template <typename Layout = word_t>
+  requires(std::same_as<Layout, word_t> || requires { &Layout::handler; })
+[[nodiscard]] constexpr std::ptrdiff_t word_count() {
+  constexpr auto word_size = sizeof(word_t);
+  static_assert(sizeof(Layout) % word_size == 0);
+  return static_cast<std::ptrdiff_t>(sizeof(Layout) / word_size);
+}
 
 } // namespace lamavm::op

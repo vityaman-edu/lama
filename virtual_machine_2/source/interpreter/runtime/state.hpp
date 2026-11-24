@@ -17,8 +17,8 @@
 #define LAMAVM_DISPATCH_JUMP() LAMAVM_MUSTTAIL return pc->as_handler_fn()
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define LAMAVM_DISPATCH()                                                                          \
-  ++pc;                                                                                            \
+#define LAMAVM_DISPATCH(...)                                                                       \
+  pc += ::lamavm::op::word_count<__VA_ARGS__>();                                                   \
   LAMAVM_DISPATCH_JUMP()
 
 namespace lamavm::interpreter {

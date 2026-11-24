@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <iterator>
 #include <span>
+#include <tuple>
 #include <vector>
 
 namespace lamavm::interpreter::cold {
@@ -76,7 +77,7 @@ std::span<box> stack_args(std::int64_t count) {
 }
 
 box stack_pop_arg() {
-  static_cast<void>(stack_args(1));
+  std::ignore = stack_args(1);
   return interpreter::stack_pop();
 }
 
@@ -101,7 +102,7 @@ std::int32_t stack_n_args() {
 }
 
 const box* stack_frame_closure() {
-  static_cast<void>(frame_begin());
+  std::ignore = frame_begin();
   const auto offset = std::int64_t{stack_n_args()} + 1;
   const auto* saved_sp = unbox<box*>(fp[frame::offset_sp]);
   LAMAVM_EXPECT_C(offset == saved_sp - fp - 1, "current frame has no closure slot");
