@@ -1,4 +1,5 @@
 #include "handler.hpp"
+#include "layout.hpp"
 
 #include "core/assert.hpp"
 #include "core/log.hpp"
@@ -12,7 +13,9 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <ranges>
 #include <span>
+#include <tuple>
 #include <utility>
 
 namespace lamavm::interpreter::warm {
@@ -24,12 +27,7 @@ void binary(auto f) {
   ++sp;
 }
 
-box boxed_word(const op::word_t& word) {
-  return std::bit_cast<box>(word.as_box_bits);
-}
-
-box& capture_slot() {
-  const auto [frame_offset, capture_offset] = pc[1].as_i32;
+box& capture_slot(std::int32_t frame_offset, std::int32_t capture_offset) {
   const auto closure = closure_payload<soft>(fp[frame_offset]);
   return closure[capture_offset];
 }
@@ -65,89 +63,103 @@ box capture_value(op::capture_t capture) {
 } // namespace
 
 void op_add() {
+  std::ignore = op_add_t::reinterpret(pc);
   binary(boxd::Ls__Infix_43);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_add_t);
 }
 
 void op_sub() {
+  std::ignore = op_sub_t::reinterpret(pc);
   binary(boxd::Ls__Infix_45);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_sub_t);
 }
 
 void op_mul() {
+  std::ignore = op_mul_t::reinterpret(pc);
   binary(boxd::Ls__Infix_42);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_mul_t);
 }
 
 void op_div() {
+  std::ignore = op_div_t::reinterpret(pc);
   binary(boxd::Ls__Infix_47);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_div_t);
 }
 
 void op_mod() {
+  std::ignore = op_mod_t::reinterpret(pc);
   binary(boxd::Ls__Infix_37);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_mod_t);
 }
 
 void op_lt() {
+  std::ignore = op_lt_t::reinterpret(pc);
   binary(boxd::Ls__Infix_60);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_lt_t);
 }
 
 void op_le() {
+  std::ignore = op_le_t::reinterpret(pc);
   binary(boxd::Ls__Infix_6061);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_le_t);
 }
 
 void op_gt() {
+  std::ignore = op_gt_t::reinterpret(pc);
   binary(boxd::Ls__Infix_62);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_gt_t);
 }
 
 void op_ge() {
+  std::ignore = op_ge_t::reinterpret(pc);
   binary(boxd::Ls__Infix_6261);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_ge_t);
 }
 
 void op_eq() {
+  std::ignore = op_eq_t::reinterpret(pc);
   binary(boxd::Ls__Infix_6161);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_eq_t);
 }
 
 void op_ne() {
+  std::ignore = op_ne_t::reinterpret(pc);
   binary(boxd::Ls__Infix_3361);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_ne_t);
 }
 
 void op_and() {
+  std::ignore = op_and_t::reinterpret(pc);
   binary(boxd::Ls__Infix_3838);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_and_t);
 }
 
 void op_or() {
+  std::ignore = op_or_t::reinterpret(pc);
   binary(boxd::Ls__Infix_3333);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_or_t);
 }
 
 void op_const() {
-  const auto value = boxed_word(pc[1]);
+  const auto* args = op_const_t::reinterpret(pc);
+  const auto value = std::bit_cast<box>(args->value_bits);
   stack_push(value);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_const_t);
 }
 
 void op_string() {
-  const char* literal = pc[1].as_str;
+  const auto* args = op_string_t::reinterpret(pc);
+  const char* literal = args->literal;
   const box argument(static_cast<const void*>(&literal));
   const auto string = boxd::Bstring(argument);
   stack_push(string);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_string_t);
 }
 
 void op_sexp() {
-  const auto hash = boxed_word(pc[1]);
-  const auto n_fields = pc[2].as_i32.arg0;
+  const auto* args = op_sexp_t::reinterpret(pc);
+  const auto hash = std::bit_cast<box>(args->hash_bits);
+  const auto n_fields = args->n_fields;
   const auto count = std::int64_t{n_fields} + 1;
 
   stack_push(hash);
@@ -155,22 +167,24 @@ void op_sexp() {
   const auto result = boxd::Bsexp(box(static_cast<box*>(sp)), box(count));
   sp += count;
   stack_push(result);
-  pc += 2;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_sexp_t);
 }
 
 void op_sta() {
+  std::ignore = op_sta_t::reinterpret(pc);
   sp[2] = boxd::Bsta(sp[2], sp[1], sp[0]);
   sp += 2;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_sta_t);
 }
 
 void op_jmp() {
-  pc = pc[1].as_target;
+  const auto* args = op_jmp_t::reinterpret(pc);
+  pc = args->target;
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_end() {
+  std::ignore = op_end_t::reinterpret(pc);
   const auto result = *sp;
   stack_pop_frame();
   stack_push(result);
@@ -178,252 +192,267 @@ void op_end() {
 }
 
 void op_drop() {
+  std::ignore = op_drop_t::reinterpret(pc);
   ++sp;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_drop_t);
 }
 
 void op_dup() {
+  std::ignore = op_dup_t::reinterpret(pc);
   stack_push(*sp);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_dup_t);
 }
 
 void op_swap() {
+  std::ignore = op_swap_t::reinterpret(pc);
   std::swap(sp[0], sp[1]);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_swap_t);
 }
 
 void op_elem() {
+  std::ignore = op_elem_t::reinterpret(pc);
   binary(boxd::Belem);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_elem_t);
 }
 
 void op_ld_glo() {
-  const auto* slot = pc[1].as_slot;
+  const auto* args = op_ld_glo_t::reinterpret(pc);
+  const auto* slot = args->slot;
   stack_push(*slot);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_ld_glo_t);
 }
 
 void op_ld_arg() {
-  const auto offset = pc[1].as_i32.arg0;
+  const auto* args = op_ld_arg_t::reinterpret(pc);
+  const auto offset = args->offset;
   const auto value = fp[offset];
   stack_push(value);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_ld_arg_t);
 }
 
 void op_ld_loc() {
-  const auto offset = pc[1].as_i32.arg0;
+  const auto* args = op_ld_loc_t::reinterpret(pc);
+  const auto offset = args->offset;
   const auto value = fp[offset];
   stack_push(value);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_ld_loc_t);
 }
 
 void op_ld_clo() {
-  stack_push(capture_slot());
-  ++pc;
-  LAMAVM_DISPATCH();
+  const auto* args = op_ld_clo_t::reinterpret(pc);
+  stack_push(capture_slot(args->frame_offset, args->capture_offset));
+  LAMAVM_DISPATCH(op_ld_clo_t);
 }
 
 void op_st_glo() {
-  auto* slot = pc[1].as_slot;
+  const auto* args = op_st_glo_t::reinterpret(pc);
+  auto* slot = args->slot;
   *slot = *sp;
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_st_glo_t);
 }
 
 void op_st_arg() {
-  const auto offset = pc[1].as_i32.arg0;
+  const auto* args = op_st_arg_t::reinterpret(pc);
+  const auto offset = args->offset;
   fp[offset] = *sp;
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_st_arg_t);
 }
 
 void op_st_loc() {
-  const auto offset = pc[1].as_i32.arg0;
+  const auto* args = op_st_loc_t::reinterpret(pc);
+  const auto offset = args->offset;
   fp[offset] = *sp;
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_st_loc_t);
 }
 
 void op_st_clo() {
-  capture_slot() = *sp;
-  ++pc;
-  LAMAVM_DISPATCH();
+  const auto* args = op_st_clo_t::reinterpret(pc);
+  capture_slot(args->frame_offset, args->capture_offset) = *sp;
+  LAMAVM_DISPATCH(op_st_clo_t);
 }
 
 void op_cjmp_z() {
-  auto* target = pc[1].as_target;
+  const auto* args = op_cjmp_z_t::reinterpret(pc);
+  auto* target = args->target;
   const auto condition = unbox<std::int64_t>(stack_pop());
-  pc = condition == 0 ? target : pc + 2;
+  pc = condition == 0 ? target : pc + word_count<op_cjmp_z_t>();
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_cjmp_nz() {
-  auto* target = pc[1].as_target;
+  const auto* args = op_cjmp_nz_t::reinterpret(pc);
+  auto* target = args->target;
   const auto condition = unbox<std::int64_t>(stack_pop());
-  pc = condition != 0 ? target : pc + 2;
+  pc = condition != 0 ? target : pc + word_count<op_cjmp_nz_t>();
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_begin() {
-  const auto n_locals = pc[1].as_i32.arg1;
+  const auto* args = op_begin_t::reinterpret(pc);
+  const auto n_locals = args->n_locals;
   init_locals(n_locals);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_begin_t);
 }
 
 void op_begin_no_locals() {
-  ++pc;
-  LAMAVM_DISPATCH();
+  std::ignore = op_begin_no_locals_t::reinterpret(pc);
+  LAMAVM_DISPATCH(op_begin_no_locals_t);
 }
 
 void op_begin_closure() {
-  const auto n_locals = pc[1].as_i32.arg1;
+  const auto* args = op_begin_closure_t::reinterpret(pc);
+  const auto n_locals = args->n_locals;
   init_locals(n_locals);
-  pc += 2;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_begin_closure_t);
 }
 
 void op_begin_closure_no_locals() {
-  pc += 2;
-  LAMAVM_DISPATCH();
+  std::ignore = op_begin_closure_no_locals_t::reinterpret(pc);
+  LAMAVM_DISPATCH(op_begin_closure_no_locals_t);
 }
 
 void op_closure() {
-  const auto* target = pc[1].as_target;
-  const auto [unit_index, count] = pc[2].as_call;
-  const auto* callee = &units[unit_index];
-  const auto* captures = pc + 3;
-  pc += 3 + count;
+  const auto args = op_closure_view_t::reinterpret(pc);
+  const auto& [header, captures] = args;
+  const auto* callee = &units[header->unit_index];
+  const auto count = header->n_captured;
 
-  for (auto i = count; i > 0; --i) {
-    const auto descriptor = captures[i - 1].as_capture;
-    stack_push(capture_value(descriptor));
+  for (const auto& capture : std::views::reverse(captures)) {
+    stack_push(capture_value(capture));
   }
 
   stack_push(box(callee));
-  const auto target_offset = target - callee->text.data();
+  const auto target_offset = header->target - callee->text.data();
   stack_push(box(target_offset));
   const auto closure = boxd::Bclosure(box(static_cast<box*>(sp)), box(1 + count));
   sp += 2 + count;
   stack_push(closure);
+  pc += word_count(args);
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_callc() {
-  const auto n_args = pc[1].as_i32.arg0;
+  const auto* args = op_callc_t::reinterpret(pc);
+  const auto n_args = args->n_args;
   const auto closure = closure_payload<soft>(sp[n_args]);
   const auto target_offset = unbox<std::int32_t>(closure[0]);
   const auto* callee = unbox<const uctx*>(closure[1]);
   auto* target = callee->text.data() + target_offset;
 
   tracef("warm callc {} argc={}", callee->name, n_args);
-  push_frame(pc + 2, sp + n_args + 1, n_args);
+  push_frame(pc + word_count<op_callc_t>(), sp + n_args + 1, n_args);
   up = callee;
   pc = target;
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_call() {
-  const auto [unit_index, n_args] = pc[2].as_call;
-  const auto* callee = &units[unit_index];
-  auto* target = pc[1].as_target;
+  const auto* args = op_call_t::reinterpret(pc);
+  const auto n_args = args->n_args;
+  const auto* callee = &units[args->unit_index];
+  auto* target = args->target;
 
   tracef("warm call {} -> {} argc={}", up->name, callee->name, n_args);
-  push_frame(pc + 3, sp + n_args, n_args);
+  push_frame(pc + word_count<op_call_t>(), sp + n_args, n_args);
   up = callee;
   pc = target;
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_call_local() {
-  const auto n_args = pc[2].as_call.count;
-  auto* target = pc[1].as_target;
+  const auto* args = op_call_local_t::reinterpret(pc);
+  const auto n_args = args->n_args;
+  auto* target = args->target;
 
   tracef("warm local call {} argc={}", up->name, n_args);
-  push_frame(pc + 3, sp + n_args, n_args);
+  push_frame(pc + word_count<op_call_local_t>(), sp + n_args, n_args);
   pc = target;
   LAMAVM_DISPATCH_JUMP();
 }
 
 void op_call_std() {
-  const auto n_args = pc[2].as_i32.arg1;
-  const auto fn = pc[1].as_std_fn;
-  const std::span<box> args(static_cast<box*>(sp), static_cast<std::size_t>(n_args));
+  const auto* args = op_call_std_t::reinterpret(pc);
+  const auto n_args = args->n_args;
+  const auto fn = args->fn;
+  const std::span<box> values(static_cast<box*>(sp), static_cast<std::size_t>(n_args));
 
   tracef("warm Std call argc={}", n_args);
-  const auto result = fn(args);
+  const auto result = fn(values);
   sp += n_args;
   stack_push(result);
-  pc += 2;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_call_std_t);
 }
 
 void op_tag() {
-  const auto hash = boxed_word(pc[1]);
-  const auto count = boxed_word(pc[2]);
+  const auto* args = op_tag_t::reinterpret(pc);
+  const auto hash = std::bit_cast<box>(args->hash_bits);
+  const auto count = std::bit_cast<box>(args->n_fields_bits);
   *sp = boxd::Btag(*sp, hash, count);
-  pc += 2;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_tag_t);
 }
 
 void op_array() {
-  const auto count = boxed_word(pc[1]);
+  const auto* args = op_array_t::reinterpret(pc);
+  const auto count = std::bit_cast<box>(args->n_elements_bits);
   *sp = boxd::Barray_patt(*sp, count);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_array_t);
 }
 
 void op_line() {
-  ++pc;
-  LAMAVM_DISPATCH();
+  std::ignore = op_line_t::reinterpret(pc);
+  LAMAVM_DISPATCH(op_line_t);
 }
 
 void op_patt_str_cmp() {
+  std::ignore = op_patt_str_cmp_t::reinterpret(pc);
   binary(boxd::Bstring_patt);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_patt_str_cmp_t);
 }
 
 void op_patt_string() {
+  std::ignore = op_patt_string_t::reinterpret(pc);
   *sp = boxd::Bstring_tag_patt(*sp);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_patt_string_t);
 }
 
 void op_patt_array() {
+  std::ignore = op_patt_array_t::reinterpret(pc);
   *sp = boxd::Barray_tag_patt(*sp);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_patt_array_t);
 }
 
 void op_patt_sexp() {
+  std::ignore = op_patt_sexp_t::reinterpret(pc);
   *sp = boxd::Bsexp_tag_patt(*sp);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_patt_sexp_t);
 }
 
 void op_patt_boxed() {
+  std::ignore = op_patt_boxed_t::reinterpret(pc);
   *sp = boxd::Bboxed_patt(*sp);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_patt_boxed_t);
 }
 
 void op_patt_unboxed() {
+  std::ignore = op_patt_unboxed_t::reinterpret(pc);
   *sp = boxd::Bunboxed_patt(*sp);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_patt_unboxed_t);
 }
 
 void op_patt_closure() {
+  std::ignore = op_patt_closure_t::reinterpret(pc);
   *sp = boxd::Bclosure_tag_patt(*sp);
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_patt_closure_t);
 }
 
 void op_barray() {
-  const auto count = pc[1].as_i32.arg0;
+  const auto* args = op_barray_t::reinterpret(pc);
+  const auto count = args->n_elements;
   std::reverse(static_cast<box*>(sp), sp + count);
   const auto result = boxd::Barray(box(static_cast<box*>(sp)), box(count));
   sp += count;
   stack_push(result);
-  ++pc;
-  LAMAVM_DISPATCH();
+  LAMAVM_DISPATCH(op_barray_t);
 }
 
 } // namespace lamavm::interpreter::warm
