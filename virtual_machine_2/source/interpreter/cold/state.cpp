@@ -61,7 +61,7 @@ box stack_pop() {
 }
 
 void stack_pop(std::int64_t count) {
-  sp += stack_args(count).size();
+  sp += std::ssize(stack_args(count));
 }
 
 std::span<box> stack_args(std::int64_t count) {
@@ -71,7 +71,7 @@ std::span<box> stack_args(std::int64_t count) {
   LAMAVM_EXPECT_BB(stack_begin, <=, stack_ptr, <=, static_cast<const void*>(frame_start));
   LAMAVM_EXPECT_BB(0, <=, count, <=, frame_start - sp);
 
-  return {sp, static_cast<std::size_t>(count)};
+  return {static_cast<box*>(sp), static_cast<std::size_t>(count)};
 }
 
 box stack_pop_arg() {

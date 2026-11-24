@@ -1,6 +1,11 @@
 #include "state.hpp"
+
+#include "box.hpp"
+#include "gc.hpp"
+#include "stack_ptr.hpp"
+
 #include "bc/units.hpp"
-#include "interpreter/runtime/box.hpp"
+
 #include "op/word.hpp"
 #include <vector>
 
@@ -10,7 +15,7 @@ bc::symbol::index symbols;
 std::vector<uctx> units;
 
 op::word_t* pc = nullptr;
-box* sp = nullptr;
+stack_ptr<box> sp(&gc::top()); // NOLINT(bugprone-throwing-static-initialization)
 box* fp = nullptr;
 const uctx* up = nullptr;
 

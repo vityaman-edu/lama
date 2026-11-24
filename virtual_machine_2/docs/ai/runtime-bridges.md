@@ -123,18 +123,9 @@ prepare argument arrays, synchronize GC state, or implement a symbol registry.
 
 ## GC synchronization
 
-Synchronize GC state before every FFI call, regardless of the callee. FFI here
-means the VM-to-native-runtime boundary; it does not imply using libffi.
-
-The common call entry owns synchronization before invoking its adapter.
-`bridge` handles representation conversion and invocation, without choosing
-whether a function needs GC synchronization. Live arguments remain rooted on
-the VM stack across calls that may collect. Publishing the current stack
-boundary does not itself request a collection.
-
-The current `gc_call` publishes `sp - 1` through `gc::set_top`. The new common
-boundary must preserve that stack-scanning contract. Existing explicit
-`gc_call` sites remain the current implementation until the design is applied.
+`stack_ptr` keeps the GC stack bound current as the VM moves `sp`. `bridge`
+handles representation conversion and invocation. Keep live arguments rooted
+on the VM stack across calls that may collect.
 
 ## Symbol registry and span adapters
 

@@ -98,7 +98,10 @@ shared EOF handler.
 
 ## GC boundary
 
-`gc::init`, `gc::set_bot`, and `gc::set_top` wrap the existing C collector.
-The stack bottom is registered before globals are pushed. `gc_call` publishes
-the current top as `sp - 1` before invoking an allocating runtime operation.
-Keep live boxed values in the collector-visible representation across that call.
+`gc::init`, `gc::bot`, and `gc::top` expose the C collector's initialization
+and stack bounds. `sp` wraps `gc::top()` and addresses the inclusive top of
+the operand stack. Every move of `sp` stores `sp - 1` as the GC top, matching
+the reference VM. The collector adds one word to that address to find the
+first root and marks and relocates roots in `[sp, gc::bot())`. The stack bottom
+is registered before globals are pushed. Keep live boxed values in
+collector-visible slots across native calls that may allocate.

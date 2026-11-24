@@ -273,7 +273,7 @@ void op_string() {
   LAMAVM_EXPECT_B(arg1, ==, 0);
 
   const char* str1 = c_str(string_offset);
-  const box str2 = gc_call([&] { return boxd::Bstring(box(static_cast<const void*>(&str1))); });
+  const box str2 = boxd::Bstring(box(static_cast<const void*>(&str1)));
   cold::stack_push(str2);
 
   warm::specialize_op_string(ip, str1);
@@ -294,7 +294,7 @@ void op_sexp() {
   const auto args = stack_args(n_fields + 1);
   std::ranges::reverse(args);
 
-  const box sexp = gc_call([&] { return boxd::Bsexp(box(args.data()), box(n_fields + 1)); });
+  const box sexp = boxd::Bsexp(box(args.data()), box(n_fields + 1));
 
   cold::stack_pop(n_fields + 1);
   cold::stack_push(sexp);
@@ -588,7 +588,7 @@ void op_closure() {
   cold::stack_push(box(target_up));
   cold::stack_push(box(target));
 
-  const box cj = gc_call([&] { return boxd::Bclosure(box(sp), box(1 + n_captured)); });
+  const box cj = boxd::Bclosure(box(sp), box(1 + n_captured));
 
   cold::stack_pop(std::int64_t{2} + n_captured);
 
@@ -654,7 +654,7 @@ void op_call() {
         break;
       }
 
-      const box r = gc_call([&] { return s.fn(args); });
+      const box r = s.fn(args);
       cold::stack_pop(n_args);
       cold::stack_push(r);
 
@@ -805,7 +805,7 @@ void op_barray() {
   const auto args = stack_args(n_elements);
   std::ranges::reverse(args);
 
-  const box array = gc_call([&] { return boxd::Barray(box(args.data()), box(n_elements)); });
+  const box array = boxd::Barray(box(args.data()), box(n_elements));
 
   cold::stack_pop(n_elements);
   cold::stack_push(array);

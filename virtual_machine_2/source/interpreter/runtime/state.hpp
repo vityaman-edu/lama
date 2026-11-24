@@ -1,7 +1,7 @@
 #pragma once
 
 #include "box.hpp"
-#include "gc.hpp"
+#include "stack_ptr.hpp"
 
 #include "bc/units.hpp"
 
@@ -35,7 +35,7 @@ extern std::vector<uctx> units;
 extern std::span<box> stack;
 
 extern op::word_t* pc;
-extern box* sp;
+extern stack_ptr<box> sp;
 extern box* fp;
 extern const uctx* up;
 
@@ -61,10 +61,5 @@ box stack_pop();
 void stack_push_frame(frame f);
 
 void stack_pop_frame();
-
-auto gc_call(auto f) {
-  gc::set_top(sp - 1);
-  return f();
-}
 
 } // namespace lamavm::interpreter

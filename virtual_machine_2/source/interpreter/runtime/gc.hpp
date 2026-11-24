@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace lamavm::interpreter {
 
 class gc {
@@ -8,9 +10,9 @@ public:
 
   static void init();
 
-  static void set_bot(void* x);
+  static std::size_t& bot();
 
-  static void set_top(void* x);
+  static std::size_t& top();
 };
 
 } // namespace lamavm::interpreter

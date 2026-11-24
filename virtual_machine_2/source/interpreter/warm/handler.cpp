@@ -36,7 +36,7 @@ box& capture_slot() {
 
 void init_locals(std::int32_t n_locals) {
   sp -= n_locals;
-  std::fill_n(sp, n_locals, box(std::int64_t{0}));
+  std::fill_n(static_cast<box*>(sp), n_locals, box(std::int64_t{0}));
 }
 
 void push_frame(op::word_t* continuation, box* caller_sp, std::int32_t n_args) {
@@ -139,7 +139,7 @@ void op_const() {
 void op_string() {
   const char* literal = pc[1].as_str;
   const box argument(static_cast<const void*>(&literal));
-  const auto string = gc_call([&] { return boxd::Bstring(argument); });
+  const auto string = boxd::Bstring(argument);
   stack_push(string);
   ++pc;
   LAMAVM_DISPATCH();
@@ -151,8 +151,8 @@ void op_sexp() {
   const auto count = std::int64_t{n_fields} + 1;
 
   stack_push(hash);
-  std::reverse(sp, sp + count);
-  const auto result = gc_call([&] { return boxd::Bsexp(box(sp), box(count)); });
+  std::reverse(static_cast<box*>(sp), sp + count);
+  const auto result = boxd::Bsexp(box(sp), box(count));
   sp += count;
   stack_push(result);
   pc += 2;
@@ -306,7 +306,7 @@ void op_closure() {
   stack_push(box(callee));
   const auto target_offset = target - callee->text.data();
   stack_push(box(target_offset));
-  const auto closure = gc_call([&] { return boxd::Bclosure(box(sp), box(1 + count)); });
+  const auto closure = boxd::Bclosure(box(sp), box(1 + count));
   sp += 2 + count;
   stack_push(closure);
   LAMAVM_DISPATCH_JUMP();
@@ -351,10 +351,10 @@ void op_call_local() {
 void op_call_std() {
   const auto n_args = pc[2].as_i32.arg1;
   const auto fn = pc[1].as_std_fn;
-  const std::span<box> args(sp, static_cast<std::size_t>(n_args));
+  const std::span<box> args(static_cast<box*>(sp), static_cast<std::size_t>(n_args));
 
   tracef("warm Std call argc={}", n_args);
-  const auto result = gc_call([&] { return fn(args); });
+  const auto result = fn(args);
   sp += n_args;
   stack_push(result);
   pc += 2;
@@ -418,8 +418,8 @@ void op_patt_closure() {
 
 void op_barray() {
   const auto count = pc[1].as_i32.arg0;
-  std::reverse(sp, sp + count);
-  const auto result = gc_call([&] { return boxd::Barray(box(sp), box(count)); });
+  std::reverse(static_cast<box*>(sp), sp + count);
+  const auto result = boxd::Barray(box(sp), box(count));
   sp += count;
   stack_push(result);
   ++pc;

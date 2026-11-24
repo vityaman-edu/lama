@@ -17,12 +17,12 @@ void gc::init() {
   __gc_init();
 }
 
-void gc::set_bot(void* x) {
-  __gc_stack_bottom = reinterpret_cast<std::size_t>(x);
+std::size_t& gc::bot() {
+  return __gc_stack_bottom;
 }
 
-void gc::set_top(void* x) {
-  __gc_stack_top = reinterpret_cast<std::size_t>(x);
+std::size_t& gc::top() {
+  return __gc_stack_top;
 }
 
 } // namespace lamavm::interpreter

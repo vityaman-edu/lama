@@ -30,7 +30,7 @@ void exec() {
 
   LAMAVM_ASSERT_B(0U, <, up->text.size());
 
-  auto* caller_sp = sp;
+  box* caller_sp = sp;
   cold::stack_push(box(std::int64_t{0}));
   cold::stack_push(box(std::int64_t{0}));
 
@@ -78,7 +78,9 @@ void run(bc::units units1) {
   register_stack_fault_handler();
 
   gc::init();
-  gc::set_bot(sp);
+
+  const box* stack_bot = sp;
+  gc::bot() = reinterpret_cast<std::size_t>(stack_bot);
 
   for (std::size_t i = 0; i < globals; ++i) {
     cold::stack_push(box(std::int64_t{0}));
@@ -91,6 +93,7 @@ void run(bc::units units1) {
 
   stack = {};
   sp = nullptr;
+  gc::bot() = 0;
   fp = nullptr;
 }
 
