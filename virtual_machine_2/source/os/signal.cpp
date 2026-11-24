@@ -6,11 +6,13 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include <pthread.h>
-
 extern "C" {
 #include <signal.h>
 }
+
+#ifdef __GLIBC__
+#include <bits/types/siginfo_t.h>
+#endif
 
 #ifdef __APPLE__
 #include <sys/signal.h>

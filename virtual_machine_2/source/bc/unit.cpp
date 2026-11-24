@@ -758,7 +758,7 @@ void unit_parser::fixup_jump_targets() {
     return word;
   };
 
-  auto* const end = u.code_section.data() + u.code_section.size();
+  const auto* const end = u.code_section.data() + u.code_section.size();
   for (auto* pc = u.code_section.data(); pc != end;) {
     const auto opcode = static_cast<opcode_t>(pc->as_handler.as_id);
 
