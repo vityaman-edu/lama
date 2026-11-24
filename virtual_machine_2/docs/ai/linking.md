@@ -28,8 +28,9 @@ can avoid relocation while still supporting optimization or generated handlers.
 
 A symbol-name index supports repeated resolution. It can be discarded only when
 execution and other required features no longer need it; cold execution currently
-does. The [warm CALL decision](warm-interpreter.md) uses unit indices and word
-offsets rather than resolved native pointers.
+does. [Warm CALL](warm-interpreter.md#control-transfers-calls-and-closures)
+caches a direct instruction pointer and a unit index. Cold targets still use
+word offsets or encoded symbol names.
 
 Symbol resolution establishes target identity. [Pointer relocation](relocation.md)
 translates already-known addresses when storage moves; these are separate tasks.

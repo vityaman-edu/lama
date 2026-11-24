@@ -34,6 +34,21 @@ semantic validator: stack effects, argument counts, string operand
 offsets, and global indices are not all validated here. Public global offsets
 are not checked against the declaring unit's global count.
 
+## Instruction emission
+
+[`unit_parser::read_code_section`](../../source/bc/unit.cpp) emits a handler ID
+and operand words directly into `code_section`. It fills the lanes reserved by
+the cold encoding, including the two fixed operand words for CALL and CLOSURE.
+The [typed interpreter layouts](opword.md#interpreter-layouts) describe the
+execution-time view, after the decoder installs a handler function pointer.
+
+Keep emission, target fixups, and decoder stepping consistent with both
+execution layouts. Record each instruction's word position before emitting
+its operands. CLOSURE has a variable tail of one word per capture, so fixup and
+decoder traversal must skip the header and the complete tail.
+Parser-side layout integration still needs to account for the handler-ID word
+and the encoded kind/index capture records emitted before dispatch.
+
 ## Target coordinates
 
 While reading instructions, `word_by_bc` maps serialized opcode byte offsets to

@@ -37,6 +37,12 @@ record properties. It does not imply byte alignment or validate a buffer's
 contents. Copying an object's representation also does not copy any storage it
 references; a copied view still refers to its original data.
 
+The [interpreter layouts](opword.md#interpreter-layouts) use direct casts over
+the `op::word_t` buffer as a deliberate implementation choice. Their `ctype`
+assertions check struct properties. The backing objects remain `op::word_t`
+elements, so object lifetime remains a separate C++ requirement for member
+access through the cast.
+
 Keep allocated capacity separate from written size. `vector::reserve` leaves
 size unchanged; spare capacity is not an element range for appending bytes by
 raw writes. An overwrite allocation can avoid initial byte-value initialization,

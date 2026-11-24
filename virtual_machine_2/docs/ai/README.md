@@ -5,9 +5,9 @@ notes, task plans, implementation checklists, review transcripts, or test-run
 reports here. Consolidate lasting conclusions into the relevant topic and remove
 superseded documents. Keep the index complete when adding or removing a topic.
 
-Implementation descriptions were checked against the source on 2026-11-15.
-Design decisions below remain separate from implemented behavior and do not
-authorize implementation.
+The interpreter layout and dispatch guides reflect the cold and warm passes
+checked against the source on 2026-11-24. Use the status column below to identify
+future designs and deferred reviews.
 
 ## Current implementation
 
@@ -15,11 +15,12 @@ authorize implementation.
 |:--|:--|
 | Serialized bytecode, stream parsing, and target conversion | [Bytecode](bytecode.md) |
 | Dependency loading, initialization order, and symbol index | [Units](units.md) |
-| Instruction words and operand coordinates | [Opword representation](opword.md) |
+| Instruction words, typed cold and warm layouts, and operand coordinates | [Opword representation](opword.md) |
 | Handler decoding, dispatch, calls, and supported operations | [Cold threaded interpreter](threaded-code.md) |
 | In-place promotion, resolved operands, and specialized calls | [Warm interpreter](warm-interpreter.md) |
 | Tagged values, stack frames, GC, and C runtime boundary | [Runtime](runtime.md) |
 | Std functions, global variable, and native signatures | [Std runtime interface](std.md) |
+| Fixed-arity Std example fixtures | [Std tests](std-tests.md) |
 | Differential runner, import fixtures, and result interpretation | [Testing](testing.md) |
 | Build, sanitizers, checks, and C++ conventions | [Tooling](tooling.md) |
 

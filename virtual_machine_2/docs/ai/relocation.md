@@ -1,8 +1,9 @@
 # Pointer relocation by memory regions
 
-Status: future mechanism. Current cold operands are integer coordinates, and
-[the warm CALL design](warm-interpreter.md) also uses offsets and unit indices.
-Live code/data movement has not been implemented or established as a requirement.
+Status: future mechanism. Cold targets are integer coordinates. Warm jumps,
+CALL, and CLOSURE cache direct instruction pointers. Warm STRING caches a
+string-table pointer. These operands depend on stable backing allocations.
+See the [warm layouts](../../source/interpreter/warm/layout.hpp).
 
 ## Pointer enumeration
 
@@ -51,8 +52,9 @@ portable substitute.
 ## References outside text
 
 Moving live storage also requires visiting the current instruction pointer,
-saved return addresses, unit-context spans, closure code pointers, exported
+saved return addresses, unit-context spans, closure unit pointers, exported
 entry points, and pointers retained by native handlers or generated code.
+VM2's current heap closures store code offsets relative to their unit text.
 The reference VM's [closure handler](../../../virtual_machine/ops.c) illustrates
 code references outside text.
 

@@ -39,10 +39,16 @@ instructions. Any future unimplemented handler definitions call
 
 ## Dispatch contract
 
-At handler entry, `pc` points at the handler word. Operand reads advance it to
-an operand word. `LAMAVM_DISPATCH` increments `pc` and dispatches;
-`LAMAVM_DISPATCH_JUMP` dispatches through the current `pc` without incrementing.
-Taken jumps and both conditional outcomes arrange `pc` at the next handler.
+At handler entry, `pc` points at the handler word. The
+[instruction layout](opword.md#interpreter-layouts) gives access to the
+operands through `op_xxx_t::reinterpret(pc)`. The cold handler passes that
+same `pc` to specialization before changing it.
+
+`LAMAVM_DISPATCH(op_xxx_t)` adds `word_count<op_xxx_t>()` to `pc` and then
+dispatches. The count includes the handler word. `LAMAVM_DISPATCH_JUMP()`
+dispatches through the current `pc`. Jumps choose a target or a conditional
+fallthrough explicitly. CLOSURE advances by `word_count(view)`, which includes
+the capture tail, and dispatches through `LAMAVM_DISPATCH_JUMP()`.
 
 Handlers have the parameterless `void()` signature and access singleton
 [runtime state](runtime.md). Dispatch uses `LAMAVM_MUSTTAIL`, defined as
@@ -51,20 +57,22 @@ tail calls prevent one native stack frame per executed instruction.
 
 ## Calls and unit context
 
-Bytecode CALL saves the next handler address, frame and stack pointers,
-and caller unit context. Its argument count stays in the call instruction. A nonnegative target is a word offset in the
-current unit. A negative target names a Std or public function. A Std call
-uses its native bridge and falls through in the current unit. A public
-function call selects the declaring unit. END restores the caller state and
-dispatches at the saved return address.
+Bytecode CALL and CALLC save the argument count, next handler address, frame
+and stack pointers, and caller unit context. The continuation is
+`pc + word_count<Layout>()`. A nonnegative cold CALL target is a word offset
+in the current unit. A negative target names a Std or public function. A Std
+call uses its native bridge and falls through in the current unit. A public
+function call selects the declaring unit. END specializes at the current
+instruction and then restores the caller state for dispatch at the saved
+return address.
 
 Global loads and stores resolve negative operands as public globals and use the
 declaring unit's global base. STRING uses the current unit's string table.
 Unit context therefore matters independently of whether an instruction is warm.
 
 EOF returns from the handler chain. The outer initialization loop then starts
-the next unit; after all bodies finish, `run` exits the process with status zero.
-An atomic guard permits only one runtime load per process.
+the next unit. Once all bodies finish, `run` releases the VM stack and returns.
+An atomic guard permits one runtime load per process.
 
 Current bounds-checking gaps are recorded in [deferred defects](deferred-defects.md).
 The [warm interpreter](warm-interpreter.md) specializes each returning cold

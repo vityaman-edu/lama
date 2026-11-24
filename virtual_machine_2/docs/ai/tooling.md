@@ -19,6 +19,27 @@ selected mode, then points `lamavm2` at that binary. `LAMAVM_BUILD_JOBS` control
 build parallelism and defaults to two. [The test wrapper](testing.md) selects
 the release or sanitized binary explicitly.
 
+## Inspecting Release dispatch
+
+The unsanitized Release configuration uses `-O3 -flto` to compile and link on
+the macOS toolchain. Inspect `build/rel/lamavm2` directly. The following commands
+find the warm handler's Mach-O symbol and disassemble it in Intel syntax.
+
+```sh
+symbol=$(nm -j build/rel/lamavm2 | rg 'warm.*op_modEv$')
+xcrun llvm-objdump --x86-asm-syntax=intel --disassemble-symbols="$symbol" build/rel/lamavm2
+```
+
+For an A/B comparison, recompile a temporary variant of
+[`warm/handler.cpp`](../../source/interpreter/warm/handler.cpp) with only the
+`std::ignore = op_mod_t::reinterpret(pc);` line removed. Use the flags from
+`build/rel/compile_commands.json` and a Clang `-ivfsoverlay` mapping to preserve
+the original source path for quoted includes. Relink using the command in
+`ninja -C build/rel -t commands lamavm2`, substituting the variant object and an
+alternate output path. Compare the linked symbol's instruction bytes.
+On x86-64 Release with Apple Clang 21, the `op_mod` bytes matched with and
+without that line. The only calls were the existing error paths to `_failure`.
+
 ## External dependencies
 
 CMake downloads pinned upstream dependencies into the build directory.
